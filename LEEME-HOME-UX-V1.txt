@@ -1,0 +1,68 @@
+UP AND DOWN · HOME UX CLEAN V1
+=================================
+
+OBJETIVO
+- Limpiar y ordenar el HOME antes de Phase 2B.2.
+- Mantener la lógica actual de catálogo, filtros, carrito, idiomas, afiliados,
+  WhatsApp, servicios, campos y Cabo Journal.
+- NO activar checkout real en localhost.
+
+MEJORAS VISUALES / UX
+1. Header más delgado y navegación con menos opciones compitiendo.
+2. Hero más corto y enfocado.
+3. Un solo sistema de filtros visible; el duplicado del catálogo queda oculto
+   para no romper compatibilidad del runtime actual.
+4. Golf Advisor visible como franja compacta incluso sin referencia de vendedor.
+5. Categorías aparecen antes que el catálogo para orientar rápido.
+6. Nueva sección Coque’s Picks con máximo 4 productos.
+7. Cards de producto más limpias: una sola acción principal “Ver equipo”.
+8. Se reduce contenido técnico en cards; el detalle vive en el modal.
+9. Servicios en una cuadrícula más compacta.
+10. Campos de golf más visuales y con menos texto en Home.
+11. Cabo Journal compacto hasta que el usuario decide abrir un artículo.
+12. Se elimina el carrito flotante duplicado; header/dock siguen disponibles.
+13. Mobile: catálogo de 2 columnas cuando hay espacio, modal full-screen y
+    acciones sticky.
+14. La franja de beneficios queda como único bloque de confianza.
+
+BACKUP AUTOMÁTICO
+ANTES de modificar el HOME, APPLY-HOME-UX-V1.ps1 crea:
+
+  home-backups\home-before-ux-v1-YYYYMMDD-HHMMSS\
+  home-backups\home-before-ux-v1-YYYYMMDD-HHMMSS.zip
+
+Ese respaldo se genera desde TU instalación local actual, por lo que conserva
+exactamente la versión que estás viendo antes de aplicar este parche.
+
+APLICAR
+1. Detén Next.js con Ctrl+C.
+2. Descomprime este ZIP dentro de la carpeta del proyecto que contiene package.json.
+3. Ejecuta:
+
+   .\APPLY-HOME-UX-V1.ps1
+
+4. Después:
+
+   npm run dev
+
+5. Abre:
+
+   http://localhost:3000
+
+VOLVER AL HOME ANTERIOR
+Desde la raíz del proyecto:
+
+   .\RESTORE-HOME-BEFORE-UX.ps1
+
+Después:
+
+   npm run dev
+
+NO TOCA
+- .env.local
+- Supabase schema/data
+- Stripe keys
+- DNS / dominio
+- Admin
+- Admin de afiliados
+- Portal del vendedor

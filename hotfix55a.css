@@ -1,0 +1,134 @@
+
+/* ==========================================================================
+   UP AND DOWN · DESKTOP HEADER COLLISION FIX · HOTFIX55A
+   Surgical CSS-only correction for medium desktop widths.
+   ========================================================================== */
+
+@media (min-width:1051px) and (max-width:1420px){
+
+  #updown-store.uds-ux-v3 .uds-header{
+    overflow:visible!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-topbar{
+    display:grid!important;
+    grid-template-columns:120px minmax(0,1fr) auto!important;
+    align-items:center!important;
+    column-gap:16px!important;
+    width:100%!important;
+    max-width:1440px!important;
+    min-height:72px!important;
+    height:72px!important;
+    padding-left:18px!important;
+    padding-right:18px!important;
+    box-sizing:border-box!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-logo{
+    position:relative!important;
+    inset:auto!important;
+    transform:none!important;
+    width:120px!important;
+    min-width:120px!important;
+    max-width:120px!important;
+    height:58px!important;
+    margin:0!important;
+    overflow:hidden!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-logo .uds-original-vector-logo{
+    width:112px!important;
+    max-width:112px!important;
+    height:52px!important;
+    object-fit:contain!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-desktop-nav{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:0!important;
+    width:100%!important;
+    gap:clamp(10px,1.15vw,18px)!important;
+    overflow:visible!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-desktop-nav a,
+  #updown-store.uds-ux-v3 .uds-desktop-nav button{
+    flex:0 1 auto!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+    font-size:clamp(8px,.72vw,10px)!important;
+    letter-spacing:.025em!important;
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-top-actions{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    min-width:max-content!important;
+    margin:0!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsSearchTop{
+    width:38px!important;
+    min-width:38px!important;
+    height:38px!important;
+    transform:none!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-lang-switch{
+    width:68px!important;
+    min-width:68px!important;
+    height:38px!important;
+    transform:none!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-lang-switch button{
+    min-width:31px!important;
+    height:34px!important;
+    font-size:8px!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-mobile-quicknav,
+  #updown-store.uds-ux-v3 #udsMenuButton{
+    display:none!important;
+  }
+}
+
+/* At very narrow desktop widths, reduce nav pressure one more step. */
+@media (min-width:1051px) and (max-width:1180px){
+  #updown-store.uds-ux-v3 .uds-topbar{
+    grid-template-columns:100px minmax(0,1fr) auto!important;
+    column-gap:10px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-logo{
+    width:100px!important;
+    min-width:100px!important;
+    max-width:100px!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-logo .uds-original-vector-logo{
+    width:94px!important;
+    max-width:94px!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-desktop-nav{
+    gap:8px!important;
+  }
+
+  #updown-store.uds-ux-v3 .uds-desktop-nav a,
+  #updown-store.uds-ux-v3 .uds-desktop-nav button{
+    font-size:7.5px!important;
+    letter-spacing:.015em!important;
+  }
+}

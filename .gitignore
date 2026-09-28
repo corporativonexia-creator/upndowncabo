@@ -1,0 +1,40 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+.vercel
+.DS_Store
+npm-debug.log*
+
+# Local development / historical backups
+auth-backups/
+admin-backups/
+home-backups/
+home-mobile-backups/
+home-runtime-backups/
+pos-backups/
+checkout-backups/
+build-fix-backups/
+backup-phase2b-*/
+_backups/
+payload/
+upndown-phase2b-patch/
+
+# Supabase local state
+supabase/.temp/
+
+# Generated diagnostics
+*-SOURCE.txt
+*-DIAG.txt
+.home-diagnostics-backup.json
+tsconfig.tsbuildinfo
+
+# Local installers / restore scripts
+APPLY-*.ps1
+RESTORE-*.ps1
+HOTFIX*.ps1
+H[0-9]*.ps1
+REMOVE-*.ps1
+

@@ -1,0 +1,67 @@
+{
+    "compilerOptions":  {
+                            "target":  "ES2017",
+                            "lib":  [
+                                        "dom",
+                                        "dom.iterable",
+                                        "esnext"
+                                    ],
+                            "allowJs":  false,
+                            "skipLibCheck":  true,
+                            "strict":  true,
+                            "noEmit":  true,
+                            "esModuleInterop":  true,
+                            "module":  "esnext",
+                            "moduleResolution":  "bundler",
+                            "resolveJsonModule":  true,
+                            "isolatedModules":  true,
+                            "jsx":  "react-jsx",
+                            "incremental":  true,
+                            "plugins":  [
+                                            {
+                                                "name":  "next"
+                                            }
+                                        ],
+                            "paths":  {
+                                          "@/*":  [
+                                                      "./src/*"
+                                                  ]
+                                      }
+                        },
+    "include":  [
+                    "next-env.d.ts",
+                    ".next/types/**/*.ts",
+                    "**/*.ts",
+                    "**/*.tsx",
+                    ".next/dev/types/**/*.ts"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "home-backups",
+                    "home-backups/**",
+                    "home-runtime-backups",
+                    "home-runtime-backups/**",
+                    "home-mobile-backups",
+                    "home-mobile-backups/**",
+                    "admin-backups",
+                    "admin-backups/**",
+                    "pos-backups",
+                    "pos-backups/**",
+                    "backup-phase2b-*",
+                    "backup-phase2b-*/**",
+                    "checkout-backups",
+                    "checkout-backups/**",
+                    "diagnostic-backups",
+                    "diagnostic-backups/**",
+                    "build-fix-backups",
+                    "build-fix-backups/**",
+                    "payload",
+                    "payload/**",
+                    "upndown-phase2b-patch",
+                    "upndown-phase2b-patch/**",
+                    "supabase/functions",
+                    "supabase/functions/**",
+                    "_backups",
+                    "_backups/**"
+                ]
+}

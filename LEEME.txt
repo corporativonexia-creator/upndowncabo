@@ -1,0 +1,7 @@
+UP AND DOWN · PHASE 2B PATCH
+
+1. Descomprime esta carpeta.
+2. Abre PowerShell en tu carpeta ACTUAL upndown-next-phase2a.
+3. Ejecuta el APPLY-PHASE2B.ps1 indicando su ruta, o copia este patch dentro de la raiz y ejecutalo.
+4. El script hace backup de los archivos que reemplaza y NO toca .env.local.
+5. Ejecuta npm run dev.
