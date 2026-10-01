@@ -42,6 +42,7 @@ export default function AdminParity() {
       await load("/updown-admin-v2.js?v=admin-next-h52");
       await load("/updown-h63-order-comms.js?v=h63");
       await load("/updown-inventory-v2.js?v=inventory-v2");
+      await load("/updown-inventory-nav.js?v=inventory-nav-v1");
     })().catch((error) => console.error("UP AND DOWN Admin migration", error));
   }, []);
 
