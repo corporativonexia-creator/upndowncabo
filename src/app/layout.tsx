@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const publicConfig = `window.__UPDOWN_SUPABASE_URL__=${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL || "")};window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__=${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "")};`;
   return (
     <html lang="es">
       <head>
@@ -25,6 +26,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        <script dangerouslySetInnerHTML={{ __html: publicConfig }} />
+        <script src="/updown-pos-scanner-v1.js?v=scanner-v1" defer />
       </head>
       <body>{children}</body>
     </html>
