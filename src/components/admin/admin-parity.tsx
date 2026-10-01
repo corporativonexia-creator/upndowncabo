@@ -19,9 +19,6 @@ export default function AdminParity() {
     if (mounted.current) return;
     mounted.current = true;
 
-    // Legacy Admin expects window.supabase.createClient(). We redirect that call
-    // to the existing Next SSR/cookie-aware browser client, preserving the same
-    // authenticated session already validated by requireRole().
     window.supabase = { createClient: () => createClient() };
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
     window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ =
@@ -44,6 +41,7 @@ export default function AdminParity() {
       await load("/updown-admin-legacy-runtime.js?v=admin-next-h52");
       await load("/updown-admin-v2.js?v=admin-next-h52");
       await load("/updown-h63-order-comms.js?v=h63");
+      await load("/updown-inventory-v2.js?v=inventory-v2");
     })().catch((error) => console.error("UP AND DOWN Admin migration", error));
   }, []);
 
@@ -54,4 +52,3 @@ export default function AdminParity() {
     />
   );
 }
-
