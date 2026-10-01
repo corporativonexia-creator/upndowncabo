@@ -783,15 +783,26 @@ export default function PosPage() {
       let printNote = "";
       if (completedSale) {
         try {
-          printReceipt(completedSale);
-          printNote = " · Ticket listo para imprimir en POS-80C.";
+          const bridgeResponse = await fetch("http://127.0.0.1:18181/print-sale", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sale: completedSale, access }),
+          });
+
+          if (!bridgeResponse.ok) {
+            const bridgeBody = await bridgeResponse.text();
+            throw new Error(
+              `Print Bridge respondio ${bridgeResponse.status}${bridgeBody ? `: ${bridgeBody}` : ""}`,
+            );
+          }
+
+          printNote = " - Impresion OK: cliente + comercio + cajon.";
         } catch (printError) {
-          printNote = ` · Venta guardada, pero no se abrió impresión: ${readableError(printError)}`;
+          printNote = ` - VENTA GUARDADA, PERO NO SE IMPRIMIO. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
         }
       } else {
-        printNote = " · Venta guardada; usa Ticket PDF en el historial si necesitas imprimirla.";
+        printNote = " - Venta guardada; no se encontro el comprobante para impresion automatica.";
       }
-
       setMessage(
         `Venta #${result?.sale_number ?? "—"} cobrada por ${money(
           numeric(result?.total ?? total),
