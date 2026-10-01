@@ -8,7 +8,12 @@ if ($text.Contains('http://127.0.0.1:18181/print-sale')) {
   exit 0
 }
 
-$pattern = '(?s)      let printNote = "";\s*      if \(completedSale\) \{\s*        try \{\s*          printReceipt\(completedSale\);\s*          printNote = " · Ticket listo para imprimir en POS-80C\.";\s*        \} catch \(printError\) \{\s*          printNote = ` · Venta guardada, pero no se abrió impresión: \$\{readableError\(printError\)\}`;\s*        \}\s*      \} else \{\s*        printNote = " · Venta guardada; usa Ticket PDF en el historial si necesitas imprimirla\.";\s*      \}'
+$startMarker = '      let printNote = "";'
+$endMarker = '      setMessage('
+$start = $text.IndexOf($startMarker)
+if ($start -lt 0) { throw 'No encontre el inicio del bloque printNote. No se modifico ningun archivo.' }
+$end = $text.IndexOf($endMarker, $start)
+if ($end -lt 0) { throw 'No encontre setMessage despues de printNote. No se modifico ningun archivo.' }
 
 $new = @'
       let printNote = "";
@@ -23,24 +28,26 @@ $new = @'
           if (!bridgeResponse.ok) {
             const bridgeBody = await bridgeResponse.text();
             throw new Error(
-              `Print Bridge respondió ${bridgeResponse.status}${bridgeBody ? `: ${bridgeBody}` : ""}`,
+              `Print Bridge respondio ${bridgeResponse.status}${bridgeBody ? `: ${bridgeBody}` : ""}`,
             );
           }
 
-          printNote = " · Impresión OK: cliente + comercio + cajón.";
+          printNote = " · Impresion OK: cliente + comercio + cajon.";
         } catch (printError) {
-          printNote = ` · VENTA GUARDADA, PERO NO SE IMPRIMIÓ. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
+          printNote = ` · VENTA GUARDADA, PERO NO SE IMPRIMIO. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
         }
       } else {
-        printNote = " · Venta guardada; no se encontró el comprobante para impresión automática.";
+        printNote = " · Venta guardada; no se encontro el comprobante para impresion automatica.";
       }
+
 '@
 
-$updated = [Text.RegularExpressions.Regex]::Replace($text, $pattern, $new, 1)
-if ($updated -eq $text) {
-  throw 'No encontre el bloque de impresion esperado. No se modifico ningun archivo.'
+$updated = $text.Substring(0, $start) + $new + $text.Substring($end)
+[IO.File]::WriteAllText($file, $updated, (New-Object Text.UTF8Encoding($false)))
+
+if (-not ([IO.File]::ReadAllText($file).Contains('http://127.0.0.1:18181/print-sale'))) {
+  throw 'La verificacion final fallo. Revisa page.tsx antes de continuar.'
 }
 
-[IO.File]::WriteAllText($file, $updated, (New-Object Text.UTF8Encoding($false)))
 Write-Host 'OK: /pos ahora usa Print Bridge ESC/POS directo.' -ForegroundColor Green
 Write-Host 'La venta se guarda primero; un fallo de impresion NO repite el cobro.' -ForegroundColor Cyan
