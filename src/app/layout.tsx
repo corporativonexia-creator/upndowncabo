@@ -28,6 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
         <script dangerouslySetInnerHTML={{ __html: publicConfig }} />
         <script src="/updown-pos-scanner-v1.js?v=scanner-v1" defer />
+        <script src="/updown-pos-autoprint-v1.js?v=pos-autoprint-v1" defer />
       </head>
       <body>{children}</body>
     </html>
