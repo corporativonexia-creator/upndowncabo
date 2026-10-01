@@ -32,12 +32,12 @@ $new = @'
             );
           }
 
-          printNote = " · Impresion OK: cliente + comercio + cajon.";
+          printNote = " - Impresion OK: cliente + comercio + cajon.";
         } catch (printError) {
-          printNote = ` · VENTA GUARDADA, PERO NO SE IMPRIMIO. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
+          printNote = ` - VENTA GUARDADA, PERO NO SE IMPRIMIO. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
         }
       } else {
-        printNote = " · Venta guardada; no se encontro el comprobante para impresion automatica.";
+        printNote = " - Venta guardada; no se encontro el comprobante para impresion automatica.";
       }
 
 '@
