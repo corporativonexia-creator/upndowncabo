@@ -3,19 +3,12 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $file = Join-Path $root 'src\app\pos\page.tsx'
 $text = [IO.File]::ReadAllText($file)
 
-$old = @'
-      let printNote = "";
-      if (completedSale) {
-        try {
-          printReceipt(completedSale);
-          printNote = " · Ticket listo para imprimir en POS-80C.";
-        } catch (printError) {
-          printNote = ` · Venta guardada, pero no se abrió impresión: ${readableError(printError)}`;
-        }
-      } else {
-        printNote = " · Venta guardada; usa Ticket PDF en el historial si necesitas imprimirla.";
-      }
-'@
+if ($text.Contains('http://127.0.0.1:18181/print-sale')) {
+  Write-Host 'OK: el POS ya esta conectado al Print Bridge.' -ForegroundColor Green
+  exit 0
+}
+
+$pattern = '(?s)      let printNote = "";\s*      if \(completedSale\) \{\s*        try \{\s*          printReceipt\(completedSale\);\s*          printNote = " · Ticket listo para imprimir en POS-80C\.";\s*        \} catch \(printError\) \{\s*          printNote = ` · Venta guardada, pero no se abrió impresión: \$\{readableError\(printError\)\}`;\s*        \}\s*      \} else \{\s*        printNote = " · Venta guardada; usa Ticket PDF en el historial si necesitas imprimirla\.";\s*      \}'
 
 $new = @'
       let printNote = "";
@@ -43,15 +36,11 @@ $new = @'
       }
 '@
 
-if (-not $text.Contains($old)) {
-  if ($text.Contains('http://127.0.0.1:18181/print-sale')) {
-    Write-Host 'OK: el POS ya está conectado al Print Bridge.' -ForegroundColor Green
-    exit 0
-  }
-  throw 'No encontré el bloque esperado. No se modificó ningún archivo.'
+$updated = [Text.RegularExpressions.Regex]::Replace($text, $pattern, $new, 1)
+if ($updated -eq $text) {
+  throw 'No encontre el bloque de impresion esperado. No se modifico ningun archivo.'
 }
 
-$text = $text.Replace($old, $new)
-[IO.File]::WriteAllText($file, $text, (New-Object Text.UTF8Encoding($false)))
+[IO.File]::WriteAllText($file, $updated, (New-Object Text.UTF8Encoding($false)))
 Write-Host 'OK: /pos ahora usa Print Bridge ESC/POS directo.' -ForegroundColor Green
-Write-Host 'La venta se guarda primero; un fallo de impresión NO repite el cobro.' -ForegroundColor Cyan
+Write-Host 'La venta se guarda primero; un fallo de impresion NO repite el cobro.' -ForegroundColor Cyan
