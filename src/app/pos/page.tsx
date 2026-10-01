@@ -24,6 +24,7 @@ type Product = {
   id: string;
   name: string;
   sku: string | null;
+  barcode: string | null;
   brand: string | null;
   model: string | null;
   price: number | string | null;
@@ -491,7 +492,7 @@ export default function PosPage() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id,name,sku,brand,model,price,sale_price,stock,cover_image_url,status",
+          "id,name,sku,barcode,brand,model,price,sale_price,stock,cover_image_url,status",
         )
         .eq("status", "active")
         .order("name", { ascending: true })
@@ -540,6 +541,108 @@ export default function PosPage() {
       setSalesLoading(false);
     }
   }
+
+  function handleBarcodeScan(rawValue: string) {
+    const code = rawValue.trim();
+    if (!code) return false;
+
+    const product = products.find(
+      (item) => item.barcode?.trim() === code,
+    );
+
+    if (!product) {
+      setMessage(`Código ${code} no registrado en inventario.`);
+      return false;
+    }
+
+    const stock = numeric(product.stock);
+    if (stock <= 0) {
+      setMessage(`${product.name} está agotado.`);
+      setProductQuery("");
+      return false;
+    }
+
+    const currentQuantity =
+      cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
+
+    if (currentQuantity >= stock) {
+      setMessage(
+        `${product.name}: ya tienes en el carrito todo el stock disponible (${stock}).`,
+      );
+      setProductQuery("");
+      return false;
+    }
+
+    addToCart(product);
+    setProductQuery("");
+    setMessage(`✓ ${product.name} agregado por código de barras.`);
+    return true;
+  }
+
+  useEffect(() => {
+    let scanBuffer = "";
+    let lastKeyAt = 0;
+    let resetTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function resetScannerBuffer() {
+      scanBuffer = "";
+      lastKeyAt = 0;
+      if (resetTimer) {
+        clearTimeout(resetTimer);
+        resetTimer = null;
+      }
+    }
+
+    function handleGlobalScannerKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isEditable =
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        Boolean(target?.isContentEditable);
+
+      // Cuando el cajero está escribiendo en un campo, no interferimos.
+      // El lector global funciona desde cualquier zona no editable del POS.
+      if (isEditable) {
+        resetScannerBuffer();
+        return;
+      }
+
+      const now = Date.now();
+
+      if (event.key === "Enter") {
+        if (scanBuffer.length >= 6) {
+          const code = scanBuffer;
+          resetScannerBuffer();
+          event.preventDefault();
+          handleBarcodeScan(code);
+          return;
+        }
+
+        resetScannerBuffer();
+        return;
+      }
+
+      if (event.key.length !== 1) return;
+
+      // Un lector USB escribe mucho más rápido que una persona. Si hubo una
+      // pausa larga, comenzamos una lectura nueva.
+      if (lastKeyAt && now - lastKeyAt > 120) scanBuffer = "";
+
+      scanBuffer += event.key;
+      lastKeyAt = now;
+
+      if (resetTimer) clearTimeout(resetTimer);
+      resetTimer = setTimeout(resetScannerBuffer, 250);
+    }
+
+    document.addEventListener("keydown", handleGlobalScannerKey);
+    return () => {
+      document.removeEventListener("keydown", handleGlobalScannerKey);
+      if (resetTimer) clearTimeout(resetTimer);
+    };
+  }, [products, cart]);
 
   function addToCart(product: Product) {
     const stock = numeric(product.stock);
@@ -636,7 +739,58 @@ export default function PosPage() {
       setCashReceived("");
       setPaymentReference("");
 
-      await Promise.all([loadProducts(), loadShiftSales(), loadAccess(deviceToken)]);
+      // Refrescamos el turno para obtener la venta recién confirmada por Supabase.
+      // No imprimimos antes de esta confirmación para evitar tickets de ventas fallidas.
+      await Promise.all([loadProducts(), loadAccess(deviceToken)]);
+
+      const { data: refreshedData, error: refreshedError } = await supabase.rpc(
+        "pos_get_current_shift_sales",
+        { p_device_token: deviceToken },
+      );
+      if (refreshedError) throw refreshedError;
+
+      const refreshedPayload = refreshedData as {
+        sales?: ShiftSale[];
+        cash_movements?: CashMovement[];
+        cash_in?: number | string;
+        cash_out?: number | string;
+        cash_refunds?: number | string;
+        expected_cash?: number | string;
+      } | null;
+
+      const refreshedSales = Array.isArray(refreshedPayload?.sales)
+        ? refreshedPayload!.sales!
+        : [];
+      setShiftSales(refreshedSales);
+      setCashMovements(
+        Array.isArray(refreshedPayload?.cash_movements)
+          ? refreshedPayload!.cash_movements!
+          : [],
+      );
+      setCashIn(numeric(refreshedPayload?.cash_in));
+      setCashOut(numeric(refreshedPayload?.cash_out));
+      setCashRefunds(numeric(refreshedPayload?.cash_refunds));
+      setExpectedCashServer(
+        refreshedPayload?.expected_cash == null
+          ? null
+          : numeric(refreshedPayload.expected_cash),
+      );
+
+      const completedSale = refreshedSales.find(
+        (sale) => sale.sale_number === result?.sale_number,
+      );
+
+      let printNote = "";
+      if (completedSale) {
+        try {
+          printReceipt(completedSale);
+          printNote = " · Ticket listo para imprimir en POS-80C.";
+        } catch (printError) {
+          printNote = ` · Venta guardada, pero no se abrió impresión: ${readableError(printError)}`;
+        }
+      } else {
+        printNote = " · Venta guardada; usa Ticket PDF en el historial si necesitas imprimirla.";
+      }
 
       setMessage(
         `Venta #${result?.sale_number ?? "—"} cobrada por ${money(
@@ -645,7 +799,7 @@ export default function PosPage() {
           paymentMethod === "cash" && change > 0
             ? ` · Cambio ${money(change)}`
             : ""
-        }.`,
+        }.${printNote}`,
       );
     } catch (error) {
       setMessage(`SALE_ERROR: ${readableError(error)}`);
@@ -653,6 +807,30 @@ export default function PosPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function printReceipt(sale: ShiftSale) {
+    const doc = buildReceiptPdf(sale, access);
+    const blobUrl = doc.output("bloburl");
+    const printWindow = window.open(String(blobUrl), "_blank");
+
+    if (!printWindow) {
+      URL.revokeObjectURL(String(blobUrl));
+      throw new Error("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este POS.");
+    }
+
+    // Esperamos a que el visor PDF cargue antes de invocar el diálogo de impresión.
+    // En Fase A el cajón se abre mediante el driver POS-80C configurado como
+    // Cash Drawer #1 After Printing.
+    window.setTimeout(() => {
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch {
+        // Si el visor PDF del navegador no acepta print() automáticamente,
+        // el ticket queda abierto para que el cajero use Ctrl+P.
+      }
+    }, 900);
   }
 
   function downloadReceipt(sale: ShiftSale) {
@@ -1297,6 +1475,7 @@ export default function PosPage() {
     return [
       product.name,
       product.sku,
+      product.barcode,
       product.brand,
       product.model,
     ]
@@ -1548,8 +1727,22 @@ export default function PosPage() {
                         className="pos-search"
                         value={productQuery}
                         onChange={(event) => setProductQuery(event.target.value)}
-                        placeholder="Buscar producto, SKU, marca o modelo…"
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter") return;
+
+                          const code = event.currentTarget.value.trim();
+                          const barcodeMatch = products.some(
+                            (product) => product.barcode?.trim() === code,
+                          );
+
+                          if (!barcodeMatch) return;
+
+                          event.preventDefault();
+                          handleBarcodeScan(code);
+                        }}
+                        placeholder="Escanea código o busca producto, SKU, marca o modelo…"
                         autoComplete="off"
+                        autoFocus
                       />
                     </div>
 
