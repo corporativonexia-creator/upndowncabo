@@ -6,6 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 $taskName = "UpNDown POS Print Bridge"
 $bridgePath = Join-Path $PSScriptRoot "UpNDownPrintBridge.ps1"
+$launcherPath = Join-Path $PSScriptRoot "UpNDownPrintBridge.vbs"
 
 if (-not (Test-Path $bridgePath)) {
   throw "No se encontro UpNDownPrintBridge.ps1 en $PSScriptRoot"
@@ -18,10 +19,19 @@ if (-not $printer) {
   exit 1
 }
 
-$argument = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$bridgePath`" -PrinterName `"$PrinterName`" -Port $Port"
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $argument
+# Usamos WScript como lanzador para que el bridge quede realmente oculto.
+# Las comillas dobles se duplican dentro del argumento VBScript.
+$psCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$bridgePath`" -PrinterName `"$PrinterName`" -Port $Port"
+$vbsCommand = $psCommand.Replace('"','""')
+$vbs = @"
+Set shell = CreateObject("WScript.Shell")
+shell.Run "$vbsCommand", 0, False
+"@
+Set-Content -LiteralPath $launcherPath -Value $vbs -Encoding ASCII
+
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$launcherPath`""
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 3650) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 3650)
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
 
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
@@ -31,7 +41,7 @@ if ($existing) {
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Inicia el puente local ESC/POS de Up & Down al iniciar sesion en Windows." | Out-Null
 
-# Detener una instancia anterior del bridge, si existe.
+# Detener instancias anteriores del bridge antes de probar la nueva instalacion.
 Get-CimInstance Win32_Process | Where-Object {
   $_.Name -eq 'powershell.exe' -and $_.CommandLine -like '*UpNDownPrintBridge.ps1*'
 } | ForEach-Object {
@@ -41,20 +51,24 @@ Get-CimInstance Win32_Process | Where-Object {
 }
 
 Start-ScheduledTask -TaskName $taskName
-Start-Sleep -Seconds 2
 
-try {
-  $health = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 5
-  if ($health.ok) {
-    Write-Host "OK: Print Bridge instalado y ejecutandose automaticamente." -ForegroundColor Green
-    Write-Host "Impresora: $($health.printer)" -ForegroundColor Green
-    Write-Host "Puerto local: $Port" -ForegroundColor Green
-    Write-Host "Tarea de Windows: $taskName" -ForegroundColor Cyan
-  } else {
-    throw "El bridge respondio, pero health no devolvio ok=true."
-  }
-} catch {
+$health = $null
+for ($i = 0; $i -lt 10; $i++) {
+  Start-Sleep -Milliseconds 500
+  try {
+    $health = Invoke-RestMethod "http://127.0.0.1:$Port/health" -TimeoutSec 2
+    if ($health.ok) { break }
+  } catch {}
+}
+
+if ($health -and $health.ok) {
+  Write-Host "OK: Print Bridge instalado y ejecutandose oculto." -ForegroundColor Green
+  Write-Host "Impresora: $($health.printer)" -ForegroundColor Green
+  Write-Host "Puerto local: $Port" -ForegroundColor Green
+  Write-Host "Inicio automatico: al iniciar sesion en Windows" -ForegroundColor Cyan
+  Write-Host "Ya puedes cerrar esta ventana de PowerShell." -ForegroundColor Cyan
+} else {
   Write-Host "La tarea fue creada, pero el bridge no respondio en /health." -ForegroundColor Red
-  Write-Host $_.Exception.Message -ForegroundColor Red
+  Write-Host "Revisa el Historial de la tarea '$taskName' y la impresora '$PrinterName'." -ForegroundColor Yellow
   exit 1
 }
