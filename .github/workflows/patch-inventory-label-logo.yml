@@ -1,0 +1,56 @@
+name: Patch inventory label compact logo
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/patch-inventory-label-logo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Replace label brand with compact vector logo
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/admin/inventory-admin.tsx')
+          s = p.read_text(encoding='utf-8')
+
+          old_brand = '<div class="brand">UP AND DOWN</div>'
+          new_brand = '''<div class="brand"><svg class="brand-logo" viewBox="0 0 420 112" xmlns="http://www.w3.org/2000/svg" aria-label="UP AND DOWN"><path d="M70 42 C128 42 150 18 218 18 C278 18 301 46 350 43" fill="none" stroke="black" stroke-width="5" stroke-linecap="round"/><path d="M218 18 V2 H252 C241 12 232 15 218 12 Z" fill="black"/><text x="210" y="96" text-anchor="middle" font-family="Georgia,Times New Roman,serif" font-size="42" letter-spacing="13">UP AND DOWN</text></svg></div>'''
+
+          if old_brand in s:
+              s = s.replace(old_brand, new_brand, 1)
+          elif 'class="brand-logo"' not in s:
+              raise SystemExit('Label brand marker not found; refusing unsafe patch')
+
+          old_css = '.brand{font-family:Georgia,serif;font-weight:700;font-size:8.5pt;letter-spacing:1.3px;line-height:1}'
+          new_css = '.brand{height:7mm;display:flex;align-items:center;justify-content:center;overflow:hidden}.brand-logo{display:block;width:36mm;height:7mm}'
+          if old_css in s:
+              s = s.replace(old_css, new_css, 1)
+          elif '.brand-logo{' not in s:
+              raise SystemExit('Label brand CSS marker not found; refusing unsafe patch')
+
+          # Recover vertical space for retail data while preserving barcode dimensions.
+          s = s.replace('.name{font-size:7.2pt;font-weight:700;line-height:1.05;margin-top:1mm;', '.name{font-size:7.4pt;font-weight:700;line-height:1.05;margin-top:.35mm;', 1)
+          s = s.replace('.barcode{height:15mm;margin:.6mm auto 0;', '.barcode{height:15mm;margin:.25mm auto 0;', 1)
+
+          p.write_text(s, encoding='utf-8')
+      - name: Commit compact label logo
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/admin/inventory-admin.tsx
+          git commit -m "feat(inventory): compact vector logo on 50x30 labels"
+          git push
