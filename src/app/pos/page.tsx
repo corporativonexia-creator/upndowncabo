@@ -1,4 +1,4 @@
-/* HOTFIX60B_SELLER_POS_ACCESS */
+﻿/* HOTFIX60B_SELLER_POS_ACCESS */
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -186,14 +186,14 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
-  doc.text("PUNTO DE VENTA · LOS CABOS", width / 2, y, { align: "center" });
+  doc.text("PUNTO DE VENTA Â· LOS CABOS", width / 2, y, { align: "center" });
   y += 6;
 
   line();
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text(`TICKET · VENTA #${sale.sale_number}`, margin, y);
+  doc.text(`TICKET Â· VENTA #${sale.sale_number}`, margin, y);
   y += 5;
 
   writePair(
@@ -229,7 +229,7 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.text(
-      `${item.quantity} × ${money(numeric(item.unit_price))}`,
+      `${item.quantity} Ã— ${money(numeric(item.unit_price))}`,
       margin,
       y,
     );
@@ -281,7 +281,7 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
     line();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text("ANULACIÓN", margin, y);
+    doc.text("ANULACIÃ“N", margin, y);
     y += 4;
     doc.setFont("helvetica", "normal");
     doc.text(doc.splitTextToSize(sale.void_reason, 68), margin, y);
@@ -292,7 +292,7 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
     line();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text("DEVOLUCIÓN", margin, y);
+    doc.text("DEVOLUCIÃ“N", margin, y);
     y += 4;
     doc.setFont("helvetica", "normal");
     doc.text(doc.splitTextToSize(sale.refund_reason, 68), margin, y);
@@ -306,7 +306,7 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
   doc.text("Gracias por tu compra.", width / 2, y, { align: "center" });
   y += 4;
   doc.text(
-    "Conserva este comprobante para cualquier aclaración.",
+    "Conserva este comprobante para cualquier aclaraciÃ³n.",
     width / 2,
     y,
     { align: "center" },
@@ -551,13 +551,13 @@ export default function PosPage() {
     );
 
     if (!product) {
-      setMessage(`Código ${code} no registrado en inventario.`);
+      setMessage(`CÃ³digo ${code} no registrado en inventario.`);
       return false;
     }
 
     const stock = numeric(product.stock);
     if (stock <= 0) {
-      setMessage(`${product.name} está agotado.`);
+      setMessage(`${product.name} estÃ¡ agotado.`);
       setProductQuery("");
       return false;
     }
@@ -575,7 +575,7 @@ export default function PosPage() {
 
     addToCart(product);
     setProductQuery("");
-    setMessage(`✓ ${product.name} agregado por código de barras.`);
+    setMessage(`âœ“ ${product.name} agregado por cÃ³digo de barras.`);
     return true;
   }
 
@@ -602,7 +602,7 @@ export default function PosPage() {
         tagName === "select" ||
         Boolean(target?.isContentEditable);
 
-      // Cuando el cajero está escribiendo en un campo, no interferimos.
+      // Cuando el cajero estÃ¡ escribiendo en un campo, no interferimos.
       // El lector global funciona desde cualquier zona no editable del POS.
       if (isEditable) {
         resetScannerBuffer();
@@ -626,7 +626,7 @@ export default function PosPage() {
 
       if (event.key.length !== 1) return;
 
-      // Un lector USB escribe mucho más rápido que una persona. Si hubo una
+      // Un lector USB escribe mucho mÃ¡s rÃ¡pido que una persona. Si hubo una
       // pausa larga, comenzamos una lectura nueva.
       if (lastKeyAt && now - lastKeyAt > 120) scanBuffer = "";
 
@@ -696,7 +696,7 @@ export default function PosPage() {
       const received = parseMoneyText(cashReceived);
       if (received < total) {
         setMessage(
-          `Efectivo insuficiente. Total ${money(total)} · recibido ${money(received)}.`,
+          `Efectivo insuficiente. Total ${money(total)} Â· recibido ${money(received)}.`,
         );
         return;
       }
@@ -739,8 +739,8 @@ export default function PosPage() {
       setCashReceived("");
       setPaymentReference("");
 
-      // Refrescamos el turno para obtener la venta recién confirmada por Supabase.
-      // No imprimimos antes de esta confirmación para evitar tickets de ventas fallidas.
+      // Refrescamos el turno para obtener la venta reciÃ©n confirmada por Supabase.
+      // No imprimimos antes de esta confirmaciÃ³n para evitar tickets de ventas fallidas.
       await Promise.all([loadProducts(), loadAccess(deviceToken)]);
 
       const { data: refreshedData, error: refreshedError } = await supabase.rpc(
@@ -804,11 +804,11 @@ export default function PosPage() {
         printNote = " - Venta guardada; no se encontro el comprobante para impresion automatica.";
       }
       setMessage(
-        `Venta #${result?.sale_number ?? "—"} cobrada por ${money(
+        `Venta #${result?.sale_number ?? "â€”"} cobrada por ${money(
           numeric(result?.total ?? total),
         )}${
           paymentMethod === "cash" && change > 0
-            ? ` · Cambio ${money(change)}`
+            ? ` Â· Cambio ${money(change)}`
             : ""
         }.${printNote}`,
       );
@@ -820,29 +820,6 @@ export default function PosPage() {
     }
   }
 
-  function printReceipt(sale: ShiftSale) {
-    const doc = buildReceiptPdf(sale, access);
-    const blobUrl = doc.output("bloburl");
-    const printWindow = window.open(String(blobUrl), "_blank");
-
-    if (!printWindow) {
-      URL.revokeObjectURL(String(blobUrl));
-      throw new Error("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para este POS.");
-    }
-
-    // Esperamos a que el visor PDF cargue antes de invocar el diálogo de impresión.
-    // En Fase A el cajón se abre mediante el driver POS-80C configurado como
-    // Cash Drawer #1 After Printing.
-    window.setTimeout(() => {
-      try {
-        printWindow.focus();
-        printWindow.print();
-      } catch {
-        // Si el visor PDF del navegador no acepta print() automáticamente,
-        // el ticket queda abierto para que el cajero use Ctrl+P.
-      }
-    }, 900);
-  }
 
   function downloadReceipt(sale: ShiftSale) {
     const doc = buildReceiptPdf(sale, access);
@@ -859,7 +836,7 @@ export default function PosPage() {
       });
 
       const shareText =
-        `UP AND DOWN · Comprobante de venta #${sale.sale_number}\n` +
+        `UP AND DOWN Â· Comprobante de venta #${sale.sale_number}\n` +
         `Total: ${money(numeric(sale.total))}\n` +
         `Fecha: ${new Date(sale.created_at).toLocaleString("es-MX")}`;
 
@@ -869,7 +846,7 @@ export default function PosPage() {
         navigator.canShare({ files: [file] })
       ) {
         await navigator.share({
-          title: `UP AND DOWN · Venta #${sale.sale_number}`,
+          title: `UP AND DOWN Â· Venta #${sale.sale_number}`,
           text: shareText,
           files: [file],
         });
@@ -879,11 +856,11 @@ export default function PosPage() {
 
       // Fallback de escritorio: descarga el PDF y abre WhatsApp con el texto.
       // Los navegadores de escritorio no permiten adjuntar archivos
-      // automáticamente a WhatsApp Web desde un enlace normal.
+      // automÃ¡ticamente a WhatsApp Web desde un enlace normal.
       doc.save(receiptFileName(sale));
 
       const phoneRaw = window.prompt(
-        "Número de WhatsApp del cliente con lada y país (opcional). Déjalo vacío para elegir contacto en WhatsApp.",
+        "NÃºmero de WhatsApp del cliente con lada y paÃ­s (opcional). DÃ©jalo vacÃ­o para elegir contacto en WhatsApp.",
         "",
       );
       const phone = String(phoneRaw || "").replace(/\D/g, "");
@@ -893,7 +870,7 @@ export default function PosPage() {
 
       window.open(whatsappUrl, "_blank", "noopener,noreferrer");
       setMessage(
-        "PDF descargado. WhatsApp se abrió con el mensaje listo; adjunta el PDF descargado.",
+        "PDF descargado. WhatsApp se abriÃ³ con el mensaje listo; adjunta el PDF descargado.",
       );
     } catch (error) {
       if (
@@ -947,7 +924,7 @@ export default function PosPage() {
     if (!canReverseSales) return;
 
     if (!Number.isInteger(saleNumber) || saleNumber <= 0) {
-      setMessage("Ingresa un número de venta válido.");
+      setMessage("Ingresa un nÃºmero de venta vÃ¡lido.");
       return;
     }
 
@@ -1016,9 +993,9 @@ export default function PosPage() {
       setRefundSearchResults(rows);
 
       if (rows.length === 0) {
-        setMessage("No encontramos ventas elegibles para devolución con esos criterios.");
+        setMessage("No encontramos ventas elegibles para devoluciÃ³n con esos criterios.");
       } else if (rows.length >= 50) {
-        setMessage("Mostrando las primeras 50 coincidencias. Usa fechas o una búsqueda más específica para reducir resultados.");
+        setMessage("Mostrando las primeras 50 coincidencias. Usa fechas o una bÃºsqueda mÃ¡s especÃ­fica para reducir resultados.");
       }
     } catch (error) {
       setMessage(`SEARCH_ERROR: ${readableError(error)}`);
@@ -1045,12 +1022,12 @@ export default function PosPage() {
 
     const reason = refundReason.trim();
     if (reason.length < 4) {
-      setMessage("Escribe un motivo de devolución de al menos 4 caracteres.");
+      setMessage("Escribe un motivo de devoluciÃ³n de al menos 4 caracteres.");
       return;
     }
 
     if (lookupSale.status !== "completed") {
-      setMessage(`La venta está en estado ${lookupSale.status} y ya no puede devolverse.`);
+      setMessage(`La venta estÃ¡ en estado ${lookupSale.status} y ya no puede devolverse.`);
       return;
     }
 
@@ -1082,8 +1059,8 @@ export default function PosPage() {
       await Promise.all([loadProducts(), loadShiftSales(), loadAccess(deviceToken)]);
 
       setMessage(
-        `Devolución #${result?.refund_number ?? "—"} aplicada a venta #${
-          result?.sale_number ?? "—"
+        `DevoluciÃ³n #${result?.refund_number ?? "â€”"} aplicada a venta #${
+          result?.sale_number ?? "â€”"
         } por ${money(numeric(result?.amount))}. Stock repuesto.`,
       );
     } catch (error) {
@@ -1100,7 +1077,7 @@ export default function PosPage() {
     const reason = cashMovementReason.trim();
 
     if (amount <= 0) {
-      setMessage("Ingresa un monto válido.");
+      setMessage("Ingresa un monto vÃ¡lido.");
       return;
     }
 
@@ -1171,7 +1148,7 @@ export default function PosPage() {
     if (!accessRef.current) return;
     if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     inactivityTimer.current = setTimeout(() => {
-      logout("Sesión cerrada por 30 minutos de inactividad.");
+      logout("SesiÃ³n cerrada por 30 minutos de inactividad.");
     }, INACTIVITY_MS);
   }
 
@@ -1222,8 +1199,8 @@ export default function PosPage() {
 
       await logout(
         message === "TERMINAL_NOT_AUTHORIZED"
-          ? "Esta terminal dejó de estar autorizada. Inicia sesión nuevamente desde una terminal válida."
-          : "Tu acceso al POS cambió o fue suspendido. Inicia sesión nuevamente.",
+          ? "Esta terminal dejÃ³ de estar autorizada. Inicia sesiÃ³n nuevamente desde una terminal vÃ¡lida."
+          : "Tu acceso al POS cambiÃ³ o fue suspendido. Inicia sesiÃ³n nuevamente.",
       );
     } finally {
       revalidatingRef.current = false;
@@ -1344,7 +1321,7 @@ export default function PosPage() {
         p_device_token: deviceToken,
       });
       if (error) throw error;
-      setMessage("Terminal activada. Ya puedes iniciar sesión.");
+      setMessage("Terminal activada. Ya puedes iniciar sesiÃ³n.");
       formElement.reset();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo activar la terminal.");
@@ -1389,14 +1366,14 @@ export default function PosPage() {
         const detail =
           body.error ||
           body.message ||
-          (raw ? raw.slice(0, 220) : "respuesta vacía");
+          (raw ? raw.slice(0, 220) : "respuesta vacÃ­a");
         throw new Error(`POS_LOGIN_HTTP_${response.status}: ${detail}`);
       }
 
       if (!body.access_token || !body.refresh_token) {
         throw new Error(
           `POS_LOGIN_BAD_RESPONSE_${response.status}: ${
-            raw ? raw.slice(0, 220) : "respuesta vacía"
+            raw ? raw.slice(0, 220) : "respuesta vacÃ­a"
           }`,
         );
       }
@@ -1467,11 +1444,11 @@ export default function PosPage() {
       await loadAccess(deviceToken);
 
       setMessage(
-        `Turno cerrado · esperado ${money(
+        `Turno cerrado Â· esperado ${money(
           numeric(result?.expected_cash),
-        )} · contado ${money(
+        )} Â· contado ${money(
           numeric(result?.closing_cash),
-        )} · diferencia ${money(numeric(result?.difference))}.`,
+        )} Â· diferencia ${money(numeric(result?.difference))}.`,
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo cerrar el turno.");
@@ -1530,10 +1507,10 @@ export default function PosPage() {
         ? "Supervisor"
         : access?.employee_role === "pos_admin"
           ? "Administrador POS"
-          : access?.employee_role || "—";
+          : access?.employee_role || "â€”";
 
   if (!ready) {
-    return <main className="pos-shell"><section className="pos-card">Cargando POS…</section></main>;
+    return <main className="pos-shell"><section className="pos-card">Cargando POSâ€¦</section></main>;
   }
 
   return (
@@ -1659,7 +1636,7 @@ export default function PosPage() {
       <div className="pos-wrap">
         <header className="pos-brand">
           <strong>UP AND DOWN</strong>
-          <span>PUNTO DE VENTA · LOS CABOS</span>
+          <span>PUNTO DE VENTA Â· LOS CABOS</span>
         </header>
 
         {!access ? (
@@ -1667,28 +1644,28 @@ export default function PosPage() {
             <section className="pos-card">
               <div className="pos-kicker">Acceso de empleados y vendedores</div>
               <h1>Entrar al POS</h1>
-              <p className="pos-muted">Usa tu número de empleado o código de vendedor y tu contraseña. El acceso solo funciona en una terminal previamente autorizada.</p>
+              <p className="pos-muted">Usa tu nÃºmero de empleado o cÃ³digo de vendedor y tu contraseÃ±a. El acceso solo funciona en una terminal previamente autorizada.</p>
               <form className="pos-form" onSubmit={login}>
                 <div className="pos-field"><label>Empleado o vendedor</label><input name="employee" inputMode="text" autoCapitalize="characters" autoComplete="off" maxLength={30} placeholder="Ej. 0024 o VENDED001" required /></div>
-                <div className="pos-field"><label>Contraseña</label><input name="password" type="password" autoComplete="current-password" required /></div>
+                <div className="pos-field"><label>ContraseÃ±a</label><input name="password" type="password" autoComplete="current-password" required /></div>
                 <button className="pos-btn" disabled={busy}>Entrar</button>
               </form>
             </section>
 
             <section className="pos-card">
-              <div className="pos-kicker">Configuración de terminal</div>
+              <div className="pos-kicker">ConfiguraciÃ³n de terminal</div>
               <h2>Activar este equipo</h2>
-              <p className="pos-muted">Solo se hace una vez. Un administrador debe generar el código desde Admin → POS / Caja.</p>
+              <p className="pos-muted">Solo se hace una vez. Un administrador debe generar el cÃ³digo desde Admin â†’ POS / Caja.</p>
               <form className="pos-form" onSubmit={activateTerminal}>
-                <div className="pos-field"><label>Código de activación</label><input name="code" autoCapitalize="characters" maxLength={12} required /></div>
+                <div className="pos-field"><label>CÃ³digo de activaciÃ³n</label><input name="code" autoCapitalize="characters" maxLength={12} required /></div>
                 <button className="pos-btn secondary" disabled={busy}>Activar terminal</button>
               </form>
-              <div className="pos-note">Aunque alguien conozca una contraseña de empleado, no podrá abrir caja desde otro dispositivo sin una terminal autorizada y el PIN vigente del turno.</div>
+              <div className="pos-note">Aunque alguien conozca una contraseÃ±a de empleado, no podrÃ¡ abrir caja desde otro dispositivo sin una terminal autorizada y el PIN vigente del turno.</div>
             </section>
           </div>
         ) : (
           <section className="pos-card">
-            <div className="pos-kicker">Sesión de empleado</div>
+            <div className="pos-kicker">SesiÃ³n de empleado</div>
             <h1>Hola, {access.full_name}</h1>
             <div className="pos-stats">
               <div className="pos-stat"><span>Empleado</span><strong>#{access.employee_number}</strong></div>
@@ -1699,12 +1676,12 @@ export default function PosPage() {
             {access.open_shift_id ? (
               <>
                 <div className="pos-ready">
-                  <strong>Turno abierto · POS habilitado</strong>
+                  <strong>Turno abierto Â· POS habilitado</strong>
                   <span>
                     Inicio: {access.open_shift_started_at
                       ? new Date(access.open_shift_started_at).toLocaleString("es-MX")
-                      : "—"}{" "}
-                    · Fondo: {money(numeric(access.opening_cash))}
+                      : "â€”"}{" "}
+                    Â· Fondo: {money(numeric(access.opening_cash))}
                   </span>
                 </div>
 
@@ -1727,10 +1704,10 @@ export default function PosPage() {
                   <section className="pos-panel">
                     <div className="pos-panel-head">
                       <div>
-                        <div className="pos-kicker">Catálogo</div>
+                        <div className="pos-kicker">CatÃ¡logo</div>
                         <h3>Agregar productos</h3>
                       </div>
-                      <small>{productsLoading ? "Actualizando…" : `${products.length} productos`}</small>
+                      <small>{productsLoading ? "Actualizandoâ€¦" : `${products.length} productos`}</small>
                     </div>
 
                     <div style={{ padding: "12px 12px 0" }}>
@@ -1751,7 +1728,7 @@ export default function PosPage() {
                           event.preventDefault();
                           handleBarcodeScan(code);
                         }}
-                        placeholder="Escanea código o busca producto, SKU, marca o modelo…"
+                        placeholder="Escanea cÃ³digo o busca producto, SKU, marca o modeloâ€¦"
                         autoComplete="off"
                         autoFocus
                       />
@@ -1774,7 +1751,7 @@ export default function PosPage() {
                               <div className="pos-product-meta">
                                 {[product.brand, product.model, product.sku]
                                   .filter(Boolean)
-                                  .join(" · ") || "Producto"}
+                                  .join(" Â· ") || "Producto"}
                               </div>
                               <div className="pos-product-row">
                                 <div>
@@ -1802,7 +1779,7 @@ export default function PosPage() {
 
                       {!productsLoading && filteredProducts.length === 0 && (
                         <div className="pos-cart-empty">
-                          No encontramos productos con esa búsqueda.
+                          No encontramos productos con esa bÃºsqueda.
                         </div>
                       )}
                     </div>
@@ -1821,7 +1798,7 @@ export default function PosPage() {
 
                     {cart.length === 0 ? (
                       <div className="pos-cart-empty">
-                        Agrega productos del catálogo para comenzar una venta.
+                        Agrega productos del catÃ¡logo para comenzar una venta.
                       </div>
                     ) : (
                       <div className="pos-cart">
@@ -1847,7 +1824,7 @@ export default function PosPage() {
                                     )
                                   }
                                 >
-                                  −
+                                  âˆ’
                                 </button>
                                 <span>{item.quantity}</span>
                                 <button
@@ -1938,7 +1915,7 @@ export default function PosPage() {
                         </>
                       ) : (
                         <div className="pos-field">
-                          <label>Referencia / últimos dígitos (opcional)</label>
+                          <label>Referencia / Ãºltimos dÃ­gitos (opcional)</label>
                           <input
                             value={paymentReference}
                             onChange={(event) =>
@@ -1962,7 +1939,7 @@ export default function PosPage() {
                         onClick={checkoutSale}
                       >
                         {busy
-                          ? "Procesando…"
+                          ? "Procesandoâ€¦"
                           : `COBRAR ${money(cartSubtotal)}`}
                       </button>
                     </div>
@@ -1977,7 +1954,7 @@ export default function PosPage() {
                         Ventas del turno
                       </h3>
                     </div>
-                    <small>{salesLoading ? "Actualizando…" : `${shiftSales.length} ventas`}</small>
+                    <small>{salesLoading ? "Actualizandoâ€¦" : `${shiftSales.length} ventas`}</small>
                   </div>
 
                   <div className="pos-history-list">
@@ -1986,7 +1963,7 @@ export default function PosPage() {
                         <div>
                           <strong>Venta #{sale.sale_number}</strong>
                           <small style={{ display: "block", marginTop: 3 }}>
-                            {new Date(sale.created_at).toLocaleString("es-MX")} ·{" "}
+                            {new Date(sale.created_at).toLocaleString("es-MX")} Â·{" "}
                             {(sale.payments || [])
                               .map((payment) => paymentLabel(payment.method))
                               .join(" + ") || "Sin pago"}
@@ -2021,7 +1998,7 @@ export default function PosPage() {
                               <input
                                 value={voidReason}
                                 onChange={(event) => setVoidReason(event.target.value)}
-                                placeholder="Motivo de anulación"
+                                placeholder="Motivo de anulaciÃ³n"
                                 autoFocus
                               />
                               <div style={{ display: "flex", gap: 6 }}>
@@ -2031,7 +2008,7 @@ export default function PosPage() {
                                   disabled={busy}
                                   onClick={() => voidSale(sale)}
                                 >
-                                  Confirmar anulación
+                                  Confirmar anulaciÃ³n
                                 </button>
                                 <button
                                   type="button"
@@ -2063,7 +2040,7 @@ export default function PosPage() {
 
                     {!salesLoading && shiftSales.length === 0 && (
                       <div className="pos-cart-empty">
-                        Todavía no hay ventas en este turno.
+                        TodavÃ­a no hay ventas en este turno.
                       </div>
                     )}
                   </div>
@@ -2147,7 +2124,7 @@ export default function PosPage() {
                         onChange={(event) =>
                           setCashMovementReason(event.target.value)
                         }
-                        placeholder="Ej. retiro de efectivo, cambio adicional…"
+                        placeholder="Ej. retiro de efectivo, cambio adicionalâ€¦"
                       />
                     </div>
 
@@ -2177,12 +2154,12 @@ export default function PosPage() {
                                 : "Salida"}
                             </strong>
                             <small style={{ display: "block", marginTop: 3 }}>
-                              {movement.reason} ·{" "}
+                              {movement.reason} Â·{" "}
                               {new Date(movement.created_at).toLocaleString("es-MX")}
                             </small>
                           </div>
                           <strong>
-                            {movement.movement_type === "cash_in" ? "+" : "−"}
+                            {movement.movement_type === "cash_in" ? "+" : "âˆ’"}
                             {money(numeric(movement.amount))}
                           </strong>
                         </div>
@@ -2200,9 +2177,9 @@ export default function PosPage() {
                 {canReverseSales && (
                   <section className="pos-supervisor">
                     <div className="pos-kicker">Supervisor / POS Admin</div>
-                    <h3>Buscar venta para devolución</h3>
+                    <h3>Buscar venta para devoluciÃ³n</h3>
                     <p className="pos-muted">
-                      Puedes buscar ventas de cualquier día. La devolución V1 es completa y repone todo el inventario de la venta.
+                      Puedes buscar ventas de cualquier dÃ­a. La devoluciÃ³n V1 es completa y repone todo el inventario de la venta.
                     </p>
 
                     <div className="pos-refund-search">
@@ -2246,7 +2223,7 @@ export default function PosPage() {
                         disabled={refundSearchBusy}
                         onClick={searchRefundableSales}
                       >
-                        {refundSearchBusy ? "Buscando…" : "Buscar"}
+                        {refundSearchBusy ? "Buscandoâ€¦" : "Buscar"}
                       </button>
 
                       <button
@@ -2277,16 +2254,16 @@ export default function PosPage() {
                                 </span>
                               </div>
                               <div className="pos-refund-result-meta">
-                                {new Date(sale.created_at).toLocaleString("es-MX")} ·{" "}
+                                {new Date(sale.created_at).toLocaleString("es-MX")} Â·{" "}
                                 {sale.employee_number
-                                  ? `#${sale.employee_number} · ${sale.employee_name || "Empleado"}`
+                                  ? `#${sale.employee_number} Â· ${sale.employee_name || "Empleado"}`
                                   : sale.employee_name || "Empleado"}{" "}
-                                · {sale.terminal_name || "Terminal"}
+                                Â· {sale.terminal_name || "Terminal"}
                               </div>
                               {(sale.products || sale.skus) && (
                                 <div className="pos-refund-result-products">
                                   {sale.products || ""}
-                                  {sale.skus ? ` · SKU: ${sale.skus}` : ""}
+                                  {sale.skus ? ` Â· SKU: ${sale.skus}` : ""}
                                 </div>
                               )}
                               {sale.payment_references && (
@@ -2314,7 +2291,7 @@ export default function PosPage() {
 
                     <details style={{ marginTop: 12 }}>
                       <summary style={{ cursor: "pointer", fontSize: 12, fontWeight: 800 }}>
-                        Buscar directamente por número de venta
+                        Buscar directamente por nÃºmero de venta
                       </summary>
                       <div className="pos-supervisor-grid" style={{ marginTop: 8 }}>
                         <input
@@ -2322,7 +2299,7 @@ export default function PosPage() {
                           min="1"
                           value={lookupNumber}
                           onChange={(event) => setLookupNumber(event.target.value)}
-                          placeholder="Número de venta"
+                          placeholder="NÃºmero de venta"
                         />
                         <button
                           className="pos-btn"
@@ -2330,7 +2307,7 @@ export default function PosPage() {
                           disabled={lookupBusy || !lookupNumber}
                           onClick={lookupSaleByNumber}
                         >
-                          {lookupBusy ? "Buscando…" : "Abrir venta"}
+                          {lookupBusy ? "Buscandoâ€¦" : "Abrir venta"}
                         </button>
                       </div>
                     </details>
@@ -2355,7 +2332,7 @@ export default function PosPage() {
                               className="pos-refund-item"
                               key={`${item.product_id}-${item.sku ?? ""}`}
                             >
-                              <span>{item.quantity} × {item.product_name}</span>
+                              <span>{item.quantity} Ã— {item.product_name}</span>
                               <strong>{money(numeric(item.line_total))}</strong>
                             </div>
                           ))}
@@ -2364,7 +2341,7 @@ export default function PosPage() {
                         {lookupSale.status === "completed" ? (
                           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
                             <div className="pos-field">
-                              <label>Método de devolución</label>
+                              <label>MÃ©todo de devoluciÃ³n</label>
                               <select
                                 value={refundMethod}
                                 onChange={(event) =>
@@ -2381,7 +2358,7 @@ export default function PosPage() {
                             </div>
 
                             <div className="pos-field">
-                              <label>Motivo de devolución</label>
+                              <label>Motivo de devoluciÃ³n</label>
                               <textarea
                                 rows={3}
                                 value={refundReason}
@@ -2396,12 +2373,12 @@ export default function PosPage() {
                               disabled={busy || refundReason.trim().length < 4}
                               onClick={refundSale}
                             >
-                              Procesar devolución completa
+                              Procesar devoluciÃ³n completa
                             </button>
                           </div>
                         ) : (
                           <div className="pos-note">
-                            Esta venta ya no está disponible para devolución.
+                            Esta venta ya no estÃ¡ disponible para devoluciÃ³n.
                           </div>
                         )}
                       </div>
@@ -2413,7 +2390,7 @@ export default function PosPage() {
                   <h2 style={{ marginTop: 16 }}>Cerrar turno</h2>
                   <p className="pos-muted">
                     Efectivo esperado: <strong>{money(expectedCash)}</strong>.
-                    Cuenta físicamente la caja antes de cerrar.
+                    Cuenta fÃ­sicamente la caja antes de cerrar.
                   </p>
                   <div className="pos-field">
                     <label>Efectivo contado al cierre</label>
@@ -2436,7 +2413,7 @@ export default function PosPage() {
                   </button>
                   {cart.length > 0 && (
                     <div className="pos-note">
-                      Vacía o cobra el carrito antes de cerrar el turno.
+                      VacÃ­a o cobra el carrito antes de cerrar el turno.
                     </div>
                   )}
                 </form>
@@ -2453,7 +2430,7 @@ export default function PosPage() {
               </>
             )}
 
-            <button className="pos-btn secondary" style={{marginTop:16}} onClick={()=>logout()} type="button">Cerrar sesión</button>
+            <button className="pos-btn secondary" style={{marginTop:16}} onClick={()=>logout()} type="button">Cerrar sesiÃ³n</button>
           </section>
         )}
 
@@ -2462,3 +2439,4 @@ export default function PosPage() {
     </main>
   );
 }
+
