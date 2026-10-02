@@ -37,7 +37,7 @@ export default function AdminParity() {
 
     (async () => {
       await load("/updown-admin-legacy-runtime.js?v=admin-next-h52");
-      await load("/updown-product-heic-inventory-hotfix.js?v=heic-inventory-v2-20261002");
+      await load("/updown-product-heic-inventory-hotfix.js?v=heic-inventory-v3-20261002");
       await load("/updown-admin-v2.js?v=admin-next-h52");
       await load("/updown-pos-pin-v2.js?v=pos-pin-v3-20261001");
       await load("/updown-h63-order-comms.js?v=h63");
