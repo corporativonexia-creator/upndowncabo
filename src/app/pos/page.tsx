@@ -152,169 +152,19 @@ function receiptFileName(sale: ShiftSale) {
   return `UP-AND-DOWN-Ticket-${sale.sale_number}.pdf`;
 }
 
-function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: [80, 210],
-  });
-
-  const width = 80;
-  const margin = 6;
-  const right = width - margin;
-  let y = 8;
-
-  const line = () => {
-    doc.setDrawColor(210);
-    doc.line(margin, y, right, y);
-    y += 4;
-  };
-
-  const writePair = (label: string, value: string) => {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(label, margin, y);
-    doc.setFont("helvetica", "bold");
-    doc.text(value, right, y, { align: "right" });
-    y += 4;
-  };
-
-  doc.setFont("times", "bold");
-  doc.setFontSize(17);
-  doc.text("UP AND DOWN", width / 2, y, { align: "center" });
-  y += 5;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("PUNTO DE VENTA · LOS CABOS", width / 2, y, { align: "center" });
-  y += 6;
-
-  line();
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text(`TICKET · VENTA #${sale.sale_number}`, margin, y);
-  y += 5;
-
-  writePair(
-    "Fecha",
-    new Date(sale.created_at).toLocaleString("es-MX", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }),
-  );
-  writePair("Estado", saleStatusLabel(sale.status));
-  writePair(
-    "Cajero",
-    access
-      ? `#${access.employee_number} ${access.full_name}`
-      : "UP AND DOWN",
-  );
-  writePair("Terminal", access?.terminal_name || "POS");
-
-  line();
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("PRODUCTOS", margin, y);
-  y += 4;
-
-  for (const item of sale.items || []) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    const title = doc.splitTextToSize(item.product_name, 55);
-    doc.text(title, margin, y);
-    y += title.length * 3.4;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.text(
-      `${item.quantity} × ${money(numeric(item.unit_price))}`,
-      margin,
-      y,
-    );
-    doc.setFont("helvetica", "bold");
-    doc.text(money(numeric(item.line_total)), right, y, { align: "right" });
-    y += 4;
-
-    if (item.sku) {
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100);
-      doc.text(`SKU: ${item.sku}`, margin, y);
-      doc.setTextColor(0);
-      y += 3.5;
-    }
-  }
-
-  line();
-
-  writePair("Subtotal", money(numeric(sale.subtotal)));
-
-  if (numeric(sale.discount_amount) > 0) {
-    writePair("Descuento", `-${money(numeric(sale.discount_amount))}`);
-  }
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("TOTAL", margin, y);
-  doc.text(money(numeric(sale.total)), right, y, { align: "right" });
-  y += 6;
-
-  line();
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("PAGO", margin, y);
-  y += 4;
-
-  for (const payment of sale.payments || []) {
-    writePair(paymentLabel(payment.method), money(numeric(payment.amount)));
-    if (payment.reference) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.text(`Ref: ${payment.reference}`, margin, y);
-      y += 3.5;
-    }
-  }
-
-  if (sale.status === "voided" && sale.void_reason) {
-    line();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("ANULACIÓN", margin, y);
-    y += 4;
-    doc.setFont("helvetica", "normal");
-    doc.text(doc.splitTextToSize(sale.void_reason, 68), margin, y);
-    y += 8;
-  }
-
-  if (sale.status === "refunded" && sale.refund_reason) {
-    line();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("DEVOLUCIÓN", margin, y);
-    y += 4;
-    doc.setFont("helvetica", "normal");
-    doc.text(doc.splitTextToSize(sale.refund_reason, 68), margin, y);
-    y += 8;
-  }
-
-  line();
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.text("Gracias por tu compra.", width / 2, y, { align: "center" });
-  y += 4;
-  doc.text(
-    "Conserva este comprobante para cualquier aclaración.",
-    width / 2,
-    y,
-    { align: "center" },
-  );
-
-  return doc;
+function receiptAmountWords(value: number) {
+  const units=["CERO","UNO","DOS","TRES","CUATRO","CINCO","SEIS","SIETE","OCHO","NUEVE","DIEZ","ONCE","DOCE","TRECE","CATORCE","QUINCE","DIECISEIS","DIECISIETE","DIECIOCHO","DIECINUEVE","VEINTE","VEINTIUNO","VEINTIDOS","VEINTITRES","VEINTICUATRO","VEINTICINCO","VEINTISEIS","VEINTISIETE","VEINTIOCHO","VEINTINUEVE"];
+  const tens:Record<number,string>={30:"TREINTA",40:"CUARENTA",50:"CINCUENTA",60:"SESENTA",70:"SETENTA",80:"OCHENTA",90:"NOVENTA"}; const hundreds:Record<number,string>={2:"DOSCIENTOS",3:"TRESCIENTOS",4:"CUATROCIENTOS",5:"QUINIENTOS",6:"SEISCIENTOS",7:"SETECIENTOS",8:"OCHOCIENTOS",9:"NOVECIENTOS"};
+  const words=(n:number):string=>{n=Math.floor(n);if(n<30)return units[n]||String(n);if(n<100){const d=Math.floor(n/10)*10,r=n%10;return tens[d]+(r?` Y ${words(r)}`:"");}if(n===100)return"CIEN";if(n<200)return`CIENTO ${words(n-100)}`;if(n<1000){const h=Math.floor(n/100),r=n%100;return hundreds[h]+(r?` ${words(r)}`:"");}if(n<1000000){const q=Math.floor(n/1000),r=n%1000;return(q===1?"MIL":`${words(q)} MIL`)+(r?` ${words(r)}`:"");}if(n<1000000000){const q=Math.floor(n/1000000),r=n%1000000;return(q===1?"UN MILLON":`${words(q)} MILLONES`)+(r?` ${words(r)}`:"");}return String(n);}; const whole=Math.floor(value),cents=Math.round((value-whole)*100);return`${words(whole)} PESOS ${String(cents).padStart(2,"0")}/100 M.N.`;
 }
-
+function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
+  const items=sale.items||[],total=numeric(sale.total),net=Math.round((total/1.16)*100)/100,vat=Math.round((total-net)*100)/100,articleCount=items.reduce((sum,item)=>sum+Number(item.quantity||0),0);
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:[80,Math.max(210,112+items.length*15+(sale.payments||[]).length*7)]}),width=80,margin=5,right=75;let y=8;
+  const line=(kind="-")=>{doc.setDrawColor(kind==="="?70:155);doc.setLineWidth(kind==="="?0.45:0.2);doc.line(margin,y,right,y);y+=4;}; const pair=(label:string,value:string,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(bold?9:8);doc.text(label,margin,y);doc.text(value,right,y,{align:"right"});y+=4.2;}; const centered=(text:string,size=7,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);doc.text(text,width/2,y,{align:"center"});y+=size*.48+1.2;};
+  doc.setFont("times","bold");doc.setFontSize(18);doc.text("UP AND DOWN",width/2,y,{align:"center"});y+=6;centered("PLAZA ALBA - LOCAL 206",7,true);centered("EL TEZAL",7);centered("CABO SAN LUCAS, B.C.S.",7);centered("C.P. 23454",7);centered("upndowncabo.com",7,true);y+=1;line("=");doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(`VENTA #${sale.sale_number}`,margin,y);y+=4.5;doc.setFontSize(8);doc.text("COMPROBANTE DIGITAL",margin,y);y+=4;line();doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.text(`Fecha: ${new Date(sale.created_at).toLocaleString("es-MX",{dateStyle:"short",timeStyle:"short"})}`,margin,y);y+=4;if(access){doc.text(`Cajero: #${access.employee_number} ${access.full_name}`,margin,y);y+=4;doc.text(`Terminal: ${access.terminal_name||"POS"}`,margin,y);y+=4;}line();
+  doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("CANT",margin,y);doc.text("ARTICULO",15,y);doc.text("IMPORTE",right,y,{align:"right"});y+=4;for(const item of items){const anyItem=item as typeof item&{category_name?:string|null};if(anyItem.category_name){doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text(String(anyItem.category_name).toUpperCase(),margin,y);y+=4;}doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.text(String(item.quantity),margin,y);const nameLines=doc.splitTextToSize(item.product_name,44);doc.text(nameLines,15,y);doc.setFont("helvetica","bold");doc.text(money(numeric(item.line_total)),right,y,{align:"right"});y+=Math.max(4,nameLines.length*3.3);if(Number(item.quantity)>1){doc.setFont("helvetica","normal");doc.setFontSize(6.8);doc.text(`${money(numeric(item.unit_price))} c/u`,15,y);y+=3.4;}if(item.sku){doc.setFontSize(6.5);doc.setTextColor(90);doc.text(`SKU: ${item.sku}`,15,y);doc.setTextColor(0);y+=3.4;}}
+  line();pair("SUBTOTAL",money(net));pair("IVA 16%",money(vat));pair("TOTAL",money(total),true);y+=1;doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text("TOTAL CON LETRA:",margin,y);y+=3.5;doc.setFont("helvetica","normal");doc.setFontSize(6.7);const wordLines=doc.splitTextToSize(receiptAmountWords(total),70);doc.text(wordLines,margin,y);y+=wordLines.length*3.1+1;pair("ARTICULOS COMPRADOS",String(articleCount),true);line();doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text("PAGO",margin,y);y+=4;for(const payment of sale.payments||[]){pair(paymentLabel(payment.method),money(numeric(payment.amount)));if(payment.reference){doc.setFont("helvetica","normal");doc.setFontSize(7);doc.text(`Ref: ${payment.reference}`,margin,y);y+=3.5;}}line("=");centered("upndowncabo.com",8,true);centered("Gracias por tu compra.",7);centered("Conserva este comprobante para cualquier aclaracion.",6.5);return doc;
+}
 
 function makeDeviceToken() {
   const bytes = new Uint8Array(32);
