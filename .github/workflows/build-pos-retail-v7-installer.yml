@@ -1,0 +1,51 @@
+name: Build POS Retail v7 Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/pos-print-bridge/UpNDownPrintBridge.ps1'
+      - 'tools/pos-print-bridge/Build-RetailV7.ps1'
+      - 'tools/pos-print-bridge/INSTALAR-PUENTE.ps1'
+      - 'tools/pos-print-bridge/INICIAR-PUENTE.bat'
+      - 'tools/pos-print-bridge/UpNDownPOS-RetailV7.iss'
+      - '.github/workflows/build-pos-retail-v7-installer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Consolidate Retail v7
+        shell: powershell
+        run: |
+          Set-Location tools/pos-print-bridge
+          .\Build-RetailV7.ps1
+          $text = Get-Content .\UpNDownPrintBridge.ps1 -Raw
+          if ($text -notmatch 'retail-v7') { throw 'Retail v7 marker missing' }
+          if ($text -match 'retail-v5|retail-v6') { throw 'Old receipt version remains' }
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile installer
+        shell: powershell
+        run: |
+          Set-Location tools/pos-print-bridge
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' '.\UpNDownPOS-RetailV7.iss'
+          if (-not (Test-Path '.\dist\UpNDown-POS-PrintBridge-RetailV7-Setup.exe')) { throw 'Installer was not generated' }
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UpNDown-POS-PrintBridge-RetailV7-Setup
+          path: tools/pos-print-bridge/dist/UpNDown-POS-PrintBridge-RetailV7-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
