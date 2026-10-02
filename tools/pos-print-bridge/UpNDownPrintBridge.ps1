@@ -58,6 +58,11 @@ $CUT = B @($GS,86,0)
 $DRAWER = B @($ESC,112,0,50,100)
 $LF = B @(10)
 $enc = [Text.Encoding]::GetEncoding(850)
+$AllowedOrigins = @(
+  'https://upndowncabo.vercel.app',
+  'https://upndowncabo.com',
+  'https://www.upndowncabo.com'
+)
 
 function Add-Bytes([System.Collections.Generic.List[byte]]$buf,[byte[]]$bytes){ $buf.AddRange($bytes) }
 function Add-Text([System.Collections.Generic.List[byte]]$buf,[string]$text){ Add-Bytes $buf ($enc.GetBytes($text)) }
@@ -98,9 +103,14 @@ function Build-Copy($sale,$access,[string]$copyType){
 function Send-Raw([byte[]]$bytes,[string]$name){ if(-not [RawPrinterHelper]::SendBytes($PrinterName,$bytes,$name)){ throw "No se pudo enviar RAW a $PrinterName" } }
 function Reply($ctx,[int]$status,[string]$body){
   $ctx.Response.StatusCode=$status; $ctx.Response.ContentType='application/json; charset=utf-8'
-  $ctx.Response.Headers.Add('Access-Control-Allow-Origin','https://upndowncabo.com')
+  $origin = $ctx.Request.Headers['Origin']
+  if($origin -and ($AllowedOrigins -contains $origin)){
+    $ctx.Response.Headers.Add('Access-Control-Allow-Origin',$origin)
+    $ctx.Response.Headers.Add('Vary','Origin')
+  }
   $ctx.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type')
   $ctx.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS')
+  $ctx.Response.Headers.Add('Access-Control-Allow-Private-Network','true')
   $bytes=[Text.Encoding]::UTF8.GetBytes($body); $ctx.Response.ContentLength64=$bytes.Length; $ctx.Response.OutputStream.Write($bytes,0,$bytes.Length); $ctx.Response.Close()
 }
 
@@ -108,6 +118,7 @@ $listener=New-Object Net.HttpListener
 $listener.Prefixes.Add("http://127.0.0.1:$Port/")
 $listener.Start()
 Write-Host "Up & Down Print Bridge listo -> $PrinterName @ 127.0.0.1:$Port" -ForegroundColor Green
+Write-Host "Orígenes autorizados: $($AllowedOrigins -join ', ')" -ForegroundColor Cyan
 Write-Host "Deja esta ventana abierta mientras uses el POS." -ForegroundColor Yellow
 while($listener.IsListening){
   $ctx=$listener.GetContext()
