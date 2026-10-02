@@ -6,7 +6,10 @@ if (-not (Test-Path $target)) { throw "No se encontro $target" }
 $text = [IO.File]::ReadAllText($target, [Text.Encoding]::UTF8)
 
 $old = 'AddBytes $b $CENTER;AddText $b ((AmountWords $total)+"`n");AddBytes $b $LEFT;'
-$new = 'AddBytes $b $LEFT;$words=AmountWords $total;$wordLine='''';foreach($word in ($words -split '' '')){if($wordLine.Length -eq 0){$wordLine=$word}elseif(($wordLine.Length+1+$word.Length)-le 38){$wordLine+=''' '+$word}else{AddText $b ($wordLine+"`n");$wordLine=$word}};if($wordLine){AddText $b ($wordLine+"`n")};AddBytes $b $LEFT;'
+$new = @'
+AddBytes $b $LEFT;$words=AmountWords $total;$wordLine='';foreach($word in ($words -split ' ')){if($wordLine.Length -eq 0){$wordLine=$word}elseif(($wordLine.Length+1+$word.Length)-le 38){$wordLine+=' '+$word}else{AddText $b ($wordLine+"`n");$wordLine=$word}};if($wordLine){AddText $b ($wordLine+"`n")};AddBytes $b $LEFT;
+'@
+$new = $new.Trim()
 
 if ($text.Contains($old)) {
   $text = $text.Replace($old, $new)
