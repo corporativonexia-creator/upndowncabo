@@ -63,6 +63,7 @@ $AllowedOrigins = @(
   'https://upndowncabo.com',
   'https://www.upndowncabo.com'
 )
+$StoreWeb = 'https://upndowncabo.com/'
 
 function Add-Bytes([System.Collections.Generic.List[byte]]$buf,[byte[]]$bytes){ $buf.AddRange($bytes) }
 function Add-Text([System.Collections.Generic.List[byte]]$buf,[string]$text){ Add-Bytes $buf ($enc.GetBytes($text)) }
@@ -70,11 +71,40 @@ function Line([string]$char="-"){ return ($char * 42) + "`n" }
 function Money($n){ return ('$' + ([double]$n).ToString('N2',[Globalization.CultureInfo]::GetCultureInfo('es-MX'))) }
 function Payment-Label([string]$m){ switch($m){ 'cash'{'Efectivo'} 'card_terminal'{'Terminal'} 'transfer'{'Transferencia'} default{'Otro'} } }
 
+function Add-QR([System.Collections.Generic.List[byte]]$buf,[string]$data){
+  $qr = [Text.Encoding]::UTF8.GetBytes($data)
+  # QR model 2
+  Add-Bytes $buf (B @($GS,40,107,4,0,49,65,50,0))
+  # Module size 5
+  Add-Bytes $buf (B @($GS,40,107,3,0,49,67,5))
+  # Error correction M
+  Add-Bytes $buf (B @($GS,40,107,3,0,49,69,49))
+  # Store data
+  $len = $qr.Length + 3
+  $pL = $len -band 255
+  $pH = ($len -shr 8) -band 255
+  Add-Bytes $buf (B @($GS,40,107,$pL,$pH,49,80,48))
+  Add-Bytes $buf $qr
+  # Print QR
+  Add-Bytes $buf (B @($GS,40,107,3,0,49,81,48))
+  Add-Bytes $buf $LF
+}
+
 function Build-Copy($sale,$access,[string]$copyType){
   $buf = New-Object 'System.Collections.Generic.List[byte]'
-  Add-Bytes $buf $INIT; Add-Bytes $buf $ALIGN_CENTER; Add-Bytes $buf $BOLD_ON
-  Add-Text $buf "UP AND DOWN`n"; Add-Bytes $buf $BOLD_OFF
-  Add-Text $buf "PUNTO DE VENTA - LOS CABOS`n"
+  Add-Bytes $buf $INIT
+  Add-Bytes $buf $ALIGN_CENTER
+  Add-Bytes $buf $BOLD_ON
+  Add-Text $buf "UP AND DOWN`n"
+  Add-Bytes $buf $BOLD_OFF
+  Add-Text $buf "CABO GOLF SHOP`n"
+  Add-Text $buf "PLAZA ALBA - LOCAL 206`n"
+  Add-Text $buf "EL TEZAL`n"
+  Add-Text $buf "CABO SAN LUCAS, B.C.S.`n"
+  Add-Text $buf "C.P. 23454`n"
+  Add-Text $buf "upndowncabo.com`n`n"
+  Add-QR $buf $StoreWeb
+  Add-Text $buf "ESCANEA Y VISITANOS`n"
   Add-Text $buf ((Line '='))
   Add-Bytes $buf $BOLD_ON; Add-Text $buf ("COPIA " + $copyType + "`n"); Add-Bytes $buf $BOLD_OFF
   Add-Text $buf ("VENTA #" + $sale.sale_number + "`n")
@@ -95,7 +125,11 @@ function Build-Copy($sale,$access,[string]$copyType){
   Add-Text $buf ((Line '-'))
   foreach($p in $sale.payments){ Add-Text $buf ((Payment-Label $p.method)+": "+(Money $p.amount)+"`n"); if($p.reference){ Add-Text $buf ("Ref: "+$p.reference+"`n") } }
   if($copyType -eq 'COMERCIO' -and ($sale.payments | Where-Object {$_.method -eq 'card_terminal'})){ Add-Text $buf "`nENGRAPAR VOUCHER DE TERMINAL A ESTA COPIA`n" }
-  Add-Bytes $buf $ALIGN_CENTER; Add-Text $buf "`nGracias por tu compra.`n"; Add-Text $buf "UP AND DOWN - CABO GOLF SHOP`n`n`n"
+  Add-Bytes $buf $ALIGN_CENTER
+  Add-Text $buf "`nGRACIAS POR TU COMPRA`n"
+  Add-Text $buf "Conserva este comprobante para`n"
+  Add-Text $buf "cualquier aclaracion.`n"
+  Add-Text $buf "upndowncabo.com`n`n`n"
   Add-Bytes $buf $CUT
   return $buf.ToArray()
 }
