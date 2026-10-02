@@ -21,36 +21,29 @@ export default function AdminParity() {
 
     window.supabase = { createClient: () => createClient() };
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-    const load = (src: string) =>
-      new Promise<void>((resolve, reject) => {
-        const old = document.querySelector(`script[data-updown-admin-src="${src}"]`);
-        if (old) old.remove();
-        const script = document.createElement("script");
-        script.src = src;
-        script.defer = true;
-        script.dataset.updownAdminSrc = src;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
-        document.body.appendChild(script);
-      });
+    const load = (src: string) => new Promise<void>((resolve, reject) => {
+      const old = document.querySelector(`script[data-updown-admin-src="${src}"]`);
+      if (old) old.remove();
+      const script = document.createElement("script");
+      script.src = src;
+      script.defer = true;
+      script.dataset.updownAdminSrc = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
+      document.body.appendChild(script);
+    });
 
     (async () => {
       await load("/updown-admin-legacy-runtime.js?v=admin-next-h52");
       await load("/updown-admin-v2.js?v=admin-next-h52");
       await load("/updown-pos-pin-v2.js?v=pos-pin-v3-20261001");
       await load("/updown-h63-order-comms.js?v=h63");
-      await load("/updown-inventory-v2.js?v=inventory-v2");
+      await load("/updown-inventory-v2.js?v=inventory-product-v3-20261002");
       await load("/updown-inventory-nav.js?v=inventory-nav-v1");
     })().catch((error) => console.error("UP AND DOWN Admin migration", error));
   }, []);
 
-  return (
-    <div
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: adminLegacyMarkup }}
-    />
-  );
+  return <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: adminLegacyMarkup }} />;
 }
