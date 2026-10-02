@@ -8,7 +8,7 @@ $new = @'
 AddBytes $b $CENTER;$words=AmountWords $total;$wordLine='';foreach($word in ($words -split ' ')){if($wordLine.Length -eq 0){$wordLine=$word}elseif(($wordLine.Length+1+$word.Length)-le 38){$wordLine+=' '+$word}else{AddText $b ($wordLine+"`n");$wordLine=$word}};if($wordLine){AddText $b ($wordLine+"`n")};AddBytes $b $LEFT;
 '@
 if (-not $text.Contains($old)) {
-  if ($text.Contains("receipt\":\"retail-v6")) { Write-Host 'Retail v6 ya estaba aplicado.' -ForegroundColor Green; exit 0 }
+  if ($text.Contains('receipt":"retail-v6')) { Write-Host 'Retail v6 ya estaba aplicado.' -ForegroundColor Green; exit 0 }
   throw 'No se encontro el bloque esperado de total con letra. No se modifico el Bridge.'
 }
 $text = $text.Replace($old, $new.Trim())
