@@ -1,0 +1,28 @@
+name: Build POS Print Bridge Installer
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/pos-print-bridge/**'
+      - '.github/workflows/build-pos-printbridge-installer.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+      - name: Compile Retail V7.1 installer
+        shell: powershell
+        run: |
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'tools\pos-print-bridge\UpNDownPOS-RetailV7.iss'
+          Get-ChildItem 'tools\pos-print-bridge\dist'
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: UpNDown-POS-PrintBridge-RetailV7.1-Setup
+          path: tools/pos-print-bridge/dist/UpNDown-POS-PrintBridge-RetailV7.1-Setup.exe
+          if-no-files-found: error
