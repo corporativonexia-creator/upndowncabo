@@ -40,6 +40,32 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
+function restoreDesktopCart(root: HTMLElement) {
+  if (window.matchMedia("(max-width: 760px)").matches) return;
+  const actions = root.querySelector<HTMLElement>(".uds-top-actions");
+  if (!actions || actions.querySelector("#udsCartButton")) return;
+
+  const button = document.createElement("button");
+  button.id = "udsCartButton";
+  button.type = "button";
+  button.className = "uds-icon-btn";
+  button.setAttribute("aria-label", "Abrir carrito");
+  button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="uds-cart-count" id="udsCartCount">0</span>`;
+  button.addEventListener("click", () => document.getElementById("udsFloatingCart")?.click());
+  actions.appendChild(button);
+
+  try {
+    const cart = JSON.parse(localStorage.getItem("upDownCart") || "[]");
+    const units = Array.isArray(cart)
+      ? cart.reduce((sum: number, item: { quantity?: number }) => sum + Number(item.quantity || 0), 0)
+      : 0;
+    const count = button.querySelector<HTMLElement>("#udsCartCount");
+    if (count) count.textContent = String(units);
+  } catch {
+    // Keep the default zero badge if local storage is unavailable.
+  }
+}
+
 export default function StorefrontParity() {
   useEffect(() => {
     const root = document.getElementById("updown-store");
@@ -67,13 +93,16 @@ export default function StorefrontParity() {
       process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
 
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H59-UTF8CART";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H59-UTF8CART2";
     script.async = false;
     script.dataset.updownParity = "true";
 
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
-      if (root) repairStoreText(root);
+      if (root) {
+        repairStoreText(root);
+        restoreDesktopCart(root);
+      }
     };
 
     script.onerror = () => {
