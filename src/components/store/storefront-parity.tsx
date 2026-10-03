@@ -40,6 +40,20 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
+function ensureLegacyRuntimeCompatibility(root: HTMLElement) {
+  // The visual announcement bar was intentionally removed from the new header,
+  // but the legacy language runtime still writes into this selector on boot.
+  // Keep an inert hidden target so that a missing legacy node cannot abort the
+  // rest of the storefront initialization or mobile interactions.
+  if (!root.querySelector(".uds-announcement")) {
+    const announcement = document.createElement("div");
+    announcement.className = "uds-announcement uds-runtime-compat";
+    announcement.hidden = true;
+    announcement.setAttribute("aria-hidden", "true");
+    root.prepend(announcement);
+  }
+}
+
 function restoreDesktopCart(root: HTMLElement) {
   if (window.matchMedia("(max-width: 760px)").matches) return;
   const actions = root.querySelector<HTMLElement>(".uds-top-actions");
@@ -69,7 +83,10 @@ function restoreDesktopCart(root: HTMLElement) {
 export default function StorefrontParity() {
   useEffect(() => {
     const root = document.getElementById("updown-store");
-    if (root) repairStoreText(root);
+    if (root) {
+      ensureLegacyRuntimeCompatibility(root);
+      repairStoreText(root);
+    }
 
     const observer = root
       ? new MutationObserver(() => repairStoreText(root))
@@ -91,7 +108,7 @@ export default function StorefrontParity() {
       process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
 
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H61";
     script.async = false;
     script.dataset.updownParity = "true";
 
