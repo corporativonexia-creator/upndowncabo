@@ -1,48 +1,67 @@
-/* Storefront premium monochrome header */
+/* UP AND DOWN storefront header — canonical responsive implementation */
 :root {
-  --ud-header-green: #0b3f35;
+  --ud-header-green: #0b493d;
   --ud-header-white: #ffffff;
+  --ud-mobile-header-height: 64px;
 }
 
-#updown-store .uds-topbar {
+/* Announcement retired: navigation begins immediately at the top. */
+#updown-store .uds-announcement {
+  display: none !important;
+}
+
+#updown-store .uds-header {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   background: var(--ud-header-green) !important;
   color: var(--ud-header-white) !important;
-  border-bottom: 1px solid rgba(255,255,255,.12) !important;
-  box-shadow: 0 8px 24px rgba(5,35,29,.12) !important;
+}
+
+#updown-store .uds-header .uds-topbar {
+  width: 100% !important;
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  color: var(--ud-header-white) !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 #updown-store .uds-logo,
 #updown-store .uds-logo-copy,
 #updown-store .uds-logo-copy strong,
 #updown-store .uds-logo-copy > span,
-#updown-store .uds-desktop-nav a {
+#updown-store .uds-desktop-nav a,
+#updown-store .uds-original-vector-logo {
   color: var(--ud-header-white) !important;
 }
 
 #updown-store .uds-logo {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 9px !important;
-  flex: 0 0 auto !important;
   min-width: 0 !important;
   overflow: visible !important;
+  text-decoration: none !important;
 }
 
-/* Existing logo is drawn in code: force every vector element to monochrome white. */
-#updown-store .uds-original-vector-logo {
+#updown-store .uds-original-vector-logo,
+#updown-store .uds-original-vector-logo svg {
   display: block !important;
-  flex: 0 0 auto !important;
-  width: 76px !important;
-  height: 38px !important;
   line-height: 0 !important;
   overflow: visible !important;
 }
 
 #updown-store .uds-original-vector-logo svg {
-  display: block !important;
   width: 100% !important;
   height: 100% !important;
-  overflow: visible !important;
+}
+
+#updown-store .uds-original-vector-logo svg path,
+#updown-store .uds-original-vector-logo svg polygon,
+#updown-store .uds-original-vector-logo svg rect {
+  fill: currentColor !important;
 }
 
 #updown-store .uds-original-vector-logo svg path,
@@ -50,129 +69,138 @@
 #updown-store .uds-original-vector-logo svg polyline,
 #updown-store .uds-original-vector-logo svg circle,
 #updown-store .uds-original-vector-logo svg ellipse {
-  stroke: var(--ud-header-white) !important;
+  stroke: currentColor !important;
 }
 
-#updown-store .uds-original-vector-logo svg path,
-#updown-store .uds-original-vector-logo svg polygon,
-#updown-store .uds-original-vector-logo svg rect {
-  fill: var(--ud-header-white) !important;
+#updown-store .uds-text-link::after { content: none !important; }
+
+/* Golf courses: three at a time; pagination belongs to the storefront component. */
+#updown-store .uds-course-more-wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 24px;
 }
-
-#updown-store .uds-logo-copy {
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
+#updown-store .uds-course-more {
+  appearance: none;
+  min-height: 44px;
+  padding: 0 24px;
+  border: 1px solid rgba(11,73,61,.22);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ud-header-green);
+  font: 700 12px/1 Inter,Arial,sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
+#updown-store .uds-course-more:hover { background: var(--ud-header-green); color: #fff; }
 
-#updown-store .uds-logo-copy strong {
-  letter-spacing: .12em !important;
-}
-
-#updown-store .uds-logo-copy > span {
-  color: rgba(255,255,255,.72) !important;
-  letter-spacing: .14em !important;
-}
-
-#updown-store .uds-desktop-nav a {
-  opacity: .88 !important;
-  transition: opacity .18s ease, transform .18s ease !important;
-}
-
-#updown-store .uds-desktop-nav a:hover,
-#updown-store .uds-desktop-nav a:focus-visible {
-  opacity: 1 !important;
-  transform: translateY(-1px) !important;
-}
-
-/* Header controls become quiet white-outline controls on the green banner. */
-#updown-store .uds-top-actions button,
-#updown-store .uds-top-actions a,
-#updown-store #udsCartButton {
-  border-color: rgba(255,255,255,.28) !important;
-}
-
-@media (min-width: 901px) {
-  #updown-store .uds-topbar {
-    min-height: 78px !important;
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-    grid-template-columns: minmax(190px,auto) minmax(0,1fr) auto !important;
-    column-gap: clamp(22px,3vw,52px) !important;
-  }
-
-  #updown-store .uds-top-actions {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+@media (min-width: 761px) {
+  #updown-store .uds-header { position: sticky !important; top: 0 !important; z-index: 400 !important; }
+  #updown-store .uds-header .uds-topbar {
+    min-height: 92px !important;
+    padding: 12px 28px !important;
+    display: grid !important;
+    grid-template-columns: minmax(230px,300px) minmax(0,1fr) auto !important;
     align-items: center !important;
-    justify-content: flex-end !important;
-    flex: 0 0 auto !important;
-    position: relative !important;
-    z-index: 20 !important;
+    gap: 22px !important;
+  }
+  #updown-store .uds-header .uds-menu-btn { display: none !important; }
+  #updown-store .uds-header .uds-logo {
+    display: grid !important;
+    grid-template-columns: 92px minmax(0,1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  #updown-store .uds-header .uds-original-vector-logo { width: 92px !important; height: 44px !important; }
+  #updown-store .uds-header .uds-logo-copy { display: flex !important; flex-direction: column !important; white-space: nowrap !important; }
+  #updown-store .uds-header .uds-logo-copy strong { font-size: 17px !important; line-height: 1 !important; letter-spacing: .18em !important; }
+  #updown-store .uds-header .uds-logo-copy span { margin-top: 5px !important; font-size: 7px !important; line-height: 1 !important; letter-spacing: .18em !important; }
+  #updown-store .uds-header .uds-desktop-nav { display: flex !important; align-items: center !important; justify-content: center !important; gap: 18px !important; min-width: 0 !important; white-space: nowrap !important; }
+  #updown-store .uds-header .uds-nav-link { font-size: 11px !important; }
+  #updown-store .uds-header .uds-top-actions { display: flex !important; align-items: center !important; gap: 8px !important; }
+}
+
+@media (max-width: 760px) {
+  /* One mobile header only. Fixed, translucent and independent from desktop. */
+  #updown-store .uds-header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 2147483000 !important;
+    height: var(--ud-mobile-header-height) !important;
+    min-height: var(--ud-mobile-header-height) !important;
+    background: rgba(7,65,54,.78) !important;
+    border-bottom: 1px solid rgba(255,255,255,.12) !important;
+    box-shadow: 0 8px 26px rgba(4,35,29,.13) !important;
+    backdrop-filter: blur(18px) saturate(135%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+    transform: none !important;
+    transition: none !important;
   }
 
-  #updown-store #udsCartButton {
+  #updown-store .uds-header .uds-topbar {
+    height: var(--ud-mobile-header-height) !important;
+    min-height: var(--ud-mobile-header-height) !important;
+    max-width: none !important;
+    padding: 8px 14px !important;
+    display: grid !important;
+    grid-template-columns: 78px minmax(0,1fr) auto auto auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  #updown-store .uds-header .uds-logo {
+    display: block !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 78px !important;
+    max-width: 78px !important;
+  }
+  #updown-store .uds-header .uds-original-vector-logo { width: 78px !important; height: 36px !important; }
+  #updown-store .uds-header .uds-logo-copy,
+  #updown-store .uds-header .uds-desktop-nav,
+  #updown-store .uds-header .uds-lang-switch { display: none !important; }
+
+  #updown-store .uds-header .uds-top-actions {
+    display: contents !important;
+  }
+
+  #updown-store .uds-header .uds-search-top,
+  #updown-store .uds-header #udsCartButton,
+  #updown-store .uds-header .uds-menu-btn {
+    position: static !important;
     display: inline-flex !important;
     visibility: visible !important;
     opacity: 1 !important;
-    flex: 0 0 46px !important;
-  }
-
-  #updown-store .uds-desktop-nav {
-    min-width: 0 !important;
+    align-items: center !important;
     justify-content: center !important;
-    gap: clamp(18px,2vw,34px) !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    color: #fff !important;
+    box-shadow: none !important;
   }
-}
+  #updown-store .uds-header .uds-search-top { grid-column: 3 !important; grid-row: 1 !important; }
+  #updown-store .uds-header #udsCartButton { grid-column: 4 !important; grid-row: 1 !important; }
+  #updown-store .uds-header .uds-menu-btn { grid-column: 5 !important; grid-row: 1 !important; }
+  #updown-store .uds-header .uds-search-top svg,
+  #updown-store .uds-header #udsCartButton svg,
+  #updown-store .uds-header .uds-menu-btn svg { width: 24px !important; height: 24px !important; stroke: currentColor !important; }
 
-@media (max-width: 900px) {
-  #updown-store .uds-topbar {
-    min-height: 68px !important;
-    padding-top: 9px !important;
-    padding-bottom: 9px !important;
-  }
+  /* The old bottom dock is retired; header owns mobile navigation. */
+  #updown-store .uds-mobile-dock { display: none !important; }
 
-  #updown-store .uds-logo {
-    gap: 6px !important;
-    max-width: min(58vw,220px) !important;
-  }
+  /* Fixed header occupies real visual space; hero begins directly beneath it. */
+  #updown-store main { padding-top: var(--ud-mobile-header-height) !important; }
 
-  #updown-store .uds-original-vector-logo {
-    width: 60px !important;
-    height: 30px !important;
-    min-width: 60px !important;
-  }
-
-  #updown-store .uds-logo-copy strong,
-  #updown-store .uds-logo-copy > span {
-    white-space: nowrap !important;
-  }
-
-  #updown-store .uds-top-actions button,
-  #updown-store .uds-top-actions a,
-  #updown-store #udsCartButton {
-    background: rgba(255,255,255,.96) !important;
-    color: var(--ud-header-green) !important;
-  }
-}
-
-@media (max-width: 420px) {
-  #updown-store .uds-logo {
-    max-width: 51vw !important;
-  }
-
-  #updown-store .uds-original-vector-logo {
-    width: 52px !important;
-    height: 26px !important;
-    min-width: 52px !important;
-  }
-
-  #updown-store .uds-logo-copy > span {
-    display: none !important;
-  }
-}
-
-/* The link already contains its arrow in markup. Retire the corrupted legacy pseudo-arrow. */
-#updown-store .uds-text-link::after {
-  content: none !important;
+  #updown-store .uds-course-more-wrap { padding-top: 18px; }
+  #updown-store .uds-course-more { width: 100%; max-width: 280px; }
 }
