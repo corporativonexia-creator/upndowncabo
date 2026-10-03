@@ -1,7 +1,6 @@
 (function(){
   "use strict";
   const MOBILE="(max-width: 760px)";
-  let observer=null;
   function mobile(){return window.matchMedia(MOBILE).matches}
   function root(){return document.getElementById("updown-store")}
   function icon(type){
@@ -46,7 +45,7 @@
     `;document.head.appendChild(s);
   }
   function cartCount(){try{const c=JSON.parse(localStorage.getItem("upDownCart")||"[]");return Array.isArray(c)?c.reduce((n,x)=>n+Number(x.quantity||0),0):0}catch(e){return 0}}
-  function updateCount(){const n=document.getElementById("udmCount");if(n)n.textContent=String(cartCount())}
+  function updateCount(){const n=document.getElementById("udmCount");if(!n)return;const value=String(cartCount());if(n.textContent!==value)n.textContent=value}
   function candidates(q){const r=root();if(!r)return[];const needle=q.trim().toLowerCase();if(!needle)return[];const nodes=[...r.querySelectorAll("#udsCatalog article, #udsCatalog .uds-product-card, #udsCatalog .uds-card, #udsNew article")];const seen=new Set(),out=[];for(const node of nodes){const text=(node.textContent||"").replace(/\s+/g," ").trim();if(!text||!text.toLowerCase().includes(needle))continue;const title=node.querySelector("h2,h3,h4,strong")?.textContent?.trim()||text.slice(0,90);if(seen.has(title))continue;seen.add(title);out.push({title,node});if(out.length>=6)break}return out}
   function renderResults(){const input=document.getElementById("udmInput"),box=document.getElementById("udmResults"),label=document.getElementById("udmLabel");if(!input||!box||!label)return;const q=input.value.trim();label.textContent=q?"Sugerencias":"Búsquedas rápidas";box.innerHTML="";if(!q){["Drivers","Maderas","Hierros","Putters","TaylorMade","Callaway"].forEach(v=>addResult(box,v,()=>{input.value=v;syncSearch(v);renderResults()}));return}const found=candidates(q);if(!found.length){box.innerHTML='<div class="udm-empty">No encontramos coincidencias todavía. Presiona Enter para ver el catálogo filtrado.</div>';return}found.forEach(x=>addResult(box,x.title,()=>{closeSearch();const trigger=x.node.querySelector("button,a");if(trigger)trigger.click();else x.node.click()}))}
   function addResult(box,label,fn){const b=document.createElement("button");b.type="button";b.className="udm-result";b.textContent=label;b.onclick=fn;box.appendChild(b)}
@@ -62,7 +61,7 @@
       const original=top.querySelector(".uds-original-vector-logo svg");const h=document.createElement("div");h.className="udm-header";
       h.innerHTML=`<a class="udm-mark" href="#udsHome" aria-label="UP AND DOWN inicio">${original?original.outerHTML:""}</a><div class="udm-actions"><button class="udm-btn" id="udmSearchBtn" aria-label="Buscar">${icon("search")}</button><button class="udm-btn" id="udmCartBtn" aria-label="Carrito">${icon("cart")}<span class="udm-count" id="udmCount">0</span></button><button class="udm-btn" id="udmMenuBtn" aria-label="Menú">${icon("menu")}</button></div>`;top.appendChild(h);
       h.querySelector("#udmSearchBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openSearch()});
-      h.querySelector("#udmCartBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCart()});
+      h.querySelector("#udmCartBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCart();setTimeout(updateCount,100)});
       h.querySelector("#udmMenuBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openMenu()});
     }
     if(!document.getElementById("udmSearch")){
@@ -70,6 +69,6 @@
     }
     ["udsDockShop","udsDockSearch","udsDockAdvisor","udsDockCart"].forEach(id=>document.getElementById(id)?.closest("nav,div")?.classList.add("uds-dock"));updateCount();
   }
-  function boot(){installStyles();install();observer?.disconnect();observer=new MutationObserver(()=>{install();updateCount()});const r=root();if(r)observer.observe(r,{childList:true,subtree:true})}
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();window.addEventListener("resize",install);window.addEventListener("storage",updateCount);
+  function boot(){installStyles();install();document.addEventListener("click",e=>{if(e.target.closest?.(".uds-add,.uds-minus,.uds-plus,.uds-remove"))setTimeout(updateCount,100)})}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();window.addEventListener("resize",install);window.addEventListener("storage",updateCount);
 })();
