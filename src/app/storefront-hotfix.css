@@ -156,6 +156,28 @@
   }
 }
 
+@media (max-width: 760px) {
+  /* Mobile navigation is moving to the compact top header. Retire the legacy floating dock. */
+  #updown-store .uds-mobile-dock,
+  #updown-store .uds-mobile-bottom-nav,
+  #updown-store .uds-bottom-nav,
+  #updown-store .uds-bottom-dock,
+  #updown-store .uds-floating-nav,
+  #updown-store .uds-mobile-nav-fixed,
+  #updown-store [id="udsMobileDock"],
+  #updown-store [id="udsBottomNav"],
+  #updown-store [id="udsMobileBottomNav"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* Remove any reserved safe-area/spacing that belonged only to that dock. */
+  #updown-store {
+    padding-bottom: 0 !important;
+  }
+}
+
 @media (max-width: 420px) {
   #updown-store .uds-logo {
     max-width: 51vw !important;
