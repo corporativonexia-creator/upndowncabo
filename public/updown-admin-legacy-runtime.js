@@ -1424,7 +1424,7 @@
   }
 
   function renderProducts(){
-    el("udCount").textContent=`${products.length} producto${products.length===1?"":"s"}`;
+    el("udCount").textContent=`${products.filter(p=>p.status==="active").length} activos · ${products.filter(p=>p.status==="draft").length} borradores por completar · ${products.length} en total`;
     if(!products.length){
       el("udList").innerHTML='<div class="u-empty">No hay productos registrados.</div>';
       return;
@@ -1438,7 +1438,7 @@
         <img src="${product.cover_image_url||""}" alt="">
         <div>
           <h3>${product.name}</h3>
-          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · Stock ${product.stock} · ${product.status}</div>
+          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · Stock ${product.stock} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
           <div class="u-meta u-price">${money(product.sale_price??product.price)}</div>
           ${(()=>{
             const specs=product.specifications||{};
