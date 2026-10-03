@@ -103,7 +103,7 @@ export default function StorefrontParity() {
       }
 
       const homePatch = document.createElement("script");
-      homePatch.src = "/updown-home-h60.js?v=H60.1";
+      homePatch.src = "/updown-home-h60.js?v=H60.2";
       homePatch.async = false;
       homePatch.dataset.updownHomeH60 = "true";
       document.body.appendChild(homePatch);
