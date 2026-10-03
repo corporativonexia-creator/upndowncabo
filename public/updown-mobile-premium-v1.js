@@ -14,13 +14,12 @@
       @media(max-width:760px){
         #updown-store .uds-announcement{display:none!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;overflow:hidden!important}
         #updown-store .uds-header{position:sticky!important;top:0!important;z-index:900!important;width:100%!important;height:58px!important;min-height:58px!important;margin:0!important;padding:0!important;background:#0b493d!important;border:0!important;box-shadow:none!important}
-        #updown-store .uds-header .uds-topbar{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;max-width:none!important;height:58px!important;min-height:58px!important;margin:0!important;padding:7px 12px!important;background:#0b493d!important;border:0!important;box-shadow:none!important}
-        #updown-store .uds-header .uds-topbar>.uds-menu-btn,#updown-store .uds-header .uds-topbar>.uds-logo,#updown-store .uds-header .uds-topbar>.uds-desktop-nav,#updown-store .uds-header .uds-topbar>.uds-top-actions,#updown-store .uds-mobile-quick-actions{display:none!important}
+        #updown-store .uds-header .uds-topbar{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;max-width:none!important;height:58px!important;min-height:58px!important;margin:0!important;padding:7px 14px!important;background:#0b493d!important;border:0!important;box-shadow:none!important}
+        #updown-store .uds-header .uds-topbar>.uds-menu-btn,#updown-store .uds-header .uds-topbar>.uds-logo,#updown-store .uds-header .uds-topbar>.uds-desktop-nav,#updown-store .uds-header .uds-topbar>.uds-top-actions,#updown-store .uds-mobile-quick-actions,#updown-store .uds-mobile-search-panel{display:none!important}
         #updown-store .udm-header{display:flex!important;align-items:center;justify-content:space-between;width:100%;height:44px}
-        #updown-store .udm-mark{display:flex;align-items:center;width:74px;height:32px;color:#fff;text-decoration:none}
-        #updown-store .udm-mark svg{display:block;width:74px;height:28px;overflow:visible}
-        #updown-store .udm-mark svg path{fill:currentColor!important}
-        #updown-store .udm-actions{display:flex;align-items:center;gap:7px}
+        #updown-store .udm-mark{display:flex;align-items:center;width:92px;height:34px;text-decoration:none;overflow:visible}
+        #updown-store .udm-mark img{display:block;width:92px;height:32px;object-fit:contain;object-position:left center}
+        #updown-store .udm-actions{display:flex;align-items:center;gap:6px}
         #updown-store .udm-btn{position:relative;display:grid;place-items:center;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:transparent;color:#fff}
         #updown-store .udm-btn:active{background:rgba(255,255,255,.12)}
         #updown-store .udm-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -58,8 +57,8 @@
   function install(){
     if(!mobile())return;const r=root(),top=r?.querySelector(".uds-header .uds-topbar");if(!r||!top)return;r.querySelector(".uds-announcement")?.remove();
     if(!top.querySelector(".udm-header")){
-      const original=top.querySelector(".uds-original-vector-logo svg");const h=document.createElement("div");h.className="udm-header";
-      h.innerHTML=`<a class="udm-mark" href="#udsHome" aria-label="UP AND DOWN inicio">${original?original.outerHTML:""}</a><div class="udm-actions"><button class="udm-btn" id="udmSearchBtn" aria-label="Buscar">${icon("search")}</button><button class="udm-btn" id="udmCartBtn" aria-label="Carrito">${icon("cart")}<span class="udm-count" id="udmCount">0</span></button><button class="udm-btn" id="udmMenuBtn" aria-label="Menú">${icon("menu")}</button></div>`;top.appendChild(h);
+      const h=document.createElement("div");h.className="udm-header";
+      h.innerHTML=`<a class="udm-mark" href="#udsHome" aria-label="UP AND DOWN inicio"><img src="/upndown-mark-official.svg" alt="" aria-hidden="true"></a><div class="udm-actions"><button class="udm-btn" id="udmSearchBtn" aria-label="Buscar">${icon("search")}</button><button class="udm-btn" id="udmCartBtn" aria-label="Carrito">${icon("cart")}<span class="udm-count" id="udmCount">0</span></button><button class="udm-btn" id="udmMenuBtn" aria-label="Menú">${icon("menu")}</button></div>`;top.appendChild(h);
       h.querySelector("#udmSearchBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openSearch()});
       h.querySelector("#udmCartBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCart();setTimeout(updateCount,100)});
       h.querySelector("#udmMenuBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openMenu()});
