@@ -82,20 +82,19 @@ function installMobileNavigationAuthority(root: HTMLElement) {
     const menu = root.querySelector<HTMLButtonElement>("#udsMenuButton");
     if (!topbar || !actions || !logo || !search || !menu) return;
 
-    // Runtime H48/H53 used to inject Shop / Classes / GHIN and remove the cart.
-    // Mobile now has exactly one navigation contract: Logo | Search | Cart | Menu.
-    actions.querySelectorAll(".uds-mobile-quicknav, .uds-mobile-quickbtn, .uds-lang-switch").forEach((node) => node.remove());
-
+    // Keep legacy nodes in the DOM because the runtime still owns translations/state.
+    // CSS is the visual authority; JavaScript only guarantees the canonical controls exist.
     let cart = root.querySelector<HTMLButtonElement>("#udsCartButton");
-    if (!cart) cart = createCartButton();
+    if (!cart) {
+      cart = createCartButton();
+      actions.appendChild(cart);
+    }
 
-    actions.replaceChildren(search, cart, menu);
+    // Move only the four canonical controls. Do not delete legacy quick-nav/language/dock nodes.
     topbar.insertBefore(logo, actions);
+    actions.append(search, cart, menu);
 
-    root.querySelector(".uds-announcement")?.remove();
-    root.querySelector(".uds-mobile-dock")?.remove();
-
-    // The original legacy drawer must never compete with the H53 drawer.
+    // Legacy drawer remains present for runtime compatibility but is never opened visually.
     const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
     if (legacyMenu) {
       legacyMenu.classList.remove("is-open");
@@ -107,8 +106,6 @@ function installMobileNavigationAuthority(root: HTMLElement) {
     if (!mobile.matches) return;
     const target = event.target instanceof Element ? event.target : null;
     if (!target) return;
-
-    // Logo has one job only: home. Prevent old scroll/menu handlers from hijacking it.
     if (target.closest(".uds-logo")) event.stopPropagation();
   };
 
@@ -184,7 +181,7 @@ export default function StorefrontParity() {
     let stopCoursePagination = () => {};
     let stopMobileNavigationAuthority = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H61-canonical-mobile-header";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H62-runtime-compatible-header";
     script.async = false;
     script.dataset.updownParity = "true";
 
