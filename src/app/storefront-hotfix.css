@@ -1,163 +1,65 @@
 /* Storefront premium monochrome header */
 :root {
-  --ud-header-green: #0b3f35;
+  --ud-header-green: #0b493d;
   --ud-header-white: #ffffff;
 }
 
+#updown-store .uds-announcement {
+  display:none!important;
+  height:0!important;
+  min-height:0!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:hidden!important;
+}
+
 #updown-store .uds-topbar {
-  background: var(--ud-header-green) !important;
-  color: var(--ud-header-white) !important;
-  border-bottom: 1px solid rgba(255,255,255,.12) !important;
-  box-shadow: 0 8px 24px rgba(5,35,29,.12) !important;
+  background:var(--ud-header-green)!important;
+  color:var(--ud-header-white)!important;
+  border:0!important;
+  box-shadow:none!important;
 }
 
 #updown-store .uds-logo,
 #updown-store .uds-logo-copy,
 #updown-store .uds-logo-copy strong,
-#updown-store .uds-logo-copy > span,
-#updown-store .uds-desktop-nav a {
-  color: var(--ud-header-white) !important;
-}
+#updown-store .uds-logo-copy>span,
+#updown-store .uds-desktop-nav a { color:var(--ud-header-white)!important; }
 
-#updown-store .uds-logo {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 9px !important;
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-  overflow: visible !important;
-}
-
-/* Existing logo is drawn in code: force every vector element to monochrome white. */
-#updown-store .uds-original-vector-logo {
-  display: block !important;
-  flex: 0 0 auto !important;
-  width: 76px !important;
-  height: 38px !important;
-  line-height: 0 !important;
-  overflow: visible !important;
-}
-
-#updown-store .uds-original-vector-logo svg {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: visible !important;
-}
-
+#updown-store .uds-original-vector-logo,
+#updown-store .uds-original-vector-logo svg { display:block!important; overflow:visible!important; }
 #updown-store .uds-original-vector-logo svg path,
 #updown-store .uds-original-vector-logo svg line,
 #updown-store .uds-original-vector-logo svg polyline,
 #updown-store .uds-original-vector-logo svg circle,
-#updown-store .uds-original-vector-logo svg ellipse {
-  stroke: var(--ud-header-white) !important;
-}
-
+#updown-store .uds-original-vector-logo svg ellipse { stroke:var(--ud-header-white)!important; }
 #updown-store .uds-original-vector-logo svg path,
 #updown-store .uds-original-vector-logo svg polygon,
-#updown-store .uds-original-vector-logo svg rect {
-  fill: var(--ud-header-white) !important;
+#updown-store .uds-original-vector-logo svg rect { fill:var(--ud-header-white)!important; }
+
+@media (min-width:761px) {
+  #updown-store .uds-topbar { min-height:78px!important; padding:10px clamp(22px,3vw,48px)!important; }
+  #updown-store .uds-mobile-quick-actions,
+  #updown-store .uds-mobile-search-panel { display:none!important; }
 }
 
-#updown-store .uds-logo-copy {
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-}
+@media (max-width:760px) {
+  /* Mobile has one single compact header: official mark + search + cart + menu. */
+  #updown-store .uds-header { height:58px!important; min-height:58px!important; margin:0!important; padding:0!important; background:var(--ud-header-green)!important; position:sticky!important; top:0!important; z-index:500!important; }
+  #updown-store .uds-header .uds-topbar { width:100%!important; max-width:none!important; height:58px!important; min-height:58px!important; margin:0!important; padding:7px 12px!important; display:grid!important; grid-template-columns:minmax(72px,1fr) auto!important; align-items:center!important; gap:8px!important; }
+  #updown-store .uds-header .uds-logo { display:flex!important; align-items:center!important; width:82px!important; max-width:82px!important; min-width:82px!important; height:40px!important; margin:0!important; padding:0!important; overflow:visible!important; }
+  #updown-store .uds-header .uds-original-vector-logo { display:block!important; width:82px!important; min-width:82px!important; height:34px!important; }
+  #updown-store .uds-header .uds-logo-copy { display:none!important; }
+  #updown-store .uds-header .uds-desktop-nav,
+  #updown-store .uds-header .uds-top-actions,
+  #updown-store .uds-header>.uds-topbar>.uds-menu-btn { display:none!important; }
 
-#updown-store .uds-logo-copy strong {
-  letter-spacing: .12em !important;
-}
+  #updown-store .uds-mobile-quick-actions { display:flex!important; align-items:center!important; justify-content:flex-end!important; gap:4px!important; }
+  #updown-store .uds-mobile-quick-btn { width:38px!important; height:38px!important; min-width:38px!important; padding:0!important; border:0!important; border-radius:50%!important; background:transparent!important; color:#fff!important; box-shadow:none!important; }
+  #updown-store .uds-mobile-quick-btn svg { width:21px!important; height:21px!important; stroke:currentColor!important; fill:none!important; }
+  #updown-store .uds-mobile-cart-count { border-color:var(--ud-header-green)!important; }
 
-#updown-store .uds-logo-copy > span {
-  color: rgba(255,255,255,.72) !important;
-  letter-spacing: .14em !important;
-}
-
-#updown-store .uds-desktop-nav a {
-  opacity: .88 !important;
-  transition: opacity .18s ease, transform .18s ease !important;
-}
-
-#updown-store .uds-desktop-nav a:hover,
-#updown-store .uds-desktop-nav a:focus-visible {
-  opacity: 1 !important;
-  transform: translateY(-1px) !important;
-}
-
-/* Header controls become quiet white-outline controls on the green banner. */
-#updown-store .uds-top-actions button,
-#updown-store .uds-top-actions a,
-#updown-store #udsCartButton {
-  border-color: rgba(255,255,255,.28) !important;
-}
-
-@media (min-width: 901px) {
-  #updown-store .uds-topbar {
-    min-height: 78px !important;
-    padding-top: 12px !important;
-    padding-bottom: 12px !important;
-    grid-template-columns: minmax(190px,auto) minmax(0,1fr) auto !important;
-    column-gap: clamp(22px,3vw,52px) !important;
-  }
-
-  #updown-store .uds-top-actions {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    flex: 0 0 auto !important;
-    position: relative !important;
-    z-index: 20 !important;
-  }
-
-  #updown-store #udsCartButton {
-    display: inline-flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    flex: 0 0 46px !important;
-  }
-
-  #updown-store .uds-desktop-nav {
-    min-width: 0 !important;
-    justify-content: center !important;
-    gap: clamp(18px,2vw,34px) !important;
-  }
-}
-
-@media (max-width: 900px) {
-  #updown-store .uds-topbar {
-    min-height: 68px !important;
-    padding-top: 9px !important;
-    padding-bottom: 9px !important;
-  }
-
-  #updown-store .uds-logo {
-    gap: 6px !important;
-    max-width: min(58vw,220px) !important;
-  }
-
-  #updown-store .uds-original-vector-logo {
-    width: 60px !important;
-    height: 30px !important;
-    min-width: 60px !important;
-  }
-
-  #updown-store .uds-logo-copy strong,
-  #updown-store .uds-logo-copy > span {
-    white-space: nowrap !important;
-  }
-
-  #updown-store .uds-top-actions button,
-  #updown-store .uds-top-actions a,
-  #updown-store #udsCartButton {
-    background: rgba(255,255,255,.96) !important;
-    color: var(--ud-header-green) !important;
-  }
-}
-
-@media (max-width: 760px) {
-  /* Mobile navigation is moving to the compact top header. Retire the legacy floating dock. */
+  /* Kill every legacy duplicate mobile control/dock. */
   #updown-store .uds-mobile-dock,
   #updown-store .uds-mobile-bottom-nav,
   #updown-store .uds-bottom-nav,
@@ -166,35 +68,12 @@
   #updown-store .uds-mobile-nav-fixed,
   #updown-store [id="udsMobileDock"],
   #updown-store [id="udsBottomNav"],
-  #updown-store [id="udsMobileBottomNav"] {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-  }
+  #updown-store [id="udsMobileBottomNav"],
+  #updown-store [class*="mobile-dock"],
+  #updown-store [class*="bottom-nav"] { display:none!important; visibility:hidden!important; pointer-events:none!important; }
 
-  /* Remove any reserved safe-area/spacing that belonged only to that dock. */
-  #updown-store {
-    padding-bottom: 0 !important;
-  }
+  #updown-store { padding-bottom:0!important; }
+  #updown-store .uds-hero { margin-top:0!important; }
 }
 
-@media (max-width: 420px) {
-  #updown-store .uds-logo {
-    max-width: 51vw !important;
-  }
-
-  #updown-store .uds-original-vector-logo {
-    width: 52px !important;
-    height: 26px !important;
-    min-width: 52px !important;
-  }
-
-  #updown-store .uds-logo-copy > span {
-    display: none !important;
-  }
-}
-
-/* The link already contains its arrow in markup. Retire the corrupted legacy pseudo-arrow. */
-#updown-store .uds-text-link::after {
-  content: none !important;
-}
+#updown-store .uds-text-link::after { content:none!important; }
