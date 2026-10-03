@@ -40,6 +40,21 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
+function retireLegacyMobileChrome(root: HTMLElement) {
+  root.querySelector(".uds-announcement")?.remove();
+
+  const dockButton = root.querySelector<HTMLElement>("#udsDockShop, #udsDockSearch, #udsDockAdvisor, #udsDockCart");
+  if (dockButton) {
+    const dock = dockButton.closest<HTMLElement>(".uds-mobile-dock, nav, [role='navigation']") || dockButton.parentElement;
+    dock?.remove();
+  }
+
+  root.querySelectorAll<HTMLElement>(".uds-mobile-dock").forEach((node) => node.remove());
+
+  const header = root.querySelector<HTMLElement>(".uds-header");
+  header?.classList.remove("is-mobile-capsule", "is-scrolled");
+}
+
 function restoreDesktopCart(root: HTMLElement) {
   if (window.matchMedia("(max-width: 760px)").matches) return;
   const actions = root.querySelector<HTMLElement>(".uds-top-actions");
@@ -108,10 +123,16 @@ function installCoursePagination() {
 export default function StorefrontParity() {
   useEffect(() => {
     const root = document.getElementById("updown-store");
-    if (root) repairStoreText(root);
+    if (root) {
+      repairStoreText(root);
+      retireLegacyMobileChrome(root);
+    }
 
-    const observer = root ? new MutationObserver(() => repairStoreText(root)) : null;
-    observer?.observe(root!, { childList: true, subtree: true, characterData: true });
+    const observer = root ? new MutationObserver(() => {
+      repairStoreText(root);
+      retireLegacyMobileChrome(root);
+    }) : null;
+    observer?.observe(root!, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["class"] });
 
     document.querySelectorAll<HTMLScriptElement>('script[data-updown-parity="true"], script[data-updown-home-h60="true"]').forEach((node) => node.remove());
     document.getElementById("updown-h60-styles")?.remove();
@@ -125,7 +146,7 @@ export default function StorefrontParity() {
 
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60-native-header";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.1-canonical-mobile-chrome";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -133,6 +154,7 @@ export default function StorefrontParity() {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) {
         repairStoreText(root);
+        retireLegacyMobileChrome(root);
         restoreDesktopCart(root);
       }
       stopCoursePagination = installCoursePagination();
