@@ -30,7 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         {children}
-        <script src="/updown-mobile-premium-v1.js?v=1.0.0" defer />
+        <script src="/updown-mobile-premium-v1.js?v=1.0.1" defer />
       </body>
     </html>
   );
