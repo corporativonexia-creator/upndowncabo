@@ -1,5 +1,105 @@
-/* Storefront desktop header + UTF-8 symbol hotfix */
+/* Storefront premium monochrome header */
+:root {
+  --ud-header-green: #0b3f35;
+  --ud-header-white: #ffffff;
+}
+
+#updown-store .uds-topbar {
+  background: var(--ud-header-green) !important;
+  color: var(--ud-header-white) !important;
+  border-bottom: 1px solid rgba(255,255,255,.12) !important;
+  box-shadow: 0 8px 24px rgba(5,35,29,.12) !important;
+}
+
+#updown-store .uds-logo,
+#updown-store .uds-logo-copy,
+#updown-store .uds-logo-copy strong,
+#updown-store .uds-logo-copy > span,
+#updown-store .uds-desktop-nav a {
+  color: var(--ud-header-white) !important;
+}
+
+#updown-store .uds-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+/* Existing logo is drawn in code: force every vector element to monochrome white. */
+#updown-store .uds-original-vector-logo {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 76px !important;
+  height: 38px !important;
+  line-height: 0 !important;
+  overflow: visible !important;
+}
+
+#updown-store .uds-original-vector-logo svg {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
+}
+
+#updown-store .uds-original-vector-logo svg path,
+#updown-store .uds-original-vector-logo svg line,
+#updown-store .uds-original-vector-logo svg polyline,
+#updown-store .uds-original-vector-logo svg circle,
+#updown-store .uds-original-vector-logo svg ellipse {
+  stroke: var(--ud-header-white) !important;
+}
+
+#updown-store .uds-original-vector-logo svg path,
+#updown-store .uds-original-vector-logo svg polygon,
+#updown-store .uds-original-vector-logo svg rect {
+  fill: var(--ud-header-white) !important;
+}
+
+#updown-store .uds-logo-copy {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+
+#updown-store .uds-logo-copy strong {
+  letter-spacing: .12em !important;
+}
+
+#updown-store .uds-logo-copy > span {
+  color: rgba(255,255,255,.72) !important;
+  letter-spacing: .14em !important;
+}
+
+#updown-store .uds-desktop-nav a {
+  opacity: .88 !important;
+  transition: opacity .18s ease, transform .18s ease !important;
+}
+
+#updown-store .uds-desktop-nav a:hover,
+#updown-store .uds-desktop-nav a:focus-visible {
+  opacity: 1 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Header controls become quiet white-outline controls on the green banner. */
+#updown-store .uds-top-actions button,
+#updown-store .uds-top-actions a,
+#updown-store #udsCartButton {
+  border-color: rgba(255,255,255,.28) !important;
+}
+
 @media (min-width: 901px) {
+  #updown-store .uds-topbar {
+    min-height: 78px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+    grid-template-columns: minmax(190px,auto) minmax(0,1fr) auto !important;
+    column-gap: clamp(22px,3vw,52px) !important;
+  }
+
   #updown-store .uds-top-actions {
     display: flex !important;
     visibility: visible !important;
@@ -18,78 +118,57 @@
     flex: 0 0 46px !important;
   }
 
-  #updown-store .uds-topbar {
-    grid-template-columns: auto minmax(0, 1fr) auto !important;
-  }
-
   #updown-store .uds-desktop-nav {
     min-width: 0 !important;
-    gap: clamp(10px, 1.45vw, 28px) !important;
+    justify-content: center !important;
+    gap: clamp(18px,2vw,34px) !important;
   }
-}
-
-/* Header brand: keep the original vector proportions and prevent clipping/stretching. */
-#updown-store .uds-logo {
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 10px !important;
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
-  overflow: visible !important;
-}
-
-#updown-store .uds-original-vector-logo {
-  display: block !important;
-  flex: 0 0 auto !important;
-  width: clamp(48px, 4.2vw, 68px) !important;
-  height: auto !important;
-  aspect-ratio: 1919 / 633 !important;
-  line-height: 0 !important;
-  overflow: visible !important;
-}
-
-#updown-store .uds-original-vector-logo svg {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100% !important;
-  object-fit: contain !important;
-  overflow: visible !important;
-}
-
-#updown-store .uds-logo-copy {
-  flex: 0 0 auto !important;
-  min-width: 0 !important;
 }
 
 @media (max-width: 900px) {
+  #updown-store .uds-topbar {
+    min-height: 68px !important;
+    padding-top: 9px !important;
+    padding-bottom: 9px !important;
+  }
+
   #updown-store .uds-logo {
-    gap: 7px !important;
-    max-width: min(62vw, 230px) !important;
+    gap: 6px !important;
+    max-width: min(58vw,220px) !important;
   }
 
   #updown-store .uds-original-vector-logo {
-    width: 48px !important;
-    min-width: 48px !important;
+    width: 60px !important;
+    height: 30px !important;
+    min-width: 60px !important;
   }
 
-  #updown-store .uds-logo-copy strong {
-    white-space: nowrap !important;
-  }
-
+  #updown-store .uds-logo-copy strong,
   #updown-store .uds-logo-copy > span {
     white-space: nowrap !important;
+  }
+
+  #updown-store .uds-top-actions button,
+  #updown-store .uds-top-actions a,
+  #updown-store #udsCartButton {
+    background: rgba(255,255,255,.96) !important;
+    color: var(--ud-header-green) !important;
   }
 }
 
 @media (max-width: 420px) {
   #updown-store .uds-logo {
-    max-width: 58vw !important;
+    max-width: 51vw !important;
   }
 
   #updown-store .uds-original-vector-logo {
-    width: 42px !important;
-    min-width: 42px !important;
+    width: 52px !important;
+    height: 26px !important;
+    min-width: 52px !important;
+  }
+
+  #updown-store .uds-logo-copy > span {
+    display: none !important;
   }
 }
 
