@@ -15,7 +15,7 @@
     style.id="updown-h60-styles";
     style.textContent=`
       /* H60 · header quirúrgico + paginación de campos */
-      #updown-store .uds-announcement{display:none!important}
+      #updown-store .uds-announcement{display:none!important;height:0!important;min-height:0!important;padding:0!important;margin:0!important;overflow:hidden!important}
       #updown-store .uds-header{width:100%!important;max-width:none!important;margin:0!important;background:#0b493d!important;border:0!important;border-radius:0!important;box-shadow:none!important}
       #updown-store .uds-header .uds-topbar{width:100%!important;max-width:1280px!important;margin:0 auto!important;box-sizing:border-box!important;background:transparent!important}
       #updown-store .uds-header .uds-logo,#updown-store .uds-header .uds-logo-copy,#updown-store .uds-header .uds-logo-copy strong,#updown-store .uds-header .uds-logo-copy span,#updown-store .uds-header .uds-original-vector-logo,#updown-store .uds-header .uds-nav-link{color:#fff!important}
@@ -38,15 +38,17 @@
         #updown-store .uds-header .uds-top-actions{display:flex!important;align-items:center!important;gap:8px!important}
       }
       @media (max-width:760px){
-        #updown-store .uds-header{position:relative!important;min-height:64px!important}
-        #updown-store .uds-header .uds-topbar{min-height:64px!important;padding:8px 12px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important}
-        #updown-store .uds-header .uds-menu-btn{display:inline-flex!important;grid-column:3!important;grid-row:1!important}
-        #updown-store .uds-header .uds-logo{grid-column:1 / 3!important;grid-row:1!important;display:grid!important;grid-template-columns:56px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;width:min(230px,100%)!important;overflow:hidden!important}
-        #updown-store .uds-header .uds-original-vector-logo{display:block!important;width:56px!important;height:30px!important}
-        #updown-store .uds-header .uds-logo-copy{display:flex!important;flex-direction:column!important;min-width:0!important;white-space:nowrap!important}
-        #updown-store .uds-header .uds-logo-copy strong{font-size:13px!important;line-height:1!important;letter-spacing:.12em!important}
-        #updown-store .uds-header .uds-logo-copy span{margin-top:3px!important;font-size:5.5px!important;line-height:1!important;letter-spacing:.12em!important}
-        #updown-store .uds-header .uds-desktop-nav,#updown-store .uds-header .uds-top-actions{display:none!important}
+        #updown-store .uds-header{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:2147483000!important;min-height:64px!important;background:rgba(7,65,54,.76)!important;border-bottom:1px solid rgba(255,255,255,.13)!important;box-shadow:0 8px 26px rgba(4,35,29,.12)!important;backdrop-filter:blur(18px) saturate(135%)!important;-webkit-backdrop-filter:blur(18px) saturate(135%)!important;transform:none!important;transition:none!important;will-change:auto!important}
+        #updown-store .uds-header .uds-topbar{min-height:64px!important;padding:8px 14px!important;display:grid!important;grid-template-columns:auto 1fr auto auto auto!important;align-items:center!important;gap:10px!important;max-width:none!important}
+        #updown-store .uds-header .uds-logo{grid-column:1!important;grid-row:1!important;display:block!important;width:78px!important;max-width:78px!important;overflow:visible!important}
+        #updown-store .uds-header .uds-original-vector-logo{display:block!important;width:78px!important;height:36px!important}
+        #updown-store .uds-header .uds-logo-copy{display:none!important}
+        #updown-store .uds-header .uds-desktop-nav{display:none!important}
+        #updown-store .uds-header .uds-top-actions{grid-column:3 / 5!important;grid-row:1!important;display:flex!important;align-items:center!important;gap:8px!important}
+        #updown-store .uds-header .uds-lang-switch{display:none!important}
+        #updown-store .uds-header .uds-search-top,#updown-store .uds-header #udsCartButton{display:inline-flex!important;visibility:visible!important;opacity:1!important;background:transparent!important;color:#fff!important;border:0!important;box-shadow:none!important}
+        #updown-store .uds-header .uds-menu-btn{display:inline-flex!important;visibility:visible!important;opacity:1!important;grid-column:5!important;grid-row:1!important;background:transparent!important;color:#fff!important;border:0!important;box-shadow:none!important}
+        #updown-store main{padding-top:64px!important}
         #updown-store .uds-course-more-wrap{padding-top:18px}
         #updown-store .uds-course-more{width:100%;max-width:280px}
       }
