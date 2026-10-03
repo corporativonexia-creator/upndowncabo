@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
 import InventoryAdmin from "@/components/admin/inventory-admin";
 import InventoryLabelEnhancer from "@/components/admin/inventory-label-enhancer";
+import InventoryLiveEnhancer from "@/components/admin/inventory-live-enhancer";
 import AdminSectionNav from "@/components/admin/admin-section-nav";
 
 export default async function InventoryPage() {
@@ -12,6 +13,7 @@ export default async function InventoryPage() {
       </div>
       <InventoryAdmin />
       <InventoryLabelEnhancer />
+      <InventoryLiveEnhancer />
     </>
   );
 }
