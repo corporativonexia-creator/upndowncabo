@@ -28,6 +28,71 @@
   }
 }
 
+/* Header brand: keep the original vector proportions and prevent clipping/stretching. */
+#updown-store .uds-logo {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+#updown-store .uds-original-vector-logo {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: clamp(48px, 4.2vw, 68px) !important;
+  height: auto !important;
+  aspect-ratio: 1919 / 633 !important;
+  line-height: 0 !important;
+  overflow: visible !important;
+}
+
+#updown-store .uds-original-vector-logo svg {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  object-fit: contain !important;
+  overflow: visible !important;
+}
+
+#updown-store .uds-logo-copy {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 900px) {
+  #updown-store .uds-logo {
+    gap: 7px !important;
+    max-width: min(62vw, 230px) !important;
+  }
+
+  #updown-store .uds-original-vector-logo {
+    width: 48px !important;
+    min-width: 48px !important;
+  }
+
+  #updown-store .uds-logo-copy strong {
+    white-space: nowrap !important;
+  }
+
+  #updown-store .uds-logo-copy > span {
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #updown-store .uds-logo {
+    max-width: 58vw !important;
+  }
+
+  #updown-store .uds-original-vector-logo {
+    width: 42px !important;
+    min-width: 42px !important;
+  }
+}
+
 /* The link already contains its arrow in markup. Retire the corrupted legacy pseudo-arrow. */
 #updown-store .uds-text-link::after {
   content: none !important;
