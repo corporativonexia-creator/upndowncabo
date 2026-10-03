@@ -41,10 +41,6 @@ function repairStoreText(root: HTMLElement) {
 }
 
 function ensureLegacyRuntimeCompatibility(root: HTMLElement) {
-  // The visual announcement bar was intentionally removed from the new header,
-  // but the legacy language runtime still writes into this selector on boot.
-  // Keep an inert hidden target so that a missing legacy node cannot abort the
-  // rest of the storefront initialization or mobile interactions.
   if (!root.querySelector(".uds-announcement")) {
     const announcement = document.createElement("div");
     announcement.className = "uds-announcement uds-runtime-compat";
@@ -52,6 +48,89 @@ function ensureLegacyRuntimeCompatibility(root: HTMLElement) {
     announcement.setAttribute("aria-hidden", "true");
     root.prepend(announcement);
   }
+}
+
+function installCanonicalMobileHeader(root: HTMLElement) {
+  let style = document.getElementById("updown-canonical-mobile-header") as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "updown-canonical-mobile-header";
+    style.textContent = `
+      @media (max-width:760px){
+        #updown-store .uds-header .uds-topbar{
+          display:flex!important;
+          align-items:center!important;
+          width:100%!important;
+          height:58px!important;
+          min-height:58px!important;
+          padding:7px 10px 7px 12px!important;
+          gap:6px!important;
+        }
+        #updown-store .uds-header .uds-logo{
+          order:1!important;
+          display:flex!important;
+          align-items:center!important;
+          width:auto!important;
+          min-width:0!important;
+          margin-right:auto!important;
+          flex:1 1 auto!important;
+        }
+        #updown-store .uds-header .uds-original-vector-logo{
+          display:block!important;
+          width:82px!important;
+          height:30px!important;
+        }
+        #updown-store .uds-header .uds-logo-copy{display:none!important}
+        #updown-store .uds-header .uds-desktop-nav{display:none!important}
+        #updown-store .uds-header .uds-top-actions{
+          order:2!important;
+          display:flex!important;
+          align-items:center!important;
+          gap:4px!important;
+          flex:0 0 auto!important;
+        }
+        #updown-store .uds-header .uds-lang-switch{display:none!important}
+        #updown-store .uds-header .uds-top-actions .uds-icon-btn,
+        #updown-store .uds-header>.uds-topbar>.uds-menu-btn{
+          display:inline-flex!important;
+          align-items:center!important;
+          justify-content:center!important;
+          width:38px!important;
+          height:38px!important;
+          min-width:38px!important;
+          padding:0!important;
+          border:0!important;
+          border-radius:50%!important;
+          background:transparent!important;
+          color:#fff!important;
+          box-shadow:none!important;
+        }
+        #updown-store .uds-header>.uds-topbar>.uds-menu-btn{
+          order:3!important;
+          position:relative!important;
+          inset:auto!important;
+          margin:0!important;
+          flex:0 0 38px!important;
+        }
+        #updown-store .uds-header .uds-top-actions .uds-icon-btn svg,
+        #updown-store .uds-header>.uds-topbar>.uds-menu-btn svg{
+          width:20px!important;
+          height:20px!important;
+          fill:none!important;
+          stroke:currentColor!important;
+        }
+        #updown-store .uds-mobile-quick-actions{display:none!important}
+        #updown-store .uds-mobile-search-panel{display:none!important}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // H60 inserted a second search/cart/menu trio. The legacy controls are the
+  // canonical controls because the storefront runtime already binds them to
+  // focusDiscoverySearch, openCart and openMenu.
+  root.querySelector(".uds-mobile-quick-actions")?.remove();
+  root.querySelector("#udsMobileSearchPanel")?.remove();
 }
 
 function restoreDesktopCart(root: HTMLElement) {
@@ -123,6 +202,9 @@ export default function StorefrontParity() {
       homePatch.src = "/updown-home-h60.js?v=H60.1";
       homePatch.async = false;
       homePatch.dataset.updownHomeH60 = "true";
+      homePatch.onload = () => {
+        if (root) installCanonicalMobileHeader(root);
+      };
       document.body.appendChild(homePatch);
     };
 
@@ -138,6 +220,7 @@ export default function StorefrontParity() {
       script.onload = null;
       script.onerror = null;
       document.querySelector<HTMLScriptElement>('script[data-updown-home-h60="true"]')?.remove();
+      document.getElementById("updown-canonical-mobile-header")?.remove();
     };
   }, []);
 
