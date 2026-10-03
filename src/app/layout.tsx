@@ -28,7 +28,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <script src="/updown-mobile-premium-v1.js?v=1.0.0" defer />
+      </body>
     </html>
   );
 }
