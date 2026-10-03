@@ -40,56 +40,88 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
-function restoreDesktopCart(root: HTMLElement) {
-  if (window.matchMedia("(max-width: 760px)").matches) return;
-  const actions = root.querySelector<HTMLElement>(".uds-top-actions");
-  if (!actions || actions.querySelector("#udsCartButton")) return;
+function cartUnitsFromStorage() {
+  try {
+    const cart = JSON.parse(localStorage.getItem("upDownCart") || "[]");
+    return Array.isArray(cart)
+      ? cart.reduce((sum: number, item: { quantity?: number }) => sum + Number(item.quantity || 0), 0)
+      : 0;
+  } catch {
+    return 0;
+  }
+}
 
+function createCartButton() {
   const button = document.createElement("button");
   button.id = "udsCartButton";
   button.type = "button";
   button.className = "uds-icon-btn";
   button.setAttribute("aria-label", "Abrir carrito");
-  button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="uds-cart-count" id="udsCartCount">0</span>`;
+  button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg><span class="uds-cart-count" id="udsCartCount">${cartUnitsFromStorage()}</span>`;
   button.addEventListener("click", () => document.getElementById("udsFloatingCart")?.click());
-  actions.appendChild(button);
+  return button;
+}
 
-  try {
-    const cart = JSON.parse(localStorage.getItem("upDownCart") || "[]");
-    const units = Array.isArray(cart)
-      ? cart.reduce((sum: number, item: { quantity?: number }) => sum + Number(item.quantity || 0), 0)
-      : 0;
-    const count = button.querySelector<HTMLElement>("#udsCartCount");
-    if (count) count.textContent = String(units);
-  } catch {
-    // Keep the default zero badge if local storage is unavailable.
-  }
+function restoreDesktopCart(root: HTMLElement) {
+  if (window.matchMedia("(max-width: 760px)").matches) return;
+  const actions = root.querySelector<HTMLElement>(".uds-top-actions");
+  if (!actions || actions.querySelector("#udsCartButton")) return;
+  actions.appendChild(createCartButton());
 }
 
 function installMobileNavigationAuthority(root: HTMLElement) {
-  const onCaptureClick = (event: MouseEvent) => {
-    if (!window.matchMedia("(max-width: 760px)").matches) return;
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
+  const mobile = window.matchMedia("(max-width: 760px)");
 
-    // Legacy runtime used to turn the logo into a second menu trigger after scroll.
-    // H60 keeps one responsibility per control: logo = home, menu button = drawer.
-    if (target.closest(".uds-logo")) {
-      event.stopPropagation();
+  const canonicalize = () => {
+    if (!mobile.matches) return;
+
+    const topbar = root.querySelector<HTMLElement>(".uds-topbar");
+    const actions = root.querySelector<HTMLElement>(".uds-top-actions");
+    const logo = root.querySelector<HTMLElement>(".uds-logo");
+    const search = root.querySelector<HTMLButtonElement>("#udsSearchTop");
+    const menu = root.querySelector<HTMLButtonElement>("#udsMenuButton");
+    if (!topbar || !actions || !logo || !search || !menu) return;
+
+    // Runtime H48/H53 used to inject Shop / Classes / GHIN and remove the cart.
+    // Mobile now has exactly one navigation contract: Logo | Search | Cart | Menu.
+    actions.querySelectorAll(".uds-mobile-quicknav, .uds-mobile-quickbtn, .uds-lang-switch").forEach((node) => node.remove());
+
+    let cart = root.querySelector<HTMLButtonElement>("#udsCartButton");
+    if (!cart) cart = createCartButton();
+
+    actions.replaceChildren(search, cart, menu);
+    topbar.insertBefore(logo, actions);
+
+    root.querySelector(".uds-announcement")?.remove();
+    root.querySelector(".uds-mobile-dock")?.remove();
+
+    // The original legacy drawer must never compete with the H53 drawer.
+    const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
+    if (legacyMenu) {
+      legacyMenu.classList.remove("is-open");
+      legacyMenu.setAttribute("aria-hidden", "true");
     }
   };
 
+  const onCaptureClick = (event: MouseEvent) => {
+    if (!mobile.matches) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    // Logo has one job only: home. Prevent old scroll/menu handlers from hijacking it.
+    if (target.closest(".uds-logo")) event.stopPropagation();
+  };
+
+  canonicalize();
   document.addEventListener("click", onCaptureClick, true);
 
-  // The H53 drawer is the canonical mobile drawer. Keep the older legacy panel inert
-  // so cached/runtime listeners cannot expose two menus at the same time.
-  const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
-  if (legacyMenu) {
-    legacyMenu.classList.remove("is-open");
-    legacyMenu.setAttribute("aria-hidden", "true");
-  }
+  const onViewportChange = () => canonicalize();
+  mobile.addEventListener("change", onViewportChange);
 
-  return () => document.removeEventListener("click", onCaptureClick, true);
+  return () => {
+    document.removeEventListener("click", onCaptureClick, true);
+    mobile.removeEventListener("change", onViewportChange);
+  };
 }
 
 function installCoursePagination() {
@@ -152,7 +184,7 @@ export default function StorefrontParity() {
     let stopCoursePagination = () => {};
     let stopMobileNavigationAuthority = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60-nav-consolidated";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H61-canonical-mobile-header";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -161,8 +193,8 @@ export default function StorefrontParity() {
       if (root) {
         repairStoreText(root);
         restoreDesktopCart(root);
+        stopMobileNavigationAuthority = installMobileNavigationAuthority(root);
       }
-      stopMobileNavigationAuthority = installMobileNavigationAuthority(root!);
       stopCoursePagination = installCoursePagination();
     };
 
