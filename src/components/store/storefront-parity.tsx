@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { legacyHomeMarkup } from "./legacy-home-markup";
+import { DesktopStorefront } from "./responsive/desktop-storefront";
+import { MobileStorefront } from "./responsive/mobile-storefront";
+import { getStorefrontDeviceModeFromWindow, type StorefrontDeviceMode } from "./responsive/device-mode";
 
 declare global {
   interface Window {
@@ -63,17 +66,15 @@ function createCartButton() {
 }
 
 function restoreDesktopCart(root: HTMLElement) {
-  if (window.matchMedia("(max-width: 760px)").matches) return;
+  if (getStorefrontDeviceModeFromWindow() !== "desktop") return;
   const actions = root.querySelector<HTMLElement>(".uds-top-actions");
   if (!actions || actions.querySelector("#udsCartButton")) return;
   actions.appendChild(createCartButton());
 }
 
 function installMobileNavigationAuthority(root: HTMLElement) {
-  const mobile = window.matchMedia("(max-width: 760px)");
-
   const canonicalize = () => {
-    if (!mobile.matches) return;
+    if (getStorefrontDeviceModeFromWindow() !== "mobile") return;
 
     const topbar = root.querySelector<HTMLElement>(".uds-topbar");
     const actions = root.querySelector<HTMLElement>(".uds-top-actions");
@@ -82,19 +83,15 @@ function installMobileNavigationAuthority(root: HTMLElement) {
     const menu = root.querySelector<HTMLButtonElement>("#udsMenuButton");
     if (!topbar || !actions || !logo || !search || !menu) return;
 
-    // Keep legacy nodes in the DOM because the runtime still owns translations/state.
-    // CSS is the visual authority; JavaScript only guarantees the canonical controls exist.
     let cart = root.querySelector<HTMLButtonElement>("#udsCartButton");
     if (!cart) {
       cart = createCartButton();
       actions.appendChild(cart);
     }
 
-    // Move only the four canonical controls. Do not delete legacy quick-nav/language/dock nodes.
     topbar.insertBefore(logo, actions);
     actions.append(search, cart, menu);
 
-    // Legacy drawer remains present for runtime compatibility but is never opened visually.
     const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
     if (legacyMenu) {
       legacyMenu.classList.remove("is-open");
@@ -103,21 +100,18 @@ function installMobileNavigationAuthority(root: HTMLElement) {
   };
 
   const onCaptureClick = (event: MouseEvent) => {
-    if (!mobile.matches) return;
+    if (getStorefrontDeviceModeFromWindow() !== "mobile") return;
     const target = event.target instanceof Element ? event.target : null;
-    if (!target) return;
-    if (target.closest(".uds-logo")) event.stopPropagation();
+    if (target?.closest(".uds-logo")) event.stopPropagation();
   };
 
   canonicalize();
   document.addEventListener("click", onCaptureClick, true);
-
-  const onViewportChange = () => canonicalize();
-  mobile.addEventListener("change", onViewportChange);
+  window.addEventListener("resize", canonicalize);
 
   return () => {
     document.removeEventListener("click", onCaptureClick, true);
-    mobile.removeEventListener("change", onViewportChange);
+    window.removeEventListener("resize", canonicalize);
   };
 }
 
@@ -160,10 +154,35 @@ function installCoursePagination() {
   return () => observer.disconnect();
 }
 
+function SharedLegacyStorefront() {
+  return (
+    <div
+      id="updown-store"
+      className="updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3"
+      data-migration-phase="2B-UX3"
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: legacyHomeMarkup }}
+    />
+  );
+}
+
 export default function StorefrontParity() {
+  const [deviceMode, setDeviceMode] = useState<StorefrontDeviceMode | null>(null);
+
   useEffect(() => {
+    const syncDeviceMode = () => setDeviceMode(getStorefrontDeviceModeFromWindow());
+    syncDeviceMode();
+    window.addEventListener("resize", syncDeviceMode);
+    return () => window.removeEventListener("resize", syncDeviceMode);
+  }, []);
+
+  useEffect(() => {
+    if (!deviceMode) return;
     const root = document.getElementById("updown-store");
-    if (root) repairStoreText(root);
+    if (root) {
+      root.dataset.deviceMode = deviceMode;
+      repairStoreText(root);
+    }
 
     const observer = root ? new MutationObserver(() => repairStoreText(root)) : null;
     observer?.observe(root!, { childList: true, subtree: true, characterData: true });
@@ -181,7 +200,7 @@ export default function StorefrontParity() {
     let stopCoursePagination = () => {};
     let stopMobileNavigationAuthority = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H62-runtime-compatible-header";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H63-responsive-boundary";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -189,8 +208,8 @@ export default function StorefrontParity() {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) {
         repairStoreText(root);
-        restoreDesktopCart(root);
-        stopMobileNavigationAuthority = installMobileNavigationAuthority(root);
+        if (deviceMode === "desktop") restoreDesktopCart(root);
+        if (deviceMode === "mobile") stopMobileNavigationAuthority = installMobileNavigationAuthority(root);
       }
       stopCoursePagination = installCoursePagination();
     };
@@ -206,18 +225,16 @@ export default function StorefrontParity() {
       observer?.disconnect();
       stopCoursePagination();
       stopMobileNavigationAuthority();
+      script.remove();
       script.onload = null;
       script.onerror = null;
     };
-  }, []);
+  }, [deviceMode]);
 
-  return (
-    <div
-      id="updown-store"
-      className="updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3"
-      data-migration-phase="2B-UX3"
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: legacyHomeMarkup }}
-    />
-  );
+  if (!deviceMode) return null;
+
+  const storefront = <SharedLegacyStorefront />;
+  return deviceMode === "mobile"
+    ? <MobileStorefront>{storefront}</MobileStorefront>
+    : <DesktopStorefront>{storefront}</DesktopStorefront>;
 }
