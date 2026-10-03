@@ -66,6 +66,32 @@ function restoreDesktopCart(root: HTMLElement) {
   }
 }
 
+function installMobileNavigationAuthority(root: HTMLElement) {
+  const onCaptureClick = (event: MouseEvent) => {
+    if (!window.matchMedia("(max-width: 760px)").matches) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    // Legacy runtime used to turn the logo into a second menu trigger after scroll.
+    // H60 keeps one responsibility per control: logo = home, menu button = drawer.
+    if (target.closest(".uds-logo")) {
+      event.stopPropagation();
+    }
+  };
+
+  document.addEventListener("click", onCaptureClick, true);
+
+  // The H53 drawer is the canonical mobile drawer. Keep the older legacy panel inert
+  // so cached/runtime listeners cannot expose two menus at the same time.
+  const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
+  if (legacyMenu) {
+    legacyMenu.classList.remove("is-open");
+    legacyMenu.setAttribute("aria-hidden", "true");
+  }
+
+  return () => document.removeEventListener("click", onCaptureClick, true);
+}
+
 function installCoursePagination() {
   const grid = document.querySelector<HTMLElement>("#udsCourses .uds-course-grid");
   if (!grid) return () => {};
@@ -124,8 +150,9 @@ export default function StorefrontParity() {
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
 
     let stopCoursePagination = () => {};
+    let stopMobileNavigationAuthority = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60-native-header";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60-nav-consolidated";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -135,6 +162,7 @@ export default function StorefrontParity() {
         repairStoreText(root);
         restoreDesktopCart(root);
       }
+      stopMobileNavigationAuthority = installMobileNavigationAuthority(root!);
       stopCoursePagination = installCoursePagination();
     };
 
@@ -148,6 +176,7 @@ export default function StorefrontParity() {
     return () => {
       observer?.disconnect();
       stopCoursePagination();
+      stopMobileNavigationAuthority();
       script.onload = null;
       script.onerror = null;
     };
