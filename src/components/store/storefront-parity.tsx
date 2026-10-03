@@ -66,32 +66,66 @@ function restoreDesktopCart(root: HTMLElement) {
   }
 }
 
+function installCoursePagination() {
+  const grid = document.querySelector<HTMLElement>("#udsCourses .uds-course-grid");
+  if (!grid) return () => {};
+
+  let visible = 3;
+  let button: HTMLButtonElement | null = null;
+
+  const render = (reset = false) => {
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>(":scope > .uds-course"));
+    if (reset) visible = 3;
+    visible = Math.min(Math.max(3, visible), Math.max(3, cards.length));
+    cards.forEach((card, index) => { card.hidden = index >= visible; });
+
+    let wrap = grid.parentElement?.querySelector<HTMLElement>(".uds-course-more-wrap") || null;
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.className = "uds-course-more-wrap";
+      grid.insertAdjacentElement("afterend", wrap);
+    }
+    button = wrap.querySelector<HTMLButtonElement>("#udsCourseMore");
+    if (!button) {
+      button = document.createElement("button");
+      button.id = "udsCourseMore";
+      button.type = "button";
+      button.className = "uds-course-more";
+      wrap.appendChild(button);
+    }
+    const hasMore = cards.length > visible;
+    button.hidden = !hasMore;
+    button.textContent = document.documentElement.lang === "en" ? "View more courses" : "Ver más campos";
+    button.onclick = () => { visible = Math.min(visible + 3, cards.length); render(false); };
+  };
+
+  const observer = new MutationObserver(() => render(true));
+  observer.observe(grid, { childList: true });
+  render(true);
+  return () => observer.disconnect();
+}
+
 export default function StorefrontParity() {
   useEffect(() => {
     const root = document.getElementById("updown-store");
     if (root) repairStoreText(root);
 
-    const observer = root
-      ? new MutationObserver(() => repairStoreText(root))
-      : null;
+    const observer = root ? new MutationObserver(() => repairStoreText(root)) : null;
     observer?.observe(root!, { childList: true, subtree: true, characterData: true });
 
-    document.querySelectorAll<HTMLScriptElement>(
-      'script[data-updown-parity="true"], script[data-updown-home-h60="true"]',
-    ).forEach((node) => node.remove());
+    document.querySelectorAll<HTMLScriptElement>('script[data-updown-parity="true"], script[data-updown-home-h60="true"]').forEach((node) => node.remove());
+    document.getElementById("updown-h60-styles")?.remove();
 
     window.__UPDOWN_PARITY_BOOTED__ = false;
     window.__UPDOWN_PARITY_VERSION__ = undefined;
-
     (window as any).supabase = { createClient: createSupabaseClient };
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ =
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    window.__UPDOWN_CHECKOUT_ENABLED__ =
-      process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
+    window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
 
+    let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60-native-header";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -101,12 +135,7 @@ export default function StorefrontParity() {
         repairStoreText(root);
         restoreDesktopCart(root);
       }
-
-      const homePatch = document.createElement("script");
-      homePatch.src = "/updown-home-h60.js?v=H60.2";
-      homePatch.async = false;
-      homePatch.dataset.updownHomeH60 = "true";
-      document.body.appendChild(homePatch);
+      stopCoursePagination = installCoursePagination();
     };
 
     script.onerror = () => {
@@ -118,9 +147,9 @@ export default function StorefrontParity() {
 
     return () => {
       observer?.disconnect();
+      stopCoursePagination();
       script.onload = null;
       script.onerror = null;
-      document.querySelector<HTMLScriptElement>('script[data-updown-home-h60="true"]')?.remove();
     };
   }, []);
 
