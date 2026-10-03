@@ -76,11 +76,9 @@ export default function StorefrontParity() {
       : null;
     observer?.observe(root!, { childList: true, subtree: true, characterData: true });
 
-    const previousRuntime = document.querySelector<HTMLScriptElement>(
-      'script[data-updown-parity="true"]',
-    );
-
-    if (previousRuntime) previousRuntime.remove();
+    document.querySelectorAll<HTMLScriptElement>(
+      'script[data-updown-parity="true"], script[data-updown-home-h60="true"]',
+    ).forEach((node) => node.remove());
 
     window.__UPDOWN_PARITY_BOOTED__ = false;
     window.__UPDOWN_PARITY_VERSION__ = undefined;
@@ -93,7 +91,7 @@ export default function StorefrontParity() {
       process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
 
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H59-UTF8CART2";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H60";
     script.async = false;
     script.dataset.updownParity = "true";
 
@@ -103,6 +101,12 @@ export default function StorefrontParity() {
         repairStoreText(root);
         restoreDesktopCart(root);
       }
+
+      const homePatch = document.createElement("script");
+      homePatch.src = "/updown-home-h60.js?v=H60.1";
+      homePatch.async = false;
+      homePatch.dataset.updownHomeH60 = "true";
+      document.body.appendChild(homePatch);
     };
 
     script.onerror = () => {
@@ -116,6 +120,7 @@ export default function StorefrontParity() {
       observer?.disconnect();
       script.onload = null;
       script.onerror = null;
+      document.querySelector<HTMLScriptElement>('script[data-updown-home-h60="true"]')?.remove();
     };
   }, []);
 
