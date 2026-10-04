@@ -1,28 +1,19 @@
-/* Official UP AND DOWN logo — surgical graphic replacement only. */
-
-/* Legacy desktop header, legacy mobile/menu logo, and footer keep their existing boxes/sizes. */
-#updown-store .uds-original-vector-logo {
-  background-color: currentColor !important;
-  -webkit-mask: url('/assets/updown-logo-official.svg') center / contain no-repeat !important;
-  mask: url('/assets/updown-logo-official.svg') center / contain no-repeat !important;
+/* Official artwork is embedded directly in each existing SVG.
+   Preserve current container dimensions and contextual brand colors. */
+#updown-store .uds-original-vector-logo > svg,
+.uds-native-mobile-logo > svg {
+  background: none !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+  opacity: 1 !important;
 }
 
-#updown-store .uds-original-vector-logo > svg {
-  opacity: 0 !important;
+#updown-store .uds-original-vector-logo > svg path,
+.uds-native-mobile-logo > svg path {
+  fill: currentColor;
+  opacity: 1 !important;
 }
 
-/* Native mobile header: preserve the current SVG dimensions; replace only its artwork. */
-#updown-store .uds-native-mobile-logo > svg {
-  background-color: currentColor !important;
-  -webkit-mask: url('/assets/updown-logo-official.svg') center / contain no-repeat !important;
-  mask: url('/assets/updown-logo-official.svg') center / contain no-repeat !important;
-}
-
-#updown-store .uds-native-mobile-logo > svg > * {
-  opacity: 0 !important;
-}
-
-/* Footer must remain clean and white on the dark green background. */
 #updown-store .uds-footer-logo {
   filter: none !important;
   color: #fff !important;
