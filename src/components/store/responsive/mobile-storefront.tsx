@@ -1,9 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 
 /** Mobile/tablet presentation shell. Shared storefront controls/data live above this layer. */
 export function MobileStorefront({ children }: { children: ReactNode }) {
+  useLayoutEffect(() => {
+    // HOTFIX58 keeps module-level references to its pager controls. During
+    // Turbopack/HMR or a device-mode remount an old pager can survive while
+    // those references are reset to null. Remove that stale node before the
+    // legacy runtime boots so it always rebuilds a complete pager atomically.
+    document.getElementById("udsMobileCatalogPager58")?.remove();
+  }, []);
+
   return (
     <div className="uds-device-ux uds-device-ux--mobile" data-storefront-ux="mobile">
       <style>{`
