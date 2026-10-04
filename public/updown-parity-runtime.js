@@ -304,7 +304,10 @@
       mobileMenuContent.scrollTop=0;
     }
   }
+  let productReturnPosition=null;
+  let productReturnFocus=null;
   function closePanels(closeOverlay=true){
+    const wasProductOpen=el("udsModal").classList.contains("is-open");
     el("udsCart").classList.remove("is-open");el("udsMobileMenu").classList.remove("is-open");el("udsModal").classList.remove("is-open");el("udsSuccessModal").classList.remove("is-open");
     ["udsCart","udsMobileMenu","udsModal","udsSuccessModal"].forEach(id=>el(id).setAttribute("aria-hidden","true"));
 
@@ -317,6 +320,11 @@
     }
 
     if(closeOverlay){el("udsOverlay").classList.remove("is-open");document.body.style.overflow=""}
+    if(closeOverlay&&wasProductOpen&&productReturnPosition!==null){
+      const position=productReturnPosition,focus=productReturnFocus;
+      productReturnPosition=null;productReturnFocus=null;
+      requestAnimationFrame(()=>{window.scrollTo(0,position);if(focus?.isConnected)focus.focus({preventScroll:true});});
+    }
   }
 
   function normalizeSpecKey(value=""){
@@ -672,7 +680,7 @@
     });
 
     appendMobileMenuButton({
-      label:"Cabo Journal",
+      label:"Noticias",
       target:"udsJournal",
       className:"is-editorial is-journal"
     });
@@ -1008,6 +1016,10 @@
     return preferred.filter(([,v])=>v!==null&&v!==undefined&&String(v).trim()).slice(0,10);
   }
   function openProduct(product){
+    if(!el("udsModal").classList.contains("is-open")){
+      productReturnPosition=window.scrollY;
+      productReturnFocus=document.activeElement;
+    }
     modalProduct=product;
     const advisor=productAdvisor(),specs=rawGolfSpecs(product),chips=golfSpecChips(product,4),stock=stockCopy(product.stock);
     modalGalleryImages=productGallery(product);
@@ -1496,13 +1508,13 @@
     "Cargando selecciÃ³n…":"Loading selection…",
     "Lo nuevo.":"What's new.",
     "Las incorporaciones mÃ¡s recientes al inventario.":"The newest additions to inventory.",
-    "Tu próximo equipo, sin ruido.":"Your next equipment, without the noise.",
+    "Tu próximo equipo.":"Your next equipment.",
     "Busca, filtra y abre cada producto para ver configuraciÃ³n, condición y disponibilidad.":"Search, filter and open each product to view configuration, condition and availability.",
     "MÃ¡s que equipo.":"More than equipment.",
     "ReparaciÃ³n, trade-in, mantenimiento y entrenamiento con atenciÃ³n directa.":"Repair, trade-in, maintenance and training with direct personal service.",
     "Golf en Los Cabos.":"Golf in Los Cabos.",
     "Tres campos para explorar. Confirma horarios y condiciones directamente con cada club.":"Three courses to explore. Confirm schedules and access directly with each club.",
-    "Cabo Journal.":"Cabo Journal.",
+    "Noticias.":"Noticias.",
     "Tres lecturas breves para tomar mejores decisiones dentro y fuera del campo.":"Three short reads for better decisions on and off the course.",
     "Golf seleccionado, servicio personal y experiencia local en Los Cabos.":"Curated golf, personal service and local experience in Los Cabos.",
     "Curated golf equipment · Compra segura con Stripe · AtenciÃ³n personalizada en Los Cabos":"Curated golf equipment · Secure Stripe checkout · Personal service in Los Cabos",
@@ -1707,8 +1719,8 @@
   const commerceTranslations={
     es:{
       announcement:"Curated golf equipment · Compra segura con Stripe · AtenciÃ³n personalizada en Los Cabos",
-      nav:["Novedades","Tienda","CategorÃ­as","Servicios","Clases","Campos de golf","Cabo Journal","GHIN","QuiÃ©nes somos"],
-      hero:"Equipo seleccionado para jugar mejor, con asesorÃ­a personal en Los Cabos.",
+      nav:["Novedades","Tienda","CategorÃ­as","Servicios","Clases","Campos de golf","Noticias","GHIN","QuiÃ©nes somos"],
+      hero:"○ Seminuevos ○ Reparaciones ○ Trading ○ Clases ○ Fittings",
       explore:"Explorar equipo â†’",featured:"Coqueâ€™s Picks",search:"Buscar producto, marca, modelo o shaft…",filters:"Filtros",
       resultsEmpty:"No encontramos productos con esos filtros.",clear:"Limpiar filtros",
       newEyebrow:"Latest arrivals & offers",newTitle:"Novedades y ofertas.",newIntro:"Lo mÃ¡s reciente del inventario y oportunidades con precio especial.",
@@ -1717,8 +1729,8 @@
     },
     en:{
       announcement:"Curated golf equipment · Secure Stripe checkout · Personal service in Los Cabos",
-      nav:["New arrivals","Shop","Categories","Services","Lessons","Golf courses","Cabo Journal","GHIN","About us"],
-      hero:"Curated equipment to play better, with personal advice in Los Cabos.",
+      nav:["New arrivals","Shop","Categories","Services","Lessons","Golf courses","Noticias","GHIN","About us"],
+      hero:"○ Seminuevos ○ Reparaciones ○ Trading ○ Clases ○ Fittings",
       explore:"Explore equipment â†’",featured:"Coqueâ€™s Picks",search:"Search product, brand, model or shaft…",filters:"Filters",
       resultsEmpty:"No products match these filters.",clear:"Clear filters",
       newEyebrow:"Latest arrivals & offers",newTitle:"New arrivals & offers.",newIntro:"The newest inventory plus selected opportunities with special pricing.",
@@ -1765,7 +1777,7 @@
           :(currentLanguage==="en"?"View all categories":"Ver todas las categorías");
       }
     }
-    if(catalogHead){catalogHead.querySelector(".uds-eyebrow").textContent=t.catalogEyebrow;catalogHead.querySelector("h2").textContent=currentLanguage==="en"?"Your next equipment, without the noise.":"Tu próximo equipo, sin ruido.";catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuraciÃ³n, condición y disponibilidad."}
+    if(catalogHead){catalogHead.querySelector(".uds-eyebrow").textContent=t.catalogEyebrow;catalogHead.querySelector("h2").textContent=currentLanguage==="en"?"Your next equipment.":"Tu próximo equipo.";catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuraciÃ³n, condición y disponibilidad."}
     el("udsLangEs").classList.toggle("is-active",currentLanguage==="es");el("udsLangEn").classList.toggle("is-active",currentLanguage==="en");el("udsLangEs").setAttribute("aria-pressed",String(currentLanguage==="es"));el("udsLangEn").setAttribute("aria-pressed",String(currentLanguage==="en"));
     el("udsConditionFilter").options[0].text=currentLanguage==="en"?"Any condition":"Cualquier condición";el("udsConditionFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionFilter").options[3].text="Demo";
     el("udsConditionMobileFilter").options[0].text=currentLanguage==="en"?"Condition: any":"CondiciÃ³n: cualquiera";el("udsConditionMobileFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionMobileFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionMobileFilter").options[3].text="Demo";
@@ -1779,6 +1791,14 @@
     localizeStaticDom(currentLanguage);
     localizeWhatsAppLinks(currentLanguage);
     setupJournalVisibility();
+    const heroHeading=document.querySelector("#updown-store .uds-hero h1");
+    if(heroHeading)heroHeading.innerHTML="Up and Down Golf Shop<span>Todo lo que necesitas para tu juego</span>";
+    const servicesIntro=document.querySelector("#udsServices .uds-section-intro");
+    if(servicesIntro)servicesIntro.textContent="Múltiples servicios, atención personalizada.";
+    const newsIntro=document.querySelector("#udsJournal .uds-section-intro");
+    if(newsIntro)newsIntro.textContent="Guías de equipo, campos de golf y noticias.";
+    const aboutLabel=document.querySelector("#udsAbout .uds-eyebrow");
+    if(aboutLabel)aboutLabel.textContent="QUIÉNES SOMOS";
   }
   if(el("udsLangEs"))if(el("udsLangEs"))el("udsLangEs").onclick=()=>applyLanguage("es");if(el("udsLangEn"))if(el("udsLangEn"))el("udsLangEn").onclick=()=>applyLanguage("en");
 
@@ -2240,7 +2260,7 @@
     },80);
   });
 
-  // Cabo Journal: una sola tarjeta expandida a la vez.
+  // Noticias: una sola tarjeta expandida a la vez.
   document.querySelectorAll("#updown-store [data-journal-card]").forEach(card=>{
     const button=card.querySelector(".uds-journal-toggle");
     button.addEventListener("click",()=>{
@@ -2336,7 +2356,7 @@
 
 /* ==========================================================================
    UP AND DOWN · MANAGED HOME CONTENT · HOTFIX 17
-   Supabase becomes source of truth for Golf Courses + Cabo Journal.
+   Supabase becomes source of truth for Golf Courses + Noticias.
    Supabase/Admin is the only source of truth for managed editorial content.
    Static legacy cards are never used as fallback.
    ========================================================================== */
@@ -2346,7 +2366,7 @@
   const MC_SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const MC_SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
 
-  const mcState={courses:[],articles:[],instructors:[],leadContext:null};
+  const mcState={courses:[],articles:[],instructors:[],leadContext:null,city:"all"};
 
   const mcEsc=(v="")=>String(v)
     .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -2694,12 +2714,31 @@
     mcBindJournal();
     return true;
   }
+  function mcCourseCity(course){
+    const explicit=String(course.city||"").trim();
+    const text=(explicit||String(course.location_label||"")).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+    if(/san jose/.test(text))return "San José del Cabo";
+    if(/cabo san lucas|los cabos/.test(text))return "Los Cabos";
+    if(/la ribera/.test(text))return "La Ribera";
+    return explicit||"";
+  }
   function mcRenderCourses(){
     const grid=document.querySelector("#udsCourses .uds-course-grid");
     if(!grid)return false;
-    grid.innerHTML=mcState.courses.map(mcCourseCard).join("");
+    const cities=[...new Set(mcState.courses.map(mcCourseCity).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+    if(mcState.city!=="all"&&!cities.includes(mcState.city))mcState.city="all";
+    const select=document.getElementById("udsCourseCity");
+    if(select){
+      select.innerHTML='<option value="all">Todos</option>'+cities.map(city=>`<option value="${mcEsc(city)}">${mcEsc(city)}</option>`).join("");
+      select.value=mcState.city;
+      const triangle=document.querySelector("#udsCourses .uds-city-triangle");
+      if(triangle)triangle.onclick=()=>{select.focus();if(typeof select.showPicker==="function")select.showPicker();else select.click();};
+      select.onchange=()=>{mcState.city=select.value;mcRenderCourses();};
+    }
+    const shown=mcState.courses.filter(course=>mcState.city==="all"||mcCourseCity(course)===mcState.city);
+    grid.innerHTML=shown.map(mcCourseCard).join("");
     grid.dataset.source="supabase";
-    grid.dataset.managedCount=String(mcState.courses.length);
+    grid.dataset.managedCount=String(shown.length);
     return true;
   }
 
@@ -2724,7 +2763,7 @@
       const [coursesResult,articlesResult,instructorsResult]=await Promise.allSettled([
         mcFetch(
           "golf_courses",
-          "select=id,name,location_label,description,description_en,image_url,map_url,official_url,sort_order,is_visible&is_visible=eq.true&order=sort_order.asc,created_at.asc"
+          "select=id,name,city,location_label,description,description_en,image_url,map_url,official_url,sort_order,is_visible&is_visible=eq.true&order=sort_order.asc,created_at.asc"
         ),
         mcFetch(
           "journal_articles",
@@ -3292,7 +3331,7 @@
 
     menu.appendChild(makeGroup(txt("Golf en Los Cabos","Golf in Los Cabos"),[
       {label:txt("Campos de golf","Golf courses"),onClick:()=>scrollToId("udsCourses")},
-      {label:"Cabo Journal",onClick:()=>scrollToId("udsJournal")},
+      {label:"Noticias",onClick:()=>scrollToId("udsJournal")},
     ]));
 
     menu.appendChild(makeButton(txt("QuiÃ©nes somos","About us"),"uds53-direct",()=>scrollToId("udsAbout")));
@@ -3582,4 +3621,5 @@
  const modal=document.getElementById("udsModal"); if(modal)modal.addEventListener("click",()=>requestAnimationFrame(apply59),{passive:true});
  window.__UPDOWN_HOTFIX59_OK__=true;
 })();
+
 
