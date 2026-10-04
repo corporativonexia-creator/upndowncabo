@@ -21,7 +21,7 @@ Esta fase monta el HOME oficial V9.x dentro de la nueva aplicación Next.js/Verc
 - Servicios UP AND DOWN.
 - Agenda HighLevel existente.
 - Directorio de campos.
-- Cabo Journal.
+- Noticias.
 - Barra de beneficios y footer.
 - Mobile dock.
 
@@ -62,7 +62,7 @@ Abre:
 7. ES/EN cambia contenido comercial.
 8. `/?ref=CODIGO_VALIDO` muestra el Golf Advisor correspondiente.
 9. WhatsApp del Advisor usa el teléfono del vendedor cuando existe.
-10. Servicios y Cabo Journal expanden/cierra una card a la vez.
+10. Servicios y Noticias expanden/cierra una card a la vez.
 11. Móvil no desborda horizontalmente.
 12. Checkout permanece apagado en localhost.
 
