@@ -1,7 +1,18 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { getStorefrontText, type StorefrontLanguage } from "../storefront-copy";
+
+type MobileService = { key: string; title_es: string; title_en: string; image_url: string | null };
+const VS_GOLF_SERVICE_KEY = "27a30f4f-018e-460a-9b7d-b1dc1488143f";
+const VS_GOLF_LOGO = "https://xlkjztcxqlsegboivccg.supabase.co/storage/v1/object/public/site-content/services/0811b780-f34c-4b44-8816-50c04cecde0b/37180710-f81a-4b6f-aac3-a6bf5720bcff.png";
+declare global {
+  interface Window {
+    __UPDOWN_SERVICES__?: MobileService[];
+    __UPDOWN_OPEN_SERVICE__?: (key: string) => boolean;
+  }
+}
 
 function clickLegacyControl(...ids: string[]) {
   for (const id of ids) {
@@ -30,6 +41,7 @@ function collectVisibleProducts() {
 }
 
 export function MobileHeader() {
+  const [services, setServices] = useState<MobileService[] | null>(null);
   const [language, setLanguage] = useState<StorefrontLanguage>("es");
   const [, setCopyVersion] = useState(0);
   const t = (key: string) => getStorefrontText(key, language);
@@ -39,6 +51,12 @@ export function MobileHeader() {
     window.addEventListener("updown:language-change", sync);
     window.addEventListener("updown:copy-ready", sync);
     return () => { window.removeEventListener("updown:language-change", sync); window.removeEventListener("updown:copy-ready", sync); };
+  }, []);
+  useEffect(() => {
+    const syncServices = () => setServices(window.__UPDOWN_SERVICES__ || null);
+    syncServices();
+    window.addEventListener("updown:services-ready", syncServices);
+    return () => window.removeEventListener("updown:services-ready", syncServices);
   }, []);
   const chooseLanguage = (next: StorefrontLanguage) => {
     if (window.__UPDOWN_SET_LANGUAGE__) window.__UPDOWN_SET_LANGUAGE__(next);
@@ -88,13 +106,24 @@ export function MobileHeader() {
   const openProductFromSuggestion = (card: HTMLElement) => {
     const button = card.querySelector<HTMLElement>(".uds-view-equipment");
     setSearchOpen(false);
-    button?.click();
+    if (button) button.click(); else card.click();
   };
 
   const navigate = (id: string) => {
     setMenuOpen(false);
     window.setTimeout(() => scrollToId(id), 30);
   };
+
+  const navigateService = (key: string) => {
+    setMenuOpen(false); setSearchOpen(false);
+    window.setTimeout(() => { window.__UPDOWN_OPEN_SERVICE__?.(key); }, 40);
+  };
+  const shortcuts = [
+    { key: "classes", title: t("mobile.classes"), subtitle: t("mobile.shortcuts") },
+    { key: "ghin", title: "GHIN", subtitle: t("mobile.handicap") },
+    { key: VS_GOLF_SERVICE_KEY, title: "VS Golf", subtitle: language === "en" ? "Putters & Wedges" : "Putters y Wedges" },
+  ];
+  const available = (key: string) => services === null || services.some(service => service.key === key);
 
   return (
     <>
@@ -111,6 +140,12 @@ export function MobileHeader() {
             <button type="button" lang="es" aria-label="Español" aria-pressed={language === "es"} onClick={() => chooseLanguage("es")}>ES</button>
             <button type="button" lang="en" aria-label="English" aria-pressed={language === "en"} onClick={() => chooseLanguage("en")}>EN</button>
           </div>
+          {available("ghin") && <button type="button" className="uds-native-service-logo" disabled={services === null} aria-label={language === "en" ? "View GHIN service" : "Ver servicio GHIN"} onClick={() => navigateService("ghin")}>
+            <Image src="/assets/usga-ghin.png" width={34} height={34} sizes="40px" alt="USGA GHIN" />
+          </button>}
+          {available(VS_GOLF_SERVICE_KEY) && <button type="button" className="uds-native-service-logo is-vs-golf" disabled={services === null} aria-label={language === "en" ? "VS Golf: Putters and Wedges service" : "VS Golf: servicio de Putters y Wedges"} onClick={() => navigateService(VS_GOLF_SERVICE_KEY)}>
+            <Image src={VS_GOLF_LOGO} width={34} height={34} sizes="40px" alt="VS Golf" />
+          </button>}
           <button type="button" aria-label={t("mobile.search")} onClick={() => { setMenuOpen(false); setSearchOpen(true); setSuggestions([]); setQuery(""); }}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
           </button>
@@ -163,8 +198,15 @@ export function MobileHeader() {
           <div className="uds-native-menu-head"><strong>{t("mobile.navigation")}</strong><button type="button" aria-label={t("mobile.closeMenu")} onClick={() => setMenuOpen(false)}>×</button></div>
           <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>{t("mobile.searchEquipment")} <span>⌕</span></button>
           <div className="uds-native-menu-shortcuts">
-            <button type="button" onClick={() => navigate("udsGolfClasses")}><small>{t("mobile.shortcuts")}</small><strong>{t("mobile.classes")}</strong></button>
-            <a data-ghin-contact="" href="https://wa.me/526241299870?text=Hola%20Carlos%20%F0%9F%91%8B%20Vengo%20de%20UP%20AND%20DOWN%20%C2%B7%20Coque.%20Me%20gustar%C3%ADa%20recibir%20informaci%C3%B3n%20para%20unirme%20a%20GHIN%20y%20conocer%20c%C3%B3mo%20funciona%20el%20registro.%20Gracias." target="_blank" rel="noopener"><small>{t("mobile.handicap")}</small><strong>GHIN</strong></a>
+            {services === null ? <p role="status">{language === "en" ? "Loading services…" : "Cargando servicios…"}</p> : shortcuts.map(shortcut => {
+              const service = services.find(item => item.key === shortcut.key);
+              if (!service) return null;
+              const href = service.key === "classes" ? "#udsGolfClasses" : `#udsService-${service.key}`;
+              return <a key={service.key} className="uds-native-service-card" href={href} onClick={event => { event.preventDefault(); navigateService(service.key); }}>
+                <div className="uds-native-service-media"><Image src={service.image_url || "/assets/category-placeholder.svg"} alt="" fill sizes="(max-width: 700px) 45vw, 320px" /></div>
+                <div className="uds-native-service-copy"><small>{shortcut.subtitle}</small><strong>{shortcut.title}</strong><span aria-hidden="true">↗</span></div>
+              </a>;
+            })}
           </div>
           <div className="uds-native-menu-list">
             <button type="button" onClick={() => navigate("udsCatalog")}>{t("mobile.shop")} <span>›</span></button>

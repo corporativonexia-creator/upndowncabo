@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H81";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H82";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -2208,6 +2208,7 @@
         card.innerHTML='<button type="button" class="uds-service-head" aria-expanded="false"><div><div class="uds-service-title"><small></small><h3></h3></div></div><span class="uds-service-toggle">+</span></button><div class="uds-service-content"><div class="uds-service-content-inner"><div class="uds-service-body"></div></div></div>';
         serviceCards.set(row.key,card);
       }
+      if(!card.id)card.id=`udsService-${row.key}`;
       visible.add(row.key);
       const head=card.querySelector('.uds-service-head');
       let photo=head.querySelector('.uds-service-photo');
@@ -2235,15 +2236,34 @@
       grid.appendChild(card);
     });
     serviceCards.forEach((card,key)=>{if(!visible.has(key)&&key!=='classes')card.remove()});
+    publishServiceShortcuts();
   }
+  function publishServiceShortcuts(){
+    const rows=managedServices||[...serviceCards].filter(([,card])=>card.isConnected).map(([key,card])=>({key,is_active:true,title_es:card.querySelector('h3')?.textContent||'',title_en:'',image_url:card.querySelector('.uds-service-photo')?.src||null}));
+    window.__UPDOWN_SERVICES__=rows.filter(row=>row.is_active).map(row=>({key:row.key,title_es:row.title_es,title_en:row.title_en,image_url:safeServiceImage(row.image_url)||null}));
+    window.dispatchEvent(new Event('updown:services-ready'));
+  }
+  // Open the existing service node without recreating forms, CTAs or referral state.
+  window.__UPDOWN_OPEN_SERVICE__=key=>{
+    const card=serviceCards.get(key);
+    if(!card?.isConnected)return false;
+    document.querySelectorAll('#udsServices [data-service-card]').forEach(other=>{
+      other.classList.remove('is-open');other.querySelector('.uds-service-head')?.setAttribute('aria-expanded','false');
+    });
+    card.classList.add('is-open');
+    const trigger=card.querySelector('.uds-service-head');trigger?.setAttribute('aria-expanded','true');
+    trigger?.focus({preventScroll:true});
+    card.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});
+    return true;
+  };
   function safeServiceImage(raw){try{const url=new URL(raw);return url.protocol==='https:'?url.href:''}catch{return ''}}
   async function loadManagedServices(){
     try{
       const {data,error}=await db.from('storefront_services').select('*').eq('is_active',true).order('sort_order').order('key').abortSignal(timeoutSignal());
-      if(error||!Array.isArray(data)){console.warn('[UPDOWN services]',error);return}
+      if(error||!Array.isArray(data)){console.warn('[UPDOWN services]',error);publishServiceShortcuts();return}
       if(!document.querySelector('#udsServices .uds-services-grid')?.contains(serviceCards.get('classes')))return;
       managedServices=data;renderManagedServices();
-    }catch(error){console.warn('[UPDOWN services]',error)}
+    }catch(error){console.warn('[UPDOWN services]',error);publishServiceShortcuts()}
   }
 
   // One delegated handler also supports newly registered services.
@@ -2356,9 +2376,10 @@
         console.warn("[UPDOWN affiliate]",e);
       });
 
+      const servicesLoad=affiliateCapture.then(()=>loadManagedServices());
       await loadStore();
       await affiliateCapture;
-      await loadManagedServices();
+      await servicesLoad;
 
       try{
         applyLanguage(currentLanguage);
