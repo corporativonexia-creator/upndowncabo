@@ -1730,7 +1730,7 @@
     currentLanguage=lang==="en"?"en":"es";localStorage.setItem("upDownLanguage",currentLanguage);
     const t=commerceTranslations[currentLanguage];
     document.documentElement.lang=currentLanguage;
-    document.querySelector("#updown-store .uds-announcement").textContent=t.announcement;
+    
     const navCopy={
       new:t.nav[0],
       shop:t.nav[1],
