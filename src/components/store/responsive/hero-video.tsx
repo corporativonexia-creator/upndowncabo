@@ -53,6 +53,8 @@ export function HeroVideo() {
           z-index:0;
           width:100%;
           height:100%;
+          min-width:100%;
+          min-height:100%;
           object-fit:cover;
           object-position:center 52%;
           pointer-events:none;
@@ -61,8 +63,8 @@ export function HeroVideo() {
         #updown-store .uds-hero::before{
           z-index:1!important;
           background:
-            linear-gradient(180deg,rgba(5,19,15,.03) 0%,rgba(5,19,15,.10) 28%,rgba(5,19,15,.38) 56%,rgba(5,19,15,.92) 100%),
-            linear-gradient(90deg,rgba(5,19,15,.48) 0%,rgba(5,19,15,.08) 72%)!important;
+            linear-gradient(180deg,rgba(5,19,15,.02) 0%,rgba(5,19,15,.06) 28%,rgba(5,19,15,.22) 58%,rgba(5,19,15,.76) 100%),
+            linear-gradient(90deg,rgba(5,19,15,.38) 0%,rgba(5,19,15,.04) 74%)!important;
           transform:none!important;
           animation:none!important;
           pointer-events:none!important;
@@ -73,17 +75,37 @@ export function HeroVideo() {
 
         @media (max-width:1023px){
           #updown-store .uds-hero{
-            min-height:560px!important;
+            min-height:590px!important;
+            width:100vw!important;
+            max-width:none!important;
+            margin-left:calc(50% - 50vw)!important;
             display:flex!important;
             align-items:flex-end!important;
+            overflow:hidden!important;
           }
           #updown-store .uds-hero-video{
-            object-position:42% 50%!important;
+            left:50%!important;
+            right:auto!important;
+            width:100vw!important;
+            max-width:none!important;
+            height:100%!important;
+            min-height:100%!important;
+            transform:translateX(-50%)!important;
+            object-fit:cover!important;
+            object-position:48% 50%!important;
+          }
+          #updown-store .uds-hero::before,
+          #updown-store .uds-hero::after{
+            left:50%!important;
+            right:auto!important;
+            width:100vw!important;
+            transform:translateX(-50%)!important;
           }
           #updown-store .uds-hero-inner{
             width:100%!important;
+            max-width:none!important;
             margin:0!important;
-            padding:255px 18px 34px!important;
+            padding:270px 18px 38px!important;
           }
           #updown-store .uds-hero h1{margin-top:12px!important;margin-bottom:14px!important}
           #updown-store .uds-hero-copy{margin-top:0!important}
@@ -104,7 +126,7 @@ export function HeroVideo() {
               aria-hidden="true"
               tabIndex={-1}
             >
-              <source src="/assets/hero-cabo.mp4?v=5" type="video/mp4" />
+              <source src="/assets/hero-cabo.mp4?v=6" type="video/mp4" />
             </video>,
             hero,
           )
