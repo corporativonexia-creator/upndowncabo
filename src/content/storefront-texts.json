@@ -2362,5 +2362,29 @@
     "source_text": "Ver colección completa →",
     "es": "Ver colección completa →",
     "en": "View full collection →"
+  },
+  {
+    "key": "product.more",
+    "source_text": "Ver más",
+    "es": "Ver más",
+    "en": "Read more"
+  },
+  {
+    "key": "product.less",
+    "source_text": "Ver menos",
+    "es": "Ver menos",
+    "en": "Read less"
+  },
+  {
+    "key": "product.expandImage",
+    "source_text": "Ampliar foto",
+    "es": "Ampliar foto",
+    "en": "Expand photo"
+  },
+  {
+    "key": "product.closeImage",
+    "source_text": "Cerrar imagen",
+    "es": "Cerrar imagen",
+    "en": "Close image"
   }
 ]

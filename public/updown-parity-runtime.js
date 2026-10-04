@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H72";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H73";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -316,7 +316,7 @@
       const viewerWasOpen=viewer.classList.contains("is-open");
       viewer.classList.remove("is-open");
       viewer.setAttribute("aria-hidden","true");
-      if(viewerWasOpen)unlockDocumentFromImageViewer();
+      if(viewerWasOpen){unlockDocumentFromImageViewer();restoreImageViewerParent();udsViewerReturnFocus=null;}
     }
 
     if(closeOverlay){el("udsOverlay").classList.remove("is-open");document.body.style.overflow=""}
@@ -472,6 +472,10 @@
   }
 
   let udsProductModalSavedScroll=0;
+  let udsProductGridSavedScroll=0;
+  let udsViewerReturnFocus=null;
+  let udsViewerOriginalParent=null;
+  let udsViewerOriginalNext=null;
 
   function openImageViewer(){
     if(!modalProduct)return;
@@ -479,9 +483,30 @@
     const viewer=el("udsImageViewer");
     if(!viewer)return;
 
-    const productModal=el("udsModal"); udsProductModalSavedScroll=productModal?.scrollTop||0; lockDocumentForImageViewer();
+    const productModal=el("udsModal");
+    udsProductModalSavedScroll=productModal?.scrollTop||0;
+    udsProductGridSavedScroll=productModal?.querySelector(".uds-modal-grid")?.scrollTop||0;
+    udsViewerReturnFocus=document.activeElement;
+    udsViewerOriginalParent=viewer.parentNode;
+    udsViewerOriginalNext=viewer.nextSibling;
+    document.body.appendChild(viewer);
+    lockDocumentForImageViewer();
     viewer.classList.add("is-open");
     viewer.setAttribute("aria-hidden","false");
+    el("udsImageViewerClose").setAttribute("aria-label",siteText("product.closeImage"));
+    el("udsImageViewerPrev").setAttribute("aria-label",currentLanguage==="en"?"Previous image":"Imagen anterior");
+    el("udsImageViewerNext").setAttribute("aria-label",currentLanguage==="en"?"Next image":"Siguiente imagen");
+    el("udsImageViewerClose").focus({preventScroll:true});
+    productModal?.setAttribute("aria-hidden","true");
+  }
+
+  function restoreImageViewerParent(){
+    const viewer=el("udsImageViewer");
+    if(viewer&&udsViewerOriginalParent?.isConnected){
+      if(udsViewerOriginalNext?.parentNode===udsViewerOriginalParent)udsViewerOriginalParent.insertBefore(viewer,udsViewerOriginalNext);
+      else udsViewerOriginalParent.appendChild(viewer);
+    }
+    udsViewerOriginalParent=null;udsViewerOriginalNext=null;
   }
 
   function closeImageViewer(){
@@ -490,7 +515,18 @@
 
     viewer.classList.remove("is-open");
     viewer.setAttribute("aria-hidden","true");
-    unlockDocumentFromImageViewer(); requestAnimationFrame(()=>{const productModal=el("udsModal");if(productModal?.classList.contains("is-open"))productModal.scrollTop=udsProductModalSavedScroll;});
+    unlockDocumentFromImageViewer();
+    restoreImageViewerParent();
+    requestAnimationFrame(()=>{
+      const productModal=el("udsModal");
+      if(productModal?.classList.contains("is-open")){
+        productModal.setAttribute("aria-hidden","false");
+        productModal.scrollTop=udsProductModalSavedScroll;
+        const grid=productModal.querySelector(".uds-modal-grid");if(grid)grid.scrollTop=udsProductGridSavedScroll;
+        if(udsViewerReturnFocus?.isConnected)udsViewerReturnFocus.focus({preventScroll:true});
+      }
+      udsViewerReturnFocus=null;
+    });
 
     // Product modal stays open behind the viewer.
     if(el("udsModal")?.classList.contains("is-open")){
@@ -1021,9 +1057,27 @@
       const display=displaySpecValue(value);if(!display)return;
       const nk=normalizeSpecKey(key);
       if(["marca","brand","modelo","model","mano","hand","dexterity","loft","grados","flex","shaft","varilla","grip","ideal para","jugador","player profile","recommended for","recomendado para"].some(a=>nk.includes(normalizeSpecKey(a))))return;
-      if(!used.has(nk))preferred.push([key,display]);
+      if(/^(description|short description|english description|english short description|title|name|summary|body)( en| english)?$/.test(nk))return;
+      const labels={"condition score":["Estado del equipo","Condition rating"],"condition rating":["Estado del equipo","Condition rating"],"length":["Longitud","Length"],"longitud":["Longitud","Length"],"material":["Material","Material"],"size":["Talla","Size"],"talla":["Talla","Size"],"color":["Color","Color"],"pieces":["Piezas","Pieces"],"piezas":["Piezas","Pieces"],"year":["Año","Year"],"weight":["Peso","Weight"]};
+      const label=labels[nk]?.[currentLanguage==="en"?1:0]||String(key).replace(/_/g," ").replace(/^./,c=>c.toUpperCase());
+      if(!used.has(nk)){preferred.push([label,display]);used.add(nk);}
     });
-    return preferred.filter(([,v])=>v!==null&&v!==undefined&&String(v).trim()).slice(0,10);
+    return preferred.filter(([,v])=>v!==null&&v!==undefined&&String(v).trim());
+  }
+  let productDescriptionExpanded=false;
+  function productDescriptionContent(product){
+    const short=localizedProductText(product,"short_description").trim();
+    const full=localizedProductText(product,"description").trim();
+    return {short:short||full||(currentLanguage==="en"?"Ask our team about this product.":"Consulta con nuestro equipo sobre este producto."),full,hasMore:Boolean(short&&full&&short!==full)};
+  }
+  function renderProductDescription(product,expanded=false){
+    const content=productDescriptionContent(product);
+    productDescriptionExpanded=expanded&&content.hasMore;
+    el("udsModalDescription").textContent=productDescriptionExpanded?content.full:content.short;
+    const toggle=el("udsModalDescriptionToggle");
+    toggle.hidden=!content.hasMore;
+    toggle.setAttribute("aria-expanded",String(productDescriptionExpanded));
+    toggle.textContent=siteText(productDescriptionExpanded?"product.less":"product.more");
   }
   function openProduct(product){
     if(!el("udsModal").classList.contains("is-open")){
@@ -1038,18 +1092,17 @@
     el("udsModalPick")?.classList.add("uds-hidden");
     el("udsModalCategory").textContent=`${categoryLabel(product.categories)||"Golf"} · ${(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||""}`;
     el("udsModalTitle").textContent=product.name||"";
-    el("udsModalSummaryChips").innerHTML=chips.map(v=>`<span class="uds-spec-chip">${escapeHtml(v)}</span>`).join("");
     const hasDiscount=product.sale_price!==null&&Number(product.sale_price)<Number(product.price);
-    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(product.sale_price??product.price,product.currency)}</span>${hasDiscount?`<span class="uds-old-price">${money(product.price,product.currency)}</span>`:""}`;
-    el("udsModalCurrencyNote").textContent=currentLanguage==="en"?`Price shown in ${String(product.currency||"MXN").toUpperCase()}.`:`Precio expresado en ${String(product.currency||"MXN").toUpperCase()}.`;
-    el("udsModalDescription").textContent=localizedProductText(product,"description")||localizedProductText(product,"short_description")||(currentLanguage==="en"?"Ask our team about availability and specifications.":"Consulta disponibilidad y especificaciones con nuestro equipo.");
+    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(product.sale_price??product.price,product.currency,true)}</span>${hasDiscount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}`;
+    renderProductDescription(product);
+    el("udsModalImage").setAttribute("aria-label",siteText("product.expandImage"));
     const player=specs.player;
     el("udsPlayerFitWrap").classList.toggle("uds-hidden",!player);
     el("udsPlayerFit").textContent=player||"";
     el("udsPlayerFitLabel").textContent=currentLanguage==="en"?"Who it fits":"Para qué jugador";
     el("udsSpecsLabel").textContent=currentLanguage==="en"?"Configuration":"Configuración";
     const entries=modalSpecEntries(product);
-    el("udsModalSpecs").innerHTML=entries.length?entries.map(([key,value])=>`<div class="uds-modal-spec-item"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join(""):`<div class="uds-modal-spec-item"><span>${currentLanguage==="en"?"Product":"Producto"}</span><strong>${escapeHtml(product.name||"")}</strong></div>`;
+    el("udsModalSpecs").innerHTML=entries.length?entries.map(([key,value])=>`<div class="uds-modal-spec-item${String(value).length>55?" is-wide":""}"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join(""):`<div class="uds-modal-spec-item"><span>${currentLanguage==="en"?"Product":"Producto"}</span><strong>${escapeHtml(product.name||"")}</strong></div>`;
     el("udsModalCondition").textContent=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     el("udsModalConditionNote").textContent=conditionNote(product);
     el("udsModalStock").textContent=stock.text;
@@ -1058,6 +1111,7 @@
     const isSoldOut=Number(product.stock)<=0;
     el("udsModal").classList.toggle("is-sold-out",isSoldOut);
     el("udsModalAdd").disabled=isSoldOut;
+    el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito"));
     el("udsModalAdd").innerHTML=isSoldOut
   ? `<span>${currentLanguage==="en"?"Sold out":"Agotado"}</span>`
   : `<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -1066,11 +1120,8 @@
        <circle cx="18" cy="20" r="1.4"/>
      </svg>
      <span>${currentLanguage==="en"?"Add to cart":"Agregar al carrito"}</span>`;
-    el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask about this equipment":"Preguntar sobre este equipo";
-    el("udsModalTrade").textContent=currentLanguage==="en"?"Have equipment to trade in?":"¿Tienes equipo para intercambiar?";
-    el("udsTrustInventory").textContent=currentLanguage==="en"?"Updated inventory":"Inventario actualizado";
-    el("udsTrustPayment").textContent=currentLanguage==="en"?"Secure Stripe payment":"Pago seguro con Stripe";
-    el("udsTrustAdvice").textContent=currentLanguage==="en"?"Personal advice":"Asesoría personal";
+    el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask":"Preguntar";
+    el("udsModalTrade").textContent=currentLanguage==="en"?"Trade in":"Intercambiar";
     closePanels(false);openOverlay();el("udsModal").classList.add("is-open");el("udsModal").setAttribute("aria-hidden","false"); requestAnimationFrame(()=>{const m=el("udsModal");if(m)m.scrollTop=0;const g=m?.querySelector(".uds-modal-grid");if(g)g.scrollTop=0;});
   }
 
@@ -1445,6 +1496,8 @@
   if(el("udsCartButton"))if(el("udsCartButton"))el("udsCartButton").onclick=openCart;if(el("udsFloatingCart"))if(el("udsFloatingCart"))el("udsFloatingCart").onclick=openCart;if(el("udsCloseCart"))if(el("udsCloseCart"))el("udsCloseCart").onclick=()=>closePanels();if(el("udsMenuButton"))if(el("udsMenuButton"))el("udsMenuButton").onclick=openMenu;if(el("udsCloseMenu"))if(el("udsCloseMenu"))el("udsCloseMenu").onclick=()=>closePanels();if(el("udsOverlay"))if(el("udsOverlay"))el("udsOverlay").onclick=()=>closePanels();if(el("udsCloseModal"))if(el("udsCloseModal"))el("udsCloseModal").onclick=()=>closePanels();if(el("udsModalPrev"))if(el("udsModalPrev"))el("udsModalPrev").onclick=()=>moveModalGallery(-1);if(el("udsModalNext"))if(el("udsModalNext"))el("udsModalNext").onclick=()=>moveModalGallery(1);
 
   el("udsModalImage").onclick=openImageViewer;
+  el("udsModalImage").addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();openImageViewer();}});
+  el("udsModalDescriptionToggle").onclick=()=>{if(modalProduct)renderProductDescription(modalProduct,!productDescriptionExpanded);};
   el("udsImageViewerClose").onclick=closeImageViewer;
   el("udsImageViewerPrev").onclick=()=>moveImageViewer(-1);
   el("udsImageViewerNext").onclick=()=>moveImageViewer(1);
@@ -2178,6 +2231,12 @@
   document.addEventListener("keydown",e=>{
     const viewerOpen=el("udsImageViewer")?.classList.contains("is-open");
 
+    if(viewerOpen&&e.key==="Tab"){
+      const controls=[...el("udsImageViewer").querySelectorAll("button:not(:disabled)")];
+      const index=controls.indexOf(document.activeElement);
+      const next=e.shiftKey?(index<=0?controls.length-1:index-1):(index<0||index===controls.length-1?0:index+1);
+      e.preventDefault();controls[next]?.focus();return;
+    }
     if(e.key==="Escape"){
       if(viewerOpen)closeImageViewer();
       else closePanels();
