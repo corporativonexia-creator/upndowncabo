@@ -462,3 +462,36 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
   #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 button:disabled { opacity:.3!important; cursor:default!important; }
   #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 span { font-size:11px!important; font-weight:600!important; line-height:1.4!important; letter-spacing:0!important; text-transform:none!important; }
 }
+
+/* H76 — shared compact product cards, with no redundant details action. */
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card { display:flex!important; flex-direction:column!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card-media { position:relative!important; width:100%!important; aspect-ratio:4 / 3!important; height:auto!important; min-height:0!important; max-height:none!important; flex:0 0 auto!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card-media img { position:absolute!important; inset:0!important; width:100%!important; height:100%!important; object-fit:contain!important; padding:0!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-card-body { padding:12px!important; gap:0!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-description,
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-card-specs { display:none!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-category { font-size:9px!important; line-height:1.3!important; margin:0!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card h3 { font-size:16px!important; line-height:1.25!important; margin:4px 0 6px!important; min-height:2.5em!important; -webkit-line-clamp:2!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-price-row { margin:0 0 4px!important; gap:3px 6px!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-shipping-note { margin:0!important; font-size:10px!important; line-height:1.4!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card-badges { position:absolute!important; inset:7px 7px auto!important; display:flex!important; flex-wrap:wrap!important; align-items:start!important; justify-content:space-between!important; gap:4px!important; z-index:2; pointer-events:none; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-card-badges :is(.uds-condition,.uds-stock) { position:static!important; inset:auto!important; transform:none!important; margin:0!important; width:auto!important; min-height:0!important; padding:4px 6px!important; border-radius:999px!important; background:rgba(255,255,255,.94)!important; font-size:9px!important; line-height:1.2!important; font-weight:600!important; letter-spacing:0!important; text-transform:none!important; color:#345344!important; box-shadow:0 2px 8px rgba(20,62,53,.07)!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-card-badges .uds-stock.is-low { background:rgba(250,244,225,.96)!important; color:#7b602d!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card .uds-card-badges .uds-stock.is-out { background:rgba(247,235,230,.96)!important; color:#914f3e!important; }
+#updown-store.uds-ux-v3 :is(#udsNew,#udsCatalog) .uds-card:focus-visible { outline:2px solid #2d725b!important; outline-offset:3px!important; }
+@media(max-width:760px) {
+  #updown-store.uds-ux-v3 #udsCatalog { padding:24px 14px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog .uds-section-head { margin-bottom:14px!important; gap:8px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog .uds-section-head h2 { font-size:26px!important; margin:0 0 7px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog .uds-section-intro { font-size:12px!important; line-height:1.45!important; margin:0!important; }
+  #updown-store.uds-ux-v3 #udsCatalog .uds-catalog-bar { margin-top:12px!important; margin-bottom:14px!important; padding:0!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-media { aspect-ratio:4 / 3!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-card-body { padding:10px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card h3 { font-size:14px!important; margin:4px 0 6px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-price-row { margin:0 0 4px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-old-price { font-size:9px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-shipping-note { font-size:10px!important; margin:0!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 { margin-top:12px!important; }
+}
+
+#updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-media { aspect-ratio:4 / 3!important; }

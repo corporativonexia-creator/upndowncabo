@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H75";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H76";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -583,8 +583,7 @@
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    const detailsLabel=currentLanguage==="en"?`View details of ${product.name}`:`Ver detalles de ${product.name}`;
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><span class="uds-condition">${escapeHtml(condition)}</span></div>
+    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span><span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
@@ -592,7 +591,7 @@
         <p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||"")}</p>
         <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}</div>
         <p class="uds-shipping-note" data-store-copy="product.shippingExcluded">${escapeHtml(siteText("product.shippingExcluded"))}</p>
-        <div class="uds-card-footer"><div class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</div><div class="uds-card-actions is-clean"><button class="uds-view-equipment" data-store-copy="card.details" aria-label="${escapeHtml(detailsLabel)}" type="button">${escapeHtml(siteText("card.details"))}</button></div></div>
+
       </div>`;
   }
   function markImageFallback(img,host){
@@ -611,7 +610,15 @@
     card.querySelector(".uds-view-equipment")?.addEventListener("click",()=>openProduct(product));
     card.querySelector(".uds-quick-add")?.addEventListener("click",()=>addToCart(product));
     card.classList.add("is-openable");
-    // The native details button remains the keyboard action; other controls keep their own actions.
+    card.setAttribute("role","button");
+    card.setAttribute("tabindex","0");
+    card.setAttribute("aria-haspopup","dialog");
+    card.setAttribute("aria-label",currentLanguage==="en"?`View details of ${product.name}`:`Ver detalles de ${product.name}`);
+    card.addEventListener("keydown",event=>{
+      if(event.target!==card||event.defaultPrevented)return;
+      if(event.key==="Enter"||event.key===" "){event.preventDefault();openProduct(product);}
+    });
+    // The full card is the pointer and keyboard action.
     card.addEventListener("click",event=>{
       if(event.defaultPrevented||event.target.closest("button,a,input,select,textarea,label"))return;
       if(window.getSelection?.()?.toString())return;
@@ -3416,10 +3423,10 @@
   const modal=document.getElementById("udsModal");
 
   /* ----------------------------------------------------------
-     1) Catalog pager: 6 mobile products, scoped observer only on #udsGrid.
+     1) Catalog pager: 4 mobile products, scoped observer only on #udsGrid.
      ---------------------------------------------------------- */
   let page=0;
-  const pageSize=6;
+  const pageSize=4;
   let pager=null;
   let pagerLabel=null;
   let prevBtn=null;
