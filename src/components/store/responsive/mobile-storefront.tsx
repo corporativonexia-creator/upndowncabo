@@ -56,6 +56,24 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
         .uds-native-menu-list button{width:100%;display:flex;justify-content:space-between;align-items:center;padding:17px 0;border:0;border-bottom:1px solid rgba(20,62,53,.12);background:transparent;color:#163f36;font:700 15px/1.25 Georgia,serif;text-align:left;cursor:pointer}
         .uds-native-menu-foot{margin-top:28px;padding-top:18px;border-top:1px solid rgba(20,62,53,.12);color:#71807c;font:500 12px/1.5 Georgia,serif}
 
+        /* Keep the cart close control visible below the fixed mobile header. */
+        .uds-device-ux--mobile #udsCart{padding-top:58px!important}
+        .uds-device-ux--mobile #udsCart .uds-cart-head{
+          display:flex!important;align-items:center!important;justify-content:space-between!important;
+          position:sticky!important;top:0!important;z-index:5!important;
+          min-height:58px!important;padding:10px 14px!important;margin:0!important;
+          background:rgba(250,249,246,.96)!important;border-bottom:1px solid rgba(20,62,53,.12)!important;
+          backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;
+        }
+        .uds-device-ux--mobile #udsCart .uds-cart-head h3{margin:0!important;color:#163f36!important}
+        .uds-device-ux--mobile #udsCloseCart{
+          display:grid!important;place-items:center!important;flex:0 0 auto!important;
+          width:40px!important;height:40px!important;padding:0!important;margin:0!important;
+          border:1px solid rgba(20,62,53,.14)!important;border-radius:999px!important;
+          background:#fff!important;color:#163f36!important;font:400 26px/1 system-ui!important;
+          cursor:pointer!important;box-shadow:0 4px 14px rgba(20,62,53,.08)!important;
+        }
+
         .uds-device-ux--mobile #updown-store main{margin-top:0!important;padding-top:58px!important}
       `}</style>
       <MobileHeader />
