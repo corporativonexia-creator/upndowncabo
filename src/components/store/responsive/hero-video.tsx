@@ -104,7 +104,7 @@ export function HeroVideo() {
               aria-hidden="true"
               tabIndex={-1}
             >
-              <source src="/assets/hero-cabo.mp4?v=3" type="video/mp4" />
+              <source src="/assets/hero-cabo.mp4?v=4" type="video/mp4" />
             </video>,
             hero,
           )
