@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H71";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H72";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -73,10 +73,10 @@
   }
 
   function escapeHtml(value=""){return String(value).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-  function money(value,currency="MXN"){
+  function money(value,currency="MXN",compact=false){
     const code=String(currency||"MXN").toUpperCase();
     const locale=currentLanguage==="en"?"en-US":"es-MX";
-    const formatted=new Intl.NumberFormat(locale,{style:"currency",currency:code,currencyDisplay:"narrowSymbol",maximumFractionDigits:2}).format(Number(value||0));
+    const formatted=new Intl.NumberFormat(locale,{style:"currency",currency:code,currencyDisplay:"narrowSymbol",minimumFractionDigits:compact&&Number.isInteger(Number(value))?0:2,maximumFractionDigits:compact&&Number.isInteger(Number(value))?0:2}).format(Number(value||0));
     return `${code} ${formatted}`;
   }
   function showToast(message){const n=el("udsToast");n.textContent=message;n.classList.add("is-show");clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>n.classList.remove("is-show"),2600)}
@@ -542,11 +542,21 @@
   }
   function cardHtml(product){
     const price=product.sale_price??product.price;
-    const discount=product.sale_price!==null&&Number(product.sale_price)<Number(product.price);
+    const discount=product.sale_price!=null&&Number(product.sale_price)<Number(product.price);
     const stock=stockCopy(product.stock);
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
-    const pick="";
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async">${pick}<span class="uds-condition">${escapeHtml(condition)}</span></div><div class="uds-card-body"><div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div><h3>${escapeHtml(product.name)}</h3><p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||(currentLanguage==="en"?"Curated for your game.":"Seleccionado para tu juego."))}</p><div class="uds-price-row"><span class="uds-price">${money(price,product.currency)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency)}</span>`:""}</div><div class="uds-stock ${stock.cls}">${stock.text}</div><div class="uds-card-actions is-clean"><button class="uds-view-equipment" type="button">${currentLanguage==="en"?"View equipment":"Ver equipo"}</button></div></div>`;
+    const titleKey=normalizeSpecKey(product.name);
+    const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
+    const detailsLabel=currentLanguage==="en"?`View details of ${product.name}`:`Ver detalles de ${product.name}`;
+    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><span class="uds-condition">${escapeHtml(condition)}</span></div>
+      <div class="uds-card-body">
+        <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
+        <h3>${escapeHtml(product.name)}</h3>
+        ${specs.length?`<p class="uds-card-specs">${specs.map(escapeHtml).join(" · ")}</p>`:""}
+        <p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||"")}</p>
+        <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}</div>
+        <div class="uds-card-footer"><div class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</div><div class="uds-card-actions is-clean"><button class="uds-view-equipment" data-store-copy="card.details" aria-label="${escapeHtml(detailsLabel)}" type="button">${escapeHtml(siteText("card.details"))}</button></div></div>
+      </div>`;
   }
   function markImageFallback(img,host){
     if(!img||!host)return;
@@ -563,7 +573,13 @@
     card.querySelector(".uds-details")?.addEventListener("click",()=>openProduct(product));
     card.querySelector(".uds-view-equipment")?.addEventListener("click",()=>openProduct(product));
     card.querySelector(".uds-quick-add")?.addEventListener("click",()=>addToCart(product));
-    media?.addEventListener("click",()=>openProduct(product));
+    card.classList.add("is-openable");
+    // The native details button remains the keyboard action; other controls keep their own actions.
+    card.addEventListener("click",event=>{
+      if(event.defaultPrevented||event.target.closest("button,a,input,select,textarea,label"))return;
+      if(window.getSelection?.()?.toString())return;
+      openProduct(product);
+    });
   }
   function renderProducts(){
     const grid=el("udsGrid");grid.innerHTML="";el("udsResultsCount").textContent=currentLanguage==="en"?`${filteredProducts.length} product${filteredProducts.length===1?"":"s"}`:`${filteredProducts.length} producto${filteredProducts.length===1?"":"s"}`;

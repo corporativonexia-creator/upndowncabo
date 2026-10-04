@@ -2350,5 +2350,17 @@
     "source_text": "© 2026 UP AND DOWN · TIENDA DE GOLF EN CABO · COQUE.",
     "es": "© 2026 UP AND DOWN · TIENDA DE GOLF EN CABO · COQUE.",
     "en": "© 2026 UP AND DOWN · CABO GOLF SHOP BY COQUE."
+  },
+  {
+    "key": "card.details",
+    "source_text": "Ver detalles",
+    "es": "Ver detalles",
+    "en": "View details"
+  },
+  {
+    "key": "collection.viewAll",
+    "source_text": "Ver colección completa →",
+    "es": "Ver colección completa →",
+    "en": "View full collection →"
   }
 ]
