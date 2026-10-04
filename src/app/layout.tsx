@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    <html lang="es-MX" translate="yes">
       <head>
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#143E35" />
@@ -32,3 +32,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+
