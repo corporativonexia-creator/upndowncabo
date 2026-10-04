@@ -1,4 +1,26 @@
 /* UP AND DOWN storefront header — canonical responsive implementation */
+/* Home copy, course city selector and persistent product close control. */
+#updown-store.uds-ux-v3 .uds-hero h1 { font-size:clamp(32px,4.2vw,60px)!important; line-height:1.1!important; max-width:900px!important; }
+#updown-store.uds-ux-v3 .uds-hero h1 span { margin:14px 0 0!important; font-size:clamp(21px,2.7vw,34px)!important; line-height:1.25!important; font-style:normal!important; }
+#updown-store.uds-ux-v3 .uds-hero-copy { font-size:clamp(12px,1.2vw,15px)!important; line-height:1.9!important; }
+#updown-store.uds-ux-v3 .uds-brand-strip { overflow:hidden!important; scroll-snap-type:none!important; }
+#updown-store.uds-ux-v3 .uds-brand-track { animation:udsBrandsContinuous 32s linear infinite!important; transform:translateX(0); width:max-content!important; }
+#updown-store.uds-ux-v3 .uds-brand-name { flex:0 0 200px!important; width:200px!important; box-sizing:border-box!important; }
+@keyframes udsBrandsContinuous { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+#updown-store.uds-ux-v3 .uds-course-city-filter { display:flex; align-items:center; gap:10px; margin:0 0 24px; width:max-content; max-width:100%; }
+#updown-store.uds-ux-v3 .uds-city-triangle { color:#fff; font-size:14px; filter:drop-shadow(0 0 1px #173a33); animation:udsCityPulse 1.8s ease-in-out infinite; }
+@keyframes udsCityPulse { 50% { opacity:.35; } }
+#updown-store.uds-ux-v3 #udsCourseCity { appearance:none; background:transparent; color:#173a33; border:0; border-bottom:1px solid rgba(23,58,51,.25); border-radius:0; padding:10px 20px 10px 0; font:600 16px/1.4 Inter,Arial,sans-serif; cursor:pointer; max-width:100%; }
+#updown-store.uds-ux-v3 #udsCourseCity option { background:#fff; color:#173a33; }
+#updown-store.uds-ux-v3 #udsCloseModal { position:fixed!important; top:14px!important; right:14px!important; z-index:1100!important; display:grid!important; place-items:center!important; width:44px!important; height:44px!important; padding:0!important; border:1px solid rgba(23,58,51,.18)!important; border-radius:50%!important; background:#fff!important; color:#173a33!important; font:32px/1 Arial,sans-serif!important; box-shadow:0 4px 18px rgba(0,0,0,.15)!important; cursor:pointer!important; opacity:1!important; visibility:visible!important; pointer-events:auto!important; }
+#updown-store.uds-ux-v3 #udsCloseModal:focus-visible { outline:3px solid #173a33; outline-offset:3px; }
+@media(max-width:1023px) {
+  #updown-store.uds-ux-v3 #udsCloseModal { top:calc(70px + env(safe-area-inset-top))!important; }
+}
+@media(prefers-reduced-motion:reduce) {
+  #updown-store.uds-ux-v3 .uds-brand-track, #updown-store.uds-ux-v3 .uds-city-triangle { animation:none!important; }
+  #updown-store.uds-ux-v3 .uds-brand-strip { overflow-x:auto!important; }
+}
 :root {
   --ud-header-green: #0b493d;
   --ud-header-white: #ffffff;
