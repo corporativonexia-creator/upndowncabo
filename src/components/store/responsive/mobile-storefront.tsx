@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, type ReactNode } from "react";
 import { MobileHeader } from "./mobile-header";
+import { HeroVideo } from "./hero-video";
 
 /** Mobile/tablet presentation shell. Shared storefront controls/data live above this layer. */
 export function MobileStorefront({ children }: { children: ReactNode }) {
@@ -78,6 +79,7 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
       `}</style>
       <MobileHeader />
       {children}
+      <HeroVideo />
     </div>
   );
 }
