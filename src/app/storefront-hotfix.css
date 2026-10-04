@@ -613,3 +613,126 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
   visibility: hidden !important;
   pointer-events: none !important;
 }
+
+/* H84: product detail fits mobile landscape and keeps close/actions reachable. */
+@media (max-width:1023px) {
+  #updown-store.uds-ux-v3 #udsModal,
+  #updown-store.uds-ux-v3 #udsModal.is-open {
+    position:fixed!important;
+    inset:0!important;
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:calc(54px + env(safe-area-inset-top)) 0 0!important;
+    border:0!important;
+    border-radius:0!important;
+    transform:none!important;
+    overflow:hidden!important;
+    z-index:2147483500!important;
+    background:#fff!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsCloseModal {
+    position:absolute!important;
+    top:calc(6px + env(safe-area-inset-top))!important;
+    right:max(12px, env(safe-area-inset-right))!important;
+    z-index:20!important;
+    display:grid!important;
+    place-items:center!important;
+    width:44px!important;
+    height:44px!important;
+    opacity:1!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-grid {
+    display:block!important;
+    position:relative!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    max-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-content {
+    min-width:0!important;
+    width:100%!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-sizing:border-box!important;
+    padding:18px max(18px, env(safe-area-inset-right)) calc(106px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left))!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-actions {
+    position:fixed!important;
+    left:max(12px, env(safe-area-inset-left))!important;
+    right:max(12px, env(safe-area-inset-right))!important;
+    bottom:calc(8px + env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    margin:0!important;
+    z-index:21!important;
+    padding:8px!important;
+    background:rgba(255,255,255,.97)!important;
+    box-shadow:0 -8px 22px rgba(20,62,53,.10)!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-actions > button {
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+}
+
+@media (max-width:1023px) and (orientation:landscape) {
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-grid {
+    display:grid!important;
+    grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr)!important;
+    align-items:start!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-gallery {
+    width:100%!important;
+    min-width:0!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding-bottom:calc(94px + env(safe-area-inset-bottom))!important;
+    overflow:hidden!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-media {
+    width:100%!important;
+    height:clamp(140px, calc(100dvh - 128px), 360px)!important;
+    min-height:0!important;
+    max-height:none!important;
+    aspect-ratio:auto!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-media > img {
+    width:100%!important;
+    height:100%!important;
+    max-width:100%!important;
+    max-height:100%!important;
+    object-fit:contain!important;
+    padding:8px!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal .uds-modal-content {
+    min-width:0!important;
+    padding:12px 18px calc(106px + env(safe-area-inset-bottom))!important;
+  }
+
+  #updown-store.uds-ux-v3 #udsModal #udsModalSpecs {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
