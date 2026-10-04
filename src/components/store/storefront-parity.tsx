@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { storefrontCopy } from "./storefront-copy";
 import { legacyHomeMarkup } from "./legacy-home-markup";
 import { DesktopStorefront } from "./responsive/desktop-storefront";
 import { MobileStorefront } from "./responsive/mobile-storefront";
@@ -114,9 +115,23 @@ export default function StorefrontParity() {
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
     window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
+    window.__UPDOWN_TEXTS__ = storefrontCopy;
+    const copyAbort = new AbortController();
+    fetch(`${window.__UPDOWN_SUPABASE_URL__}/rest/v1/storefront_texts?select=key,source_text,es,en`, {
+      headers: { apikey: window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ || "" },
+      signal: copyAbort.signal,
+    }).then(async (response) => {
+      if (!response.ok) return;
+      const rows = await response.json();
+      if (!Array.isArray(rows) || copyAbort.signal.aborted) return;
+      const merged = new Map(storefrontCopy.map((row) => [row.key, row]));
+      rows.forEach((row) => { if (typeof row.key === "string" && typeof row.es === "string" && typeof row.en === "string" && typeof row.source_text === "string") merged.set(row.key, row); });
+      window.__UPDOWN_TEXTS__ = Array.from(merged.values());
+      window.dispatchEvent(new Event("updown:copy-ready"));
+    }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H68-news-city-close"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H69-owned-bilingual-copy"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
@@ -124,11 +139,12 @@ export default function StorefrontParity() {
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
     document.body.appendChild(script);
-    return () => { observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
+    return () => { copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
   }, [deviceMode]);
 
   if (!deviceMode) return null;
   const storefront = <SharedLegacyStorefront />;
   return deviceMode === "mobile" ? <MobileStorefront>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>;
 }
+
 
