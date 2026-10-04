@@ -674,8 +674,8 @@
   {
     "key": "text.c46fb4d63009",
     "source_text": "Servicios UP AND DOWN",
-    "es": "Servicios UP AND DOWN",
-    "en": "UP AND DOWN Services"
+    "es": "Servicios",
+    "en": "Services"
   },
   {
     "key": "text.cab2c84a881c",
@@ -2282,8 +2282,8 @@
   {
     "key": "section.services",
     "source_text": "Servicios UP AND DOWN",
-    "es": "Servicios UP AND DOWN",
-    "en": "UP AND DOWN Services"
+    "es": "Servicios",
+    "en": "Services"
   },
   {
     "key": "section.courses",

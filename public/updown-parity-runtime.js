@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H79";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H80";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -1586,7 +1586,7 @@
     });
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
     const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
-    const managed="script,style,[translate='no'],.uds-managed-course,.uds-managed-journal-card,.uds-managed-teacher,#udsModalTitle,#udsModalDescription,#udsPlayerFit,.uds-card h3,.uds-card .uds-description";
+    const managed="script,style,[translate='no'],.uds-managed-course,.uds-managed-journal-card,.uds-managed-teacher,[data-managed-service],#udsModalTitle,#udsModalDescription,#udsPlayerFit,.uds-card h3,.uds-card .uds-description";
     nodes.forEach(node=>{
       if(node.parentElement?.closest(managed))return;
       const raw=node.nodeValue||"",trimmed=raw.trim();
@@ -1645,6 +1645,7 @@
     };
 
     document.querySelectorAll("#udsServices [data-service-whatsapp]").forEach(link=>{
+      if(link.closest("[data-managed-service]"))return;
       const kind=link.dataset.serviceWhatsapp;
       const message=serviceMessages[kind]?.[lang];
       if(!message)return;
@@ -1653,7 +1654,7 @@
     });
 
     document.querySelectorAll("#updown-store [data-ghin-contact]").forEach(link=>{
-      link.href=buildGhinWhatsAppUrl(lang);
+      if(!link.closest("[data-managed-service]"))link.href=buildGhinWhatsAppUrl(lang);
     });
 
     const footerWa=document.querySelector("#updown-store .uds-footer [data-general-whatsapp]");
@@ -1749,6 +1750,7 @@
     document.querySelectorAll("#updown-store [data-store-copy]").forEach(node=>{
       node.textContent=siteText(node.getAttribute("data-store-copy"));
     });
+    renderManagedServices();
     window.dispatchEvent(new CustomEvent("updown:language-change",{detail:currentLanguage}));
   }
   window.__UPDOWN_SET_LANGUAGE__=applyLanguage;
@@ -2166,30 +2168,94 @@
     });
   });
 
-  // Servicios UP AND DOWN: una sola card abierta a la vez.
-  document.querySelectorAll("#updown-store [data-service-card]").forEach(card=>{
-    const trigger=card.querySelector(".uds-service-head");
-
-    trigger.addEventListener("click",()=>{
-      const shouldOpen=!card.classList.contains("is-open");
-
-      document.querySelectorAll("#updown-store [data-service-card]").forEach(other=>{
-        other.classList.remove("is-open");
-        other.querySelector(".uds-service-head")?.setAttribute("aria-expanded","false");
-      });
-
-      if(shouldOpen){
-        card.classList.add("is-open");
-        trigger.setAttribute("aria-expanded","true");
-
-        window.setTimeout(()=>{
-          card.scrollIntoView({
-            behavior:"smooth",
-            block:"center"
-          });
-        },180);
+  // H80: service content is managed separately from the protected golf lesson workflow.
+  let managedServices=null;
+  const serviceCards=new Map([...document.querySelectorAll('#udsServices [data-service-card]')].map(card=>[card.dataset.serviceKind,card]));
+  function serviceText(row,field){
+    const translated=row[`${field}_${currentLanguage}`];
+    if(Array.isArray(translated))return translated.length?translated:(row[`${field}_es`]||[]);
+    return typeof translated==='string'&&translated.trim()?translated:(row[`${field}_es`]||'');
+  }
+  function serviceUrl(row){
+    const raw=serviceText(row,'cta_url');
+    if(!raw)return '';
+    try{
+      const url=new URL(raw,location.origin);
+      if(!['https:','http:'].includes(url.protocol))return '';
+      const isWa=url.hostname==='wa.me'||url.hostname==='api.whatsapp.com'||url.hostname==='web.whatsapp.com';
+      const phone=(url.hostname==='wa.me'?url.pathname.replace(/\D/g,''):url.searchParams.get('phone')||'').replace(/\D/g,'');
+      const affiliate=getStoredAffiliate();
+      if(row.use_referral&&isWa&&phone==='526243554700'&&affiliate?.code){
+        let sellerPhone=String(affiliate.seller_phone||'').replace(/\D/g,'');
+        if(sellerPhone.length===10)sellerPhone=`52${sellerPhone}`;
+        if(sellerPhone){if(url.hostname==='wa.me')url.pathname=`/${sellerPhone}`;else url.searchParams.set('phone',sellerPhone)}
+        const message=url.searchParams.get('text')||'';
+        const referral=currentLanguage==='en'?`I’m shopping with ${affiliate.seller_name||'UP AND DOWN'}'s referral (${affiliate.code}).`:`Estoy comprando con la referencia de ${affiliate.seller_name||'UP AND DOWN'} (${affiliate.code}).`;
+        url.searchParams.set('text',`${message}\n\n${referral}`);
       }
+      return url.href;
+    }catch{return ''}
+  }
+  function renderManagedServices(){
+    if(!managedServices)return;
+    const grid=document.querySelector('#udsServices .uds-services-grid');
+    if(!grid)return;
+    const visible=new Set();
+    [...managedServices].filter(row=>row.is_active).sort((a,b)=>a.sort_order-b.sort_order||a.key.localeCompare(b.key)).forEach(row=>{
+      let card=serviceCards.get(row.key);
+      if(!card){
+        card=document.createElement('article');card.className='uds-service-card';card.dataset.serviceCard='';card.dataset.serviceKind=row.key;
+        card.innerHTML='<button type="button" class="uds-service-head" aria-expanded="false"><div><div class="uds-service-title"><small></small><h3></h3></div></div><span class="uds-service-toggle">+</span></button><div class="uds-service-content"><div class="uds-service-content-inner"><div class="uds-service-body"></div></div></div>';
+        serviceCards.set(row.key,card);
+      }
+      visible.add(row.key);
+      const head=card.querySelector('.uds-service-head');
+      let photo=head.querySelector('.uds-service-photo');
+      const image=safeServiceImage(row.image_url);
+      if(image){
+        if(!photo){photo=document.createElement('img');photo.className='uds-service-photo';photo.loading='lazy';photo.alt='';head.prepend(photo)}
+        if(photo.getAttribute('src')!==image)photo.src=image;
+        photo.onerror=()=>{photo.remove();card.classList.remove('has-service-photo')};
+        card.classList.add('has-service-photo');
+      }else{photo?.remove();card.classList.remove('has-service-photo')}
+      // Keep the exact lesson DOM node, form, bindings, translation and instructors.
+      if(row.key!=='classes'){
+        card.dataset.managedService='';
+        head.querySelector('h3').textContent=serviceText(row,'title');
+        const eyebrow=head.querySelector('small');eyebrow.textContent=serviceText(row,'eyebrow');eyebrow.hidden=!eyebrow.textContent;
+        const body=card.querySelector('.uds-service-body');body.replaceChildren();
+        const add=(tag,className,text)=>{if(!text)return;const node=document.createElement(tag);node.className=className;node.textContent=text;body.appendChild(node);return node};
+        add('p','',serviceText(row,'description'));
+        const items=serviceText(row,'items');
+        if(Array.isArray(items)&&items.length){const list=document.createElement('div');list.className='uds-service-points';items.forEach(text=>{if(typeof text!=='string'||!text.trim())return;const point=document.createElement('div');point.className='uds-service-point';point.textContent=text;list.appendChild(point)});body.appendChild(list)}
+        const label=serviceText(row,'cta_label'),url=serviceUrl(row);
+        if(label&&url){const actions=document.createElement('div');actions.className='uds-service-actions';const link=document.createElement('a');link.className='uds-btn uds-btn-primary';link.textContent=label;link.href=url;if(new URL(url).origin!==location.origin){link.target='_blank';link.rel='noopener noreferrer'}actions.appendChild(link);body.appendChild(actions)}
+        add('div','uds-service-note',serviceText(row,'note'));
+      }
+      grid.appendChild(card);
     });
+    serviceCards.forEach((card,key)=>{if(!visible.has(key)&&key!=='classes')card.remove()});
+  }
+  function safeServiceImage(raw){try{const url=new URL(raw);return url.protocol==='https:'?url.href:''}catch{return ''}}
+  async function loadManagedServices(){
+    try{
+      const {data,error}=await db.from('storefront_services').select('*').eq('is_active',true).order('sort_order').order('key').abortSignal(timeoutSignal());
+      if(error||!Array.isArray(data)){console.warn('[UPDOWN services]',error);return}
+      if(!document.querySelector('#udsServices .uds-services-grid')?.contains(serviceCards.get('classes')))return;
+      managedServices=data;renderManagedServices();
+    }catch(error){console.warn('[UPDOWN services]',error)}
+  }
+
+  // One delegated handler also supports newly registered services.
+  document.querySelector('#udsServices .uds-services-grid')?.addEventListener('click',event=>{
+    const trigger=event.target.closest('.uds-service-head');
+    const card=trigger?.closest('[data-service-card]');
+    if(!card)return;
+    const shouldOpen=!card.classList.contains('is-open');
+    document.querySelectorAll('#udsServices [data-service-card]').forEach(other=>{
+      other.classList.remove('is-open');other.querySelector('.uds-service-head')?.setAttribute('aria-expanded','false');
+    });
+    if(shouldOpen){card.classList.add('is-open');trigger.setAttribute('aria-expanded','true');setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'center'}),180)}
   });
 
 
@@ -2292,6 +2358,7 @@
 
       await loadStore();
       await affiliateCapture;
+      await loadManagedServices();
 
       try{
         applyLanguage(currentLanguage);

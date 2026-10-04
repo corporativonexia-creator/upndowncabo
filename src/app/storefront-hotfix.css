@@ -516,3 +516,25 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
 
 /* H79: retain subpixel interpolation during automatic brand movement. */
 #updown-store.uds-ux-v3 .uds-brand-track { will-change:transform; }
+
+/* H80: two service columns, with optional editorial photography. */
+#updown-store.uds-ux-v3 #udsServices .uds-services-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important;align-items:start!important;background:transparent!important;border:0!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-card{min-width:0!important;grid-column:auto!important;border:1px solid rgba(20,62,53,.12)!important;border-radius:16px!important;overflow:hidden!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-card.is-open{grid-column:1/-1!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-head{position:relative!important;min-height:120px!important;padding:20px!important;height:auto!important;width:100%!important}
+#updown-store.uds-ux-v3 #udsServices .has-service-photo .uds-service-head{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:14px!important;padding:0 0 18px!important}
+#updown-store.uds-ux-v3 #udsServices .has-service-photo .uds-service-head>div{padding:0 18px!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-photo{position:static!important;display:block!important;width:100%!important;height:auto!important;aspect-ratio:3/2!important;object-fit:cover!important;border-radius:0!important}
+#updown-store.uds-ux-v3 #udsServices .has-service-photo .uds-service-toggle{position:absolute!important;right:12px!important;top:12px!important;background:rgba(255,255,255,.92)!important;color:#143e35!important}
+#updown-store.uds-ux-v3 #udsServices .has-service-photo.is-open .uds-service-photo{aspect-ratio:16/5!important;max-height:250px!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-title h3{font-size:clamp(18px,2.1vw,26px)!important;line-height:1.2!important;overflow-wrap:anywhere!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-title small{font-size:11px!important;line-height:1.4!important}
+#updown-store.uds-ux-v3 #udsServices .uds-service-body>p,#updown-store.uds-ux-v3 #udsServices .uds-service-note{white-space:pre-line}
+@media(max-width:700px){
+ #updown-store.uds-ux-v3 #udsServices .uds-services-grid{gap:10px!important}
+ #updown-store.uds-ux-v3 #udsServices .uds-service-head{padding:14px!important;min-height:116px!important}
+ #updown-store.uds-ux-v3 #udsServices .has-service-photo .uds-service-head>div{padding:0 12px!important}
+ #updown-store.uds-ux-v3 #udsServices .uds-service-title h3{font-size:17px!important}
+ #updown-store.uds-ux-v3 #udsServices .uds-service-title small{font-size:10px!important;letter-spacing:.04em!important}
+ #updown-store.uds-ux-v3 #udsServices .uds-service-icon{width:28px!important;height:28px!important;margin-bottom:8px!important}
+}

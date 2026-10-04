@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import ServicesAdmin from "./services-admin";
 import AdminSectionNav from "./admin-section-nav";
 import styles from "./category-images-admin.module.css";
 
@@ -103,10 +104,12 @@ export default function CategoryImagesAdmin() {
 
   return (
     <main className={styles.page}>
-      <AdminSectionNav active="Categorías" />
-      <header className={styles.heading}><div><h1>Imágenes de categorías</h1><p>Una imagen fija por categoría. Puedes reemplazarla cuando lo necesites.</p><small>JPG, PNG, WebP o AVIF · Máximo 10 MB · Recomendado: 1200 × 1200 px, con el producto centrado.</small></div><Link href="/vista-previa" target="_blank" rel="noopener noreferrer">Ver tienda ↗</Link></header>
+      <AdminSectionNav active="Categorías y servicios" />
+      <header className={styles.heading}><div><h1>Categorías y servicios</h1><p>Administra las fotos de categorías y las tarjetas de servicios.</p><small>JPG, PNG, WebP o AVIF · Máximo 10 MB · Recomendado: 1200 × 1200 px, con el producto centrado.</small></div><Link href="/vista-previa" target="_blank" rel="noopener noreferrer">Ver tienda ↗</Link></header>
+      <h2>Imágenes de categorías</h2><p>Una imagen fija por categoría. Puedes reemplazarla cuando lo necesites.</p>
       {loading ? <p role="status">Cargando categorías…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setReload(value => value + 1)}>Volver a intentar</button></div> : <div className={styles.grid}>{categories.map(category => <CategoryImageCard key={category.id} category={category} onSaved={onSaved} />)}</div>}
       {!loading && !error && categories.length === 0 ? <p>No hay categorías registradas.</p> : null}
+      <ServicesAdmin />
     </main>
   );
 }
