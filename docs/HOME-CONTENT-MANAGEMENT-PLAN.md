@@ -30,7 +30,7 @@ Admin must support:
 
 Teachers belong to the Classes service experience.
 
-## Cabo Journal
+## Noticias
 Admin must support:
 - title
 - slug
@@ -87,3 +87,4 @@ Prioridad actual: video del hero en móvil. El header móvil propio, búsqueda, 
 ### Deuda técnica y restricciones
 - Limpiar instancias duplicadas de GoTrueClient después del video.
 - Stripe permanece pendiente hasta que Aldo confirme acceso a la cuenta del cliente; no activar checkout público.
+
