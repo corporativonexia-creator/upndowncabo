@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H77";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H78";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -3552,7 +3552,7 @@
 
 
 
-/* H77: brand strip follows categories; native swipe and gentle auto-scroll. */
+/* H78: smooth accumulated scrolling plus mouse drag and native touch swipe. */
 (()=>{
   const strip=document.querySelector("#updown-store .uds-brand-strip");
   const track=strip?.querySelector(".uds-brand-track");
@@ -3560,25 +3560,45 @@
   const items=[...track.children];
   items.slice(items.length/2).forEach(item=>item.setAttribute("aria-hidden","true"));
   const reduced=window.matchMedia("(prefers-reduced-motion:reduce)");
-  let touching=false,hovering=false,focused=false,pauseUntil=0,last=0;
-  const pause=()=>{pauseUntil=performance.now()+3500;};
-  strip.addEventListener("pointerdown",()=>{touching=true;pause();});
-  ["pointerup","pointercancel","pointerleave"].forEach(name=>strip.addEventListener(name,()=>{touching=false;pause();}));
+  let touching=false,hovering=false,drag=null,pauseUntil=0,last=0,position=strip.scrollLeft;
+  const pause=()=>{pauseUntil=performance.now()+2500;};
+  strip.querySelectorAll("img").forEach(img=>{img.draggable=false;});
   strip.addEventListener("pointerenter",event=>{if(event.pointerType==="mouse")hovering=true;});
   strip.addEventListener("pointerleave",()=>{hovering=false;});
-  strip.addEventListener("focusin",()=>{focused=true;});
-  strip.addEventListener("focusout",()=>{focused=false;pause();});
+  strip.addEventListener("pointerdown",event=>{
+    pause();
+    if(event.pointerType!=="mouse"||event.button!==0)return;
+    event.preventDefault();
+    drag={id:event.pointerId,x:event.clientX,scroll:strip.scrollLeft};
+    strip.setPointerCapture(event.pointerId);
+    strip.classList.add("is-dragging");
+  });
+  strip.addEventListener("pointermove",event=>{
+    if(!drag||event.pointerId!==drag.id)return;
+    event.preventDefault();
+    strip.scrollLeft=drag.scroll+drag.x-event.clientX;
+    position=strip.scrollLeft;pause();
+  });
+  const stopDrag=()=>{drag=null;strip.classList.remove("is-dragging");position=strip.scrollLeft;pause();};
+  ["pointerup","pointercancel","lostpointercapture"].forEach(name=>strip.addEventListener(name,stopDrag));
+  strip.addEventListener("touchstart",()=>{touching=true;pause();},{passive:true});
+  ["touchend","touchcancel"].forEach(name=>strip.addEventListener(name,()=>{touching=false;position=strip.scrollLeft;pause();},{passive:true}));
+  strip.addEventListener("focusout",pause);
   strip.addEventListener("wheel",pause,{passive:true});
   strip.addEventListener("keydown",pause);
   function tick(now){
     if(!strip.isConnected)return;
     const delta=last?Math.min(now-last,50):0;last=now;
     const rect=strip.getBoundingClientRect();
-    if(!document.hidden&&!reduced.matches&&!touching&&!hovering&&!focused&&now>=pauseUntil&&rect.bottom>0&&rect.top<window.innerHeight){
+    const paused=document.hidden||reduced.matches||touching||hovering||drag||strip.matches(":focus-visible")||now<pauseUntil||rect.bottom<=0||rect.top>=window.innerHeight;
+    if(paused)position=strip.scrollLeft;
+    else {
       const half=track.scrollWidth/2;
       if(half>strip.clientWidth){
-        const next=strip.scrollLeft+delta*.022;
-        strip.scrollLeft=next>=half?next-half:next;
+        // Keep fractional progress: some browsers round every scrollLeft assignment.
+        position+=delta*.016;
+        if(position>=half)position-=half;
+        strip.scrollLeft=position;
       }
     }
     requestAnimationFrame(tick);

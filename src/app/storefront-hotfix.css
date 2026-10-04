@@ -508,3 +508,8 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
   #updown-store.uds-ux-v3 .uds-brands-section { padding:7px 0 12px!important; }
   #updown-store.uds-ux-v3 .uds-brand-name { flex-basis:144px!important; width:144px!important; min-width:144px!important; height:48px!important; padding:6px 12px!important; font-size:12px!important; }
 }
+
+/* H78: drag feedback without blocking native horizontal or vertical touch scrolling. */
+#updown-store.uds-ux-v3 .uds-brand-strip { cursor:grab!important; touch-action:pan-x pan-y!important; }
+#updown-store.uds-ux-v3 .uds-brand-strip.is-dragging { cursor:grabbing!important; user-select:none!important; }
+#updown-store.uds-ux-v3 .uds-brand-name img { -webkit-user-drag:none; user-select:none; }
