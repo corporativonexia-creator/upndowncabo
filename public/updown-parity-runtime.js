@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H74";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H75";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -3416,10 +3416,10 @@
   const modal=document.getElementById("udsModal");
 
   /* ----------------------------------------------------------
-     1) Catalog pager: 9 products, scoped observer only on #udsGrid.
+     1) Catalog pager: 6 mobile products, scoped observer only on #udsGrid.
      ---------------------------------------------------------- */
   let page=0;
-  const pageSize=9;
+  const pageSize=6;
   let pager=null;
   let pagerLabel=null;
   let prevBtn=null;
@@ -3428,7 +3428,7 @@
 
   function productCards(){
     if(!grid)return [];
-    return [...grid.children].filter(node=>node.nodeType===1 && !node.id?.startsWith("udsMobileCatalogPager"));
+    return [...grid.children].filter(node=>node.nodeType===1 && node.classList.contains("uds-card"));
   }
 
   function ensurePager(){
@@ -3442,14 +3442,14 @@
     prevBtn=document.createElement("button");
     prevBtn.type="button";
     prevBtn.setAttribute("aria-label","Productos anteriores");
-    prevBtn.textContent="â€¹";
+    prevBtn.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M13 4 5 10l8 6Z"/></svg>';
 
     pagerLabel=document.createElement("span");
 
     nextBtn=document.createElement("button");
     nextBtn.type="button";
     nextBtn.setAttribute("aria-label","Productos siguientes");
-    nextBtn.textContent="â€º";
+    nextBtn.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m7 4 8 6-8 6Z"/></svg>';
 
     prevBtn.addEventListener("click",()=>{
       if(page<=0)return;
@@ -3484,7 +3484,10 @@
     }
 
     ensurePager();
-    pager.style.display="grid";
+    pager.style.display=cards.length?"grid":"none";
+    const english=document.documentElement.lang.startsWith("en");
+    prevBtn.setAttribute("aria-label",english?"Previous products":"Productos anteriores");
+    nextBtn.setAttribute("aria-label",english?"Next products":"Productos siguientes");
 
     const pages=Math.max(1,Math.ceil(cards.length/pageSize));
     if(page>pages-1)page=pages-1;
@@ -3499,7 +3502,9 @@
       if(visible)card.style.removeProperty("display");
     });
 
-    pagerLabel.textContent=`${page+1} / ${pages} · ${cards.length} productos`;
+    pagerLabel.textContent=`${page+1} / ${pages} · ${cards.length} ${english?(cards.length===1?"product":"products"):(cards.length===1?"producto":"productos")}`;
+    pagerLabel.setAttribute("aria-live","polite");
+    pagerLabel.setAttribute("aria-atomic","true");
     prevBtn.disabled=page===0;
     nextBtn.disabled=page>=pages-1;
 

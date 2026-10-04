@@ -431,3 +431,34 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
 #updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon { min-width:22px!important; max-width:22px!important; flex:0 0 22px!important; }
 #updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon path,
 #updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon circle { fill:none!important; stroke:currentColor!important; stroke-width:1.6!important; stroke-linecap:round!important; stroke-linejoin:round!important; }
+
+/* H75 — complete collection: fixed photo frames and two-column mobile grid. */
+#updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-media {
+  position:relative!important; width:100%!important; aspect-ratio:1 / 1!important;
+  height:auto!important; min-height:0!important; max-height:none!important; flex:0 0 auto!important;
+}
+#updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-media img {
+  position:absolute!important; inset:0!important; width:100%!important; height:100%!important;
+  object-fit:contain!important; object-position:center!important; padding:0!important;
+}
+#updown-store.uds-ux-v3 #udsCatalog #udsGrid > .uds-card[hidden] { display:none!important; }
+@media(max-width:760px) {
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:14px 10px!important; align-items:stretch!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid > .uds-card { display:flex!important; flex-direction:column!important; height:100%!important; min-width:0!important; border-radius:14px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid > .uds-card[hidden] { display:none!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-body { flex:1 1 auto!important; min-width:0!important; padding:12px 10px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-category { font-size:9px!important; line-height:1.4!important; overflow-wrap:anywhere; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card h3 { font-size:15px!important; line-height:1.25!important; min-height:2.5em!important; margin:5px 0 8px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-price-row .uds-price { font-size:clamp(16px,4.4vw,20px)!important; line-height:1.2!important; letter-spacing:-.035em!important; max-width:100%!important; white-space:normal!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-price-row { gap:3px 7px!important; margin-bottom:8px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-old-price { font-size:10px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-footer { flex-direction:column!important; align-items:stretch!important; gap:9px!important; padding-top:5px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card-actions { width:100%!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-card .uds-card-actions .uds-view-equipment { width:100%!important; min-height:44px!important; margin:0!important; padding:0 6px!important; font-size:11px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsGrid .uds-condition { top:8px!important; right:8px!important; font-size:9px!important; padding:5px 7px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 { grid-template-columns:44px minmax(0,1fr) 44px!important; gap:10px!important; margin-top:18px!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 button { display:flex!important; align-items:center!important; justify-content:center!important; width:44px!important; height:44px!important; padding:0!important; border:1px solid rgba(20,62,53,.14)!important; border-radius:50%!important; color:#143e35!important; background:#f3f6f2!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 button svg { display:block!important; width:16px!important; height:16px!important; fill:currentColor!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 button:disabled { opacity:.3!important; cursor:default!important; }
+  #updown-store.uds-ux-v3 #udsCatalog #udsMobileCatalogPager58 span { font-size:11px!important; font-weight:600!important; line-height:1.4!important; letter-spacing:0!important; text-transform:none!important; }
+}
