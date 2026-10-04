@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getStorefrontText, type StorefrontLanguage } from "../storefront-copy";
 
 type MobileService = { key: string; title_es: string; title_en: string; image_url: string | null };
@@ -56,11 +56,16 @@ export function MobileHeader() {
     setLanguage(next);
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuDialog = useRef<HTMLDialogElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!menuOpen) return;
+    const panel = menuDialog.current;
+    if (!panel) return;
+    if (!panel.open) panel.showModal();
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previous; };
+    return () => { panel.close(); document.body.style.overflow = previous; menuTrigger.current?.focus({ preventScroll: true }); };
   }, [menuOpen]);
 
   const navigate = (id: string) => {
@@ -106,14 +111,13 @@ export function MobileHeader() {
           <button type="button" aria-label={t("mobile.cart")} onClick={() => clickLegacyControl("udsFloatingCart", "udsCartButton", "udsDockCart")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
           </button>
-          <button type="button" className="uds-native-menu-trigger" aria-label={t("mobile.menu")} aria-expanded={menuOpen} onPointerUp={() => setMenuOpen(true)} onClick={() => setMenuOpen(true)}>
+          <button type="button" className="uds-native-menu-trigger" aria-label={t("mobile.menu")} ref={menuTrigger} aria-haspopup="dialog" aria-controls="udsNativeMenuDialog" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
         </nav>
       </header>
 
-      {menuOpen && (
-        <div className="uds-native-menu" role="dialog" aria-modal="true" aria-label={t("mobile.menu")}>
+      <dialog ref={menuDialog} id="udsNativeMenuDialog" className="uds-native-menu" aria-modal="true" aria-label={t("mobile.menu")} onCancel={event => { event.preventDefault(); setMenuOpen(false); }}>
           <div className="uds-native-menu-head"><strong>{t("mobile.navigation")}</strong><button type="button" aria-label={t("mobile.closeMenu")} onClick={() => setMenuOpen(false)}>×</button></div>
           <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); window.setTimeout(openSearch, 0); }}>{t("mobile.searchEquipment")} <span>⌕</span></button>
           <div className="uds-native-menu-shortcuts">
@@ -137,8 +141,7 @@ export function MobileHeader() {
             <button type="button" onClick={() => { setMenuOpen(false); clickLegacyControl("udsAdvisorContact"); }}>{t("mobile.advisor")}</button>
           </div>
           <div className="uds-native-menu-foot">UP AND DOWN · Los Cabos<br/>WhatsApp · 624 355 4700</div>
-        </div>
-      )}
+      </dialog>
     </>
   );
 }

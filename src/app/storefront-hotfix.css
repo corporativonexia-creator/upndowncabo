@@ -740,3 +740,20 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
 /* Keep the mobile menu trigger available to touch input in landscape browsers. */
 .uds-native-mobile-header,.uds-native-mobile-actions,.uds-native-mobile-actions .uds-native-menu-trigger{pointer-events:auto!important}
 .uds-native-mobile-actions .uds-native-menu-trigger{position:relative!important;z-index:4!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(20,62,53,.12)}
+
+/* Native top-layer menu: one click activation, independent of storefront overlays. */
+dialog.uds-native-menu {
+  box-sizing:border-box;
+  margin:0;
+  border:0;
+  width:100%;
+  max-width:none;
+  height:100dvh;
+  max-height:100dvh;
+  padding:max(18px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  overscroll-behavior:contain;
+}
+dialog.uds-native-menu:not([open]) { display:none!important; }
+dialog.uds-native-menu[open] { display:block!important; }
+dialog.uds-native-menu::backdrop { background:rgba(20,62,53,.25); }
+.uds-native-menu-trigger svg { pointer-events:none; }
