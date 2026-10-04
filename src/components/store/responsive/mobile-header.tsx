@@ -60,10 +60,10 @@ export function MobileHeader() {
   }, [searchOpen, menuOpen]);
 
   const quickSearches = [
-    { label: language === "en" ? "Drivers" : "Palos de salida", query: "driver" },
-    { label: language === "en" ? "Fairway woods" : "Maderas", query: "madera" },
-    { label: language === "en" ? "Irons" : "Hierros", query: "hierro" },
-    { label: language === "en" ? "Putters" : "Palos de precisión", query: "putter" },
+    { label: "Drivers", query: "driver" },
+    { label: "Fairway Woods", query: "madera" },
+    { label: "Irons", query: "hierro" },
+    { label: "Putters", query: "putter" },
     { label: "TaylorMade", query: "TaylorMade" }, { label: "Callaway", query: "Callaway" },
   ];
 
