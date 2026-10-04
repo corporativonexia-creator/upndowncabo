@@ -15,21 +15,79 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
   return (
     <div className="uds-device-ux uds-device-ux--mobile" data-storefront-ux="mobile">
       <style>{`
-        html,body{margin:0!important;padding:0!important}
-        .uds-device-ux--mobile{margin:0!important;padding:0!important}
+        html,body{margin:0!important;padding:0!important;overflow-x:clip!important}
+        .uds-device-ux--mobile{
+          margin:0!important;
+          padding:0!important;
+          overflow:visible!important;
+          transform:none!important;
+          contain:none!important;
+        }
         .uds-device-ux--mobile .uds-announcement{display:none!important}
-        .uds-device-ux--mobile #updown-store{margin:0!important;padding:0!important}
-        .uds-device-ux--mobile #updown-store .uds-header{
+        .uds-device-ux--mobile #updown-store{
+          margin:0!important;
+          padding:0!important;
+          overflow-x:clip!important;
+          overflow-y:visible!important;
+          transform:none!important;
+          contain:none!important;
+          perspective:none!important;
+          filter:none!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header,
+        .uds-device-ux--mobile #updown-store .uds-header.is-scrolled,
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule{
           position:fixed!important;
           top:0!important;
           left:0!important;
           right:0!important;
+          width:100%!important;
+          height:auto!important;
           margin:0!important;
+          border-radius:0!important;
           transform:none!important;
           translate:none!important;
+          opacity:1!important;
+          visibility:visible!important;
+          overflow:visible!important;
           z-index:2147483000!important;
         }
-        .uds-device-ux--mobile #updown-store main{margin-top:0!important;padding-top:0!important}
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-topbar{
+          width:auto!important;
+          min-height:70px!important;
+          height:auto!important;
+          padding:0!important;
+          display:grid!important;
+          grid-template-columns:auto 1fr auto!important;
+          place-items:initial!important;
+          align-items:center!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo{
+          width:auto!important;
+          min-width:auto!important;
+          height:auto!important;
+          justify-self:center!important;
+          background:transparent!important;
+          box-shadow:none!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo::before,
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo::after{
+          display:none!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-menu-btn{
+          display:inline-flex!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-top-actions{
+          display:flex!important;
+          justify-self:end!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-search-top{
+          display:inline-flex!important;
+        }
+        .uds-device-ux--mobile #updown-store main{
+          margin-top:0!important;
+          padding-top:70px!important;
+        }
       `}</style>
       {children}
     </div>
