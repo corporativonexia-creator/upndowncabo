@@ -614,6 +614,23 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
   pointer-events: none !important;
 }
 
+/* Cart feedback stays above the product dialog and never intercepts repeat taps. */
+#updown-store.uds-ux-v3 #udsToast {
+  position:fixed!important;
+  z-index:2147483645!important;
+  top:calc(76px + env(safe-area-inset-top))!important;
+  bottom:auto!important;
+  left:max(16px, env(safe-area-inset-left))!important;
+  right:max(16px, env(safe-area-inset-right))!important;
+  width:auto!important;
+  max-width:420px!important;
+  margin:0 auto!important;
+  font-size:14px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+  pointer-events:none!important;
+}
+
 /* H84: product detail fits mobile landscape and keeps close/actions reachable. */
 @media (max-width:1023px) {
   #updown-store.uds-ux-v3 #udsModal,

@@ -284,9 +284,10 @@
   }
   function addToCart(product){
     if(Number(product.stock)<=0){showToast(currentLanguage==="en"?"This product is sold out.":"Este producto está agotado.");return}
-    const ex=cart.find(i=>i.id===product.id);if(ex){if(ex.quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste el existencias disponible.");return}ex.quantity+=1}
+    const ex=cart.find(i=>i.id===product.id);if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
     else cart.push({id:product.id,name:product.name,slug:product.slug,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
-    saveCart();showToast(currentLanguage==="en"?`${product.name} added to cart.`:`${product.name} agregado al carrito.`)
+    const quantity=cart.find(i=>i.id===product.id).quantity;
+    saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
   function changeQty(id,d){const item=cart.find(i=>i.id===id);if(!item)return;const next=item.quantity+d;if(next<=0)return removeFromCart(id);if(next>item.stock)return showToast(currentLanguage==="en"?"No more units are available.":"No hay más unidades disponibles.");item.quantity=next;saveCart()}
   function removeFromCart(id){cart=cart.filter(i=>i.id!==id);saveCart()}
