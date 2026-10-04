@@ -239,7 +239,7 @@ html,body{margin:0;padding:0;background:#F8F6F2}body{min-width:0}button,input,se
 #updown-store .uds-course-actions a:last-child{border:1px solid rgba(255,255,255,.45);color:#fff}
 
 
-/* Cabo Journal */
+/* Noticias */
 #updown-store .uds-journal{background:var(--ivory)}
 #updown-store .uds-journal-grid{
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start
@@ -6787,8 +6787,7 @@ body.uds-image-viewer-open{
   }
 
   #updown-store.uds-ux-v3 .uds-brand-track{
-    animation:none!important;
-    transform:none!important;
+    animation:udsBrandsContinuous 32s linear infinite!important;
     width:max-content!important;
   }
 
@@ -10449,3 +10448,4 @@ body.uds-image-viewer-open{
     white-space:nowrap!important;
   }
 }
+
