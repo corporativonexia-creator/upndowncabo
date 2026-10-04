@@ -413,3 +413,21 @@
 #udsImageViewerCount { position:absolute!important; right:16px!important; bottom:calc(16px + env(safe-area-inset-bottom))!important; z-index:3!important; padding:7px 11px; border-radius:999px; background:rgba(255,255,255,.12); color:#fff; font:600 12px/1.2 Inter,Arial,sans-serif; }
 #udsImageViewer button:focus-visible { outline:3px solid #c8a86b; outline-offset:3px; }
 html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!important; pointer-events:none!important; }
+
+/* H74 — shipping disclosure, stock in heading and trade / ask / cart order. */
+#updown-store.uds-ux-v3 .uds-shipping-note { margin:4px 0 10px!important; font-size:11px!important; line-height:1.4!important; color:#63736b!important; letter-spacing:0!important; text-transform:none!important; }
+#updown-store.uds-ux-v3 #udsModalCategory { display:flex!important; align-items:center!important; flex-wrap:wrap!important; gap:6px 9px!important; }
+#updown-store.uds-ux-v3 .uds-modal-stock-tag { padding:4px 7px!important; border-radius:999px!important; background:#edf2ec!important; color:#345344!important; font-size:10px!important; line-height:1.2!important; letter-spacing:0!important; text-transform:none!important; }
+#updown-store.uds-ux-v3 .uds-modal-stock-tag.is-low { background:#f5efdf!important; color:#7b602d!important; }
+#updown-store.uds-ux-v3 .uds-modal-stock-tag.is-out { background:#f1ece9!important; color:#78594d!important; }
+#updown-store.uds-ux-v3 #udsModal .uds-modal-actions { grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalTrade { order:1!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalConcierge { order:2!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd { order:3!important; width:44px!important; min-width:44px!important; max-width:44px!important; padding:0!important; display:flex!important; align-items:center!important; justify-content:center!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon { display:block!important; width:22px!important; height:22px!important; fill:none!important; stroke:currentColor!important; stroke-width:1.6!important; stroke-linecap:round!important; stroke-linejoin:round!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd:disabled { opacity:.45!important; cursor:not-allowed!important; }
+#updown-store.uds-ux-v3 #udsModal .uds-modal-actions > button { grid-column:auto!important; justify-self:stretch!important; min-height:44px!important; height:44px!important; max-height:44px!important; font-size:11px!important; letter-spacing:0!important; line-height:1.2!important; text-transform:none!important; }
+#updown-store.uds-ux-v3 #udsModal .uds-modal-actions #udsModalTrade { width:100%!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon { min-width:22px!important; max-width:22px!important; flex:0 0 22px!important; }
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon path,
+#updown-store.uds-ux-v3 #udsModal #udsModalAdd .uds-modal-cart-icon circle { fill:none!important; stroke:currentColor!important; stroke-width:1.6!important; stroke-linecap:round!important; stroke-linejoin:round!important; }

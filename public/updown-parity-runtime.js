@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H73";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H74";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -591,6 +591,7 @@
         ${specs.length?`<p class="uds-card-specs">${specs.map(escapeHtml).join(" · ")}</p>`:""}
         <p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||"")}</p>
         <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}</div>
+        <p class="uds-shipping-note" data-store-copy="product.shippingExcluded">${escapeHtml(siteText("product.shippingExcluded"))}</p>
         <div class="uds-card-footer"><div class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</div><div class="uds-card-actions is-clean"><button class="uds-view-equipment" data-store-copy="card.details" aria-label="${escapeHtml(detailsLabel)}" type="button">${escapeHtml(siteText("card.details"))}</button></div></div>
       </div>`;
   }
@@ -1079,7 +1080,11 @@
     toggle.setAttribute("aria-expanded",String(productDescriptionExpanded));
     toggle.textContent=siteText(productDescriptionExpanded?"product.less":"product.more");
   }
-  function openProduct(product){
+  function openProduct(product,preserveView=false){
+    const savedModalScroll=preserveView?el("udsModal").scrollTop:0;
+    const savedGridScroll=preserveView?(el("udsModal").querySelector(".uds-modal-grid")?.scrollTop||0):0;
+    const savedGalleryIndex=preserveView?modalGalleryIndex:0;
+    const savedDescriptionExpanded=preserveView&&productDescriptionExpanded;
     if(!el("udsModal").classList.contains("is-open")){
       productReturnPosition=window.scrollY;
       productReturnFocus=document.activeElement;
@@ -1087,14 +1092,14 @@
     modalProduct=product;
     const advisor=productAdvisor(),specs=rawGolfSpecs(product),chips=golfSpecChips(product,4),stock=stockCopy(product.stock);
     modalGalleryImages=productGallery(product);
-    modalGalleryIndex=0;
-    renderModalGallery(0);
+    modalGalleryIndex=Math.min(savedGalleryIndex,Math.max(0,modalGalleryImages.length-1));
+    renderModalGallery(modalGalleryIndex);
     el("udsModalPick")?.classList.add("uds-hidden");
-    el("udsModalCategory").textContent=`${categoryLabel(product.categories)||"Golf"} · ${(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||""}`;
+    el("udsModalCategory").innerHTML=`<span>${escapeHtml(categoryLabel(product.categories)||"Golf")} · ${escapeHtml((currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||"")}</span><span class="uds-modal-stock-tag ${stock.cls}">${escapeHtml(stock.text)}</span>`;
     el("udsModalTitle").textContent=product.name||"";
     const hasDiscount=product.sale_price!==null&&Number(product.sale_price)<Number(product.price);
     el("udsModalPrice").innerHTML=`<span class="uds-price">${money(product.sale_price??product.price,product.currency,true)}</span>${hasDiscount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}`;
-    renderProductDescription(product);
+    renderProductDescription(product,savedDescriptionExpanded);
     el("udsModalImage").setAttribute("aria-label",siteText("product.expandImage"));
     const player=specs.player;
     el("udsPlayerFitWrap").classList.toggle("uds-hidden",!player);
@@ -1112,17 +1117,10 @@
     el("udsModal").classList.toggle("is-sold-out",isSoldOut);
     el("udsModalAdd").disabled=isSoldOut;
     el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito"));
-    el("udsModalAdd").innerHTML=isSoldOut
-  ? `<span>${currentLanguage==="en"?"Sold out":"Agotado"}</span>`
-  : `<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true">
-       <path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 1.9-1.4L21 8H7"/>
-       <circle cx="10" cy="20" r="1.4"/>
-       <circle cx="18" cy="20" r="1.4"/>
-     </svg>
-     <span>${currentLanguage==="en"?"Add to cart":"Agregar al carrito"}</span>`;
+    el("udsModalAdd").innerHTML=`<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>`;
     el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask":"Preguntar";
     el("udsModalTrade").textContent=currentLanguage==="en"?"Trade in":"Intercambiar";
-    closePanels(false);openOverlay();el("udsModal").classList.add("is-open");el("udsModal").setAttribute("aria-hidden","false"); requestAnimationFrame(()=>{const m=el("udsModal");if(m)m.scrollTop=0;const g=m?.querySelector(".uds-modal-grid");if(g)g.scrollTop=0;});
+    closePanels(false);openOverlay();el("udsModal").classList.add("is-open");el("udsModal").setAttribute("aria-hidden","false"); requestAnimationFrame(()=>{const m=el("udsModal");if(m)m.scrollTop=savedModalScroll;const g=m?.querySelector(".uds-modal-grid");if(g)g.scrollTop=savedGridScroll;});
   }
 
   function cleanLocationParameters(targetWindow){
@@ -1397,7 +1395,7 @@
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
       db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
-      db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
+      db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
     ]);
     if(ce||pe){
       const error=ce||pe;
@@ -1594,6 +1592,8 @@
   }
   function localizedProductText(product,field){
     if(currentLanguage!=="en")return product?.[field]||"";
+    const translated=product?.[`${field}_en`];
+    if(typeof translated==="string"&&translated.trim())return translated;
     const specs=product?.specifications&&typeof product.specifications==="object"?product.specifications:{};
     const aliases=field==="description"?["description_en","english_description","description english"]:["short_description_en","english_short_description","short description english"];
     for(const key of aliases){if(specs[key])return String(specs[key])}
@@ -1731,7 +1731,7 @@
     if(el("udsCatalogApply"))el("udsCatalogApply").textContent=currentLanguage==="en"?"Apply filters":"Aplicar filtros";
     if(el("udsCatalogClear"))el("udsCatalogClear").textContent=currentLanguage==="en"?"Clear filters":"Borrar filtros";
     if(el("udsCatalogFilterToggle"))el("udsCatalogFilterToggle").textContent=currentLanguage==="en"?"Filter catalog":"Filtrar catálogo";
-    renderCategories();renderCommerceFilters();renderAdvisorBar();renderPicks();renderNewArrivals();applyFilters();renderCart();if(modalProduct&&el("udsModal").classList.contains("is-open"))openProduct(modalProduct);
+    renderCategories();renderCommerceFilters();renderAdvisorBar();renderPicks();renderNewArrivals();applyFilters();renderCart();if(modalProduct&&el("udsModal").classList.contains("is-open"))openProduct(modalProduct,true);
     localizeStaticDom(currentLanguage);
     localizeWhatsAppLinks(currentLanguage);
     setupJournalVisibility();
@@ -3528,37 +3528,6 @@
     gridObserver.observe(grid,{childList:true});
   }
 
-  /* ----------------------------------------------------------
-     2) Product modal labels / compact actions.
-     ---------------------------------------------------------- */
-  function setModalActions(){
-    const add=document.getElementById("udsModalAdd");
-    const ask=document.getElementById("udsModalConcierge");
-    const trade=document.getElementById("udsModalTrade");
-
-    if(add && add.dataset.h58!=="1"){
-      add.dataset.h58="1";
-      add.setAttribute("aria-label","Agregar al carrito");
-    }
-
-    if(ask){
-      ask.textContent="Preguntar";
-      ask.setAttribute("aria-label","Preguntar sobre este equipo");
-    }
-
-    if(trade){
-      trade.textContent="Intercambiar";
-      trade.setAttribute("aria-label","Quiero intercambiar equipo");
-    }
-  }
-
-  setModalActions();
-
-  if(modal){
-    const modalObserver=new MutationObserver(()=>setModalActions());
-    modalObserver.observe(modal,{attributes:true,attributeFilter:["class","aria-hidden"]});
-  }
-
   window.addEventListener("resize",schedulePage,{passive:true});
   window.addEventListener("orientationchange",()=>setTimeout(schedulePage,100),{passive:true});
 
@@ -3566,22 +3535,7 @@
 })();
 
 
-/* HOTFIX59_PRODUCT_ACTIONS_COMPACT */
-(()=>{
- const root=document.getElementById("updown-store"); if(!root)return;
- const icon=`<svg class="uds-cart-plus59" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 4.5h2l1.8 8.7a2 2 0 0 0 2 1.6h7.4a2 2 0 0 0 2-1.6L20 8H6.3"></path><circle cx="10" cy="19" r="1.2"></circle><circle cx="18" cy="19" r="1.2"></circle><line x1="17.5" y1="3.5" x2="17.5" y2="7.5"></line><line x1="15.5" y1="5.5" x2="19.5" y2="5.5"></line></svg>`;
- function apply59(){
-  const add=document.getElementById("udsModalAdd"),ask=document.getElementById("udsModalConcierge"),trade=document.getElementById("udsModalTrade");
-  if(add){add.setAttribute("aria-label","Agregar al carrito");add.setAttribute("title","Agregar al carrito");}
-  if(ask){ask.textContent="Preguntar";ask.setAttribute("aria-label","Preguntar sobre este equipo");}
-  if(trade){trade.textContent="Intercambiar";trade.setAttribute("aria-label","Intercambiar equipo");}
- }
- apply59();
- const actions=document.querySelector("#udsModal .uds-modal-actions");
- if(actions){let busy=false;new MutationObserver(()=>{if(busy)return;busy=true;requestAnimationFrame(()=>{apply59();busy=false;});}).observe(actions,{childList:true,subtree:true,characterData:true});}
- const modal=document.getElementById("udsModal"); if(modal)modal.addEventListener("click",()=>requestAnimationFrame(apply59),{passive:true});
- window.__UPDOWN_HOTFIX59_OK__=true;
-})();
+
 
 
 

@@ -23,6 +23,8 @@ export async function getPublicCatalog() {
         item_condition,
         short_description,
         description,
+        short_description_en,
+        description_en,
         specifications,
         currency,
         price,

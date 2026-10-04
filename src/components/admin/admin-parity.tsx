@@ -36,7 +36,7 @@ export default function AdminParity() {
     });
 
     (async () => {
-      await load("/updown-admin-legacy-runtime.js?v=admin-next-quick-entry-20261003");
+      await load("/updown-admin-legacy-runtime.js?v=admin-next-bilingual-products-20261004-h74");
       await load("/updown-product-heic-inventory-hotfix.js?v=heic-inventory-v3-20261002");
       await load("/updown-product-smart-entry-v1.js?v=smart-entry-v3-20261002");
       await load("/updown-product-condition-v1.js?v=condition-v1-20261003");

@@ -220,6 +220,7 @@
       if(def.club&&!club) return;
       if(def.value) specs[def.key]=def.value;
     });
+    ["short_description_en","english_short_description","short description english","description_en","english_description","description english"].forEach(key=>delete specs[key]);
     return specs;
   }
 
@@ -1477,6 +1478,8 @@
     el("udStatus").value=p.status||"active";
     el("udShort").value=p.short_description||"";
     el("udDescription").value=p.description||"";
+    el("udShortEn").value=p.short_description_en||p.specifications?.short_description_en||p.specifications?.english_short_description||"";
+    el("udDescriptionEn").value=p.description_en||p.specifications?.description_en||p.specifications?.english_description||"";
     fillGolfSpecifications(p.specifications||{});
     el("udFeatured").checked=!!p.featured;
     el("udImage").value="";
@@ -1567,6 +1570,8 @@
         item_condition:el("udCondition").value,
         short_description:el("udShort").value.trim()||null,
         description:el("udDescription").value.trim()||null,
+        short_description_en:el("udShortEn").value.trim()||null,
+        description_en:el("udDescriptionEn").value.trim()||null,
         specifications:buildGolfSpecifications(),
         currency:"MXN",
         price,

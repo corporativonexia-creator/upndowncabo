@@ -2386,5 +2386,11 @@
     "source_text": "Cerrar imagen",
     "es": "Cerrar imagen",
     "en": "Close image"
+  },
+  {
+    "key": "product.shippingExcluded",
+    "source_text": "Envío no incluido",
+    "es": "Envío no incluido",
+    "en": "Shipping not included"
   }
 ]
