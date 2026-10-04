@@ -736,3 +736,7 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
   }
 }
+
+/* Keep the mobile menu trigger available to touch input in landscape browsers. */
+.uds-native-mobile-header,.uds-native-mobile-actions,.uds-native-mobile-actions .uds-native-menu-trigger{pointer-events:auto!important}
+.uds-native-mobile-actions .uds-native-menu-trigger{position:relative!important;z-index:4!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(20,62,53,.12)}

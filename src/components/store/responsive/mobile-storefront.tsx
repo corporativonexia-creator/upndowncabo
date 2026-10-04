@@ -150,8 +150,3 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
   );
 }
 
-
-<style data-updown-menu-touch-fix>
-.uds-native-mobile-header,.uds-native-mobile-actions,.uds-native-mobile-actions .uds-native-menu-trigger{pointer-events:auto!important}
-.uds-native-mobile-actions .uds-native-menu-trigger{position:relative!important;z-index:4!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(20,62,53,.12)}
-</style>
