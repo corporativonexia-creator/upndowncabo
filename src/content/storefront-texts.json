@@ -386,7 +386,7 @@
   {
     "key": "text.6118b92a6aff",
     "source_text": "Hierros",
-    "es": "Hierros",
+    "es": "Irons",
     "en": "Irons"
   },
   {
@@ -2168,7 +2168,7 @@
   {
     "key": "category.putters",
     "source_text": "Restauraciones de Putters",
-    "es": "Restauración de palos de precisión",
+    "es": "Restauración de Putters",
     "en": "Putter restoration"
   },
   {
@@ -2180,19 +2180,85 @@
   {
     "key": "category.drivers",
     "source_text": "Drivers",
-    "es": "Palos de salida",
+    "es": "Drivers",
     "en": "Drivers"
   },
   {
     "key": "category.wedges",
     "source_text": "Wedges",
-    "es": "Cuñas",
+    "es": "Wedges",
     "en": "Wedges"
   },
   {
     "key": "category.precision",
     "source_text": "Putters",
-    "es": "Palos de precisión",
+    "es": "Putters",
     "en": "Putters"
+  },
+  {
+    "key": "category.label.1",
+    "source_text": "Maderas",
+    "es": "Fairway Woods",
+    "en": "Fairway Woods"
+  },
+  {
+    "key": "category.label.2",
+    "source_text": "Híbridos",
+    "es": "Hybrids",
+    "en": "Hybrids"
+  },
+  {
+    "key": "category.label.6",
+    "source_text": "Bolsas",
+    "es": "Golf Bags",
+    "en": "Golf Bags"
+  },
+  {
+    "key": "category.label.7",
+    "source_text": "Carritos",
+    "es": "Golf Carts",
+    "en": "Golf Carts"
+  },
+  {
+    "key": "category.label.8",
+    "source_text": "Zapatos",
+    "es": "Golf Shoes",
+    "en": "Golf Shoes"
+  },
+  {
+    "key": "category.label.9",
+    "source_text": "Guantes",
+    "es": "Gloves",
+    "en": "Gloves"
+  },
+  {
+    "key": "category.label.10",
+    "source_text": "Pelotas",
+    "es": "Golf Balls",
+    "en": "Golf Balls"
+  },
+  {
+    "key": "category.label.11",
+    "source_text": "Accesorios",
+    "es": "Accessories",
+    "en": "Accessories"
+  },
+  {
+    "key": "category.label.12",
+    "source_text": "Ropa",
+    "es": "Apparel",
+    "en": "Apparel"
+  },
+  {
+    "key": "category.label.13",
+    "source_text": "Equipos completos",
+    "es": "Complete Sets",
+    "en": "Complete Sets"
+  },
+  {
+    "key": "category.label.14",
+    "source_text": "Tees",
+    "es": "Tees",
+    "en": "Tees"
   }
 ]
