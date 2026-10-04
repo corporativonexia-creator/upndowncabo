@@ -5,7 +5,7 @@ import { updateSession } from "@/lib/supabase/proxy";
 const UNDER_CONSTRUCTION = true;
 
 function isOperationalRoute(pathname: string) {
-  return ["/admin", "/admin-afiliados", "/login", "/unauthorized", "/pos", "/vendedor", "/api", "/_next", "/assets"]
+  return ["/vista-previa", "/admin", "/admin-afiliados", "/login", "/unauthorized", "/pos", "/vendedor", "/api", "/_next", "/assets"]
     .some((route) => pathname === route || pathname.startsWith(route + "/"));
 }
 
