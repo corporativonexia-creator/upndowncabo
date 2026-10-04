@@ -5,7 +5,7 @@
   --ud-mobile-header-height: 64px;
 }
 
-/* Announcement retired: navigation begins immediately at the top. */
+/* The announcement bar is retired globally. */
 #updown-store .uds-announcement { display: none !important; }
 
 #updown-store .uds-header {
@@ -182,8 +182,7 @@
   #updown-store .uds-mobile-dock,
   #updown-store [class*="mobile-dock"] { display: none !important; visibility: hidden !important; pointer-events: none !important; }
 
-  /* Reserve exactly one header height; hero and the rest of the page remain untouched. */
-  #updown-store { padding-top: var(--ud-mobile-header-height) !important; }
+  /* Fixed header occupies the viewport top; no legacy announcement spacing remains. */
   #updown-store main { padding-top: 0 !important; }
 
   #updown-store .uds-course-more-wrap { padding-top: 18px; }
