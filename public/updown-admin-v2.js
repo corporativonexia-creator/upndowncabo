@@ -631,13 +631,13 @@
   function contentViewHtml(){
     return `
 <div class="udv2-head">
-  <div><div class="udv2-eyebrow">Contenido del sitio</div><h1>Contenido</h1><div class="udv2-muted">Administra campos de golf, profesores y Cabo Journal.</div></div>
+  <div><div class="udv2-eyebrow">Contenido del sitio</div><h1>Contenido</h1><div class="udv2-muted">Administra campos de golf, profesores y Noticias.</div></div>
   <button id="udv2ContentRefresh" class="udv2-btn secondary" type="button">Actualizar</button>
 </div>
 <div class="udv2-subnav" aria-label="Tipos de contenido">
   <button class="udv2-pill is-active" data-content-type="courses" type="button">Campos de golf</button>
   <button class="udv2-pill" data-content-type="instructors" type="button">Profesores</button>
-  <button class="udv2-pill" data-content-type="articles" type="button">Cabo Journal</button>
+  <button class="udv2-pill" data-content-type="articles" type="button">Noticias</button>
 </div>
 <div id="udv2ContentBody"></div>`;
   }
@@ -2950,6 +2950,7 @@
       <div class="udv2-field"><label>Nombre *</label><input name="name" value="${escapeHtml(edit.name||"")}" required></div>
       <div class="udv2-field"><label>Slug *</label><input name="slug" value="${escapeHtml(edit.slug||"")}" required></div>
     </div>
+    <div class="udv2-field"><label>Ciudad (para filtrar campos)</label><input name="city" value="${escapeHtml(edit.city||"")}" placeholder="Los Cabos, San José del Cabo, La Ribera…"><small>Si está vacía, el sitio usará la ubicación. Puedes escribir otras ciudades.</small></div>
     <div class="udv2-field"><label>Ubicación</label><input name="location_label" value="${escapeHtml(edit.location_label||"")}" placeholder="Los Cabos, B.C.S."></div>
     <div class="udv2-field"><label>Descripción ES</label><textarea name="description">${escapeHtml(edit.description||"")}</textarea></div>
     <div class="udv2-field"><label>Descripción EN</label><textarea name="description_en">${escapeHtml(edit.description_en||"")}</textarea></div>
@@ -3047,7 +3048,7 @@
   </form>
 </section>
 <section class="udv2-panel">
-  <div class="udv2-panel-head"><h2>Cabo Journal</h2><span class="udv2-muted">${state.articles.length}</span></div>
+  <div class="udv2-panel-head"><h2>Noticias</h2><span class="udv2-muted">${state.articles.length}</span></div>
   <div class="udv2-list">${renderCards(state.articles,"articles")}</div>
 </section>
 </div>`;
@@ -3116,6 +3117,7 @@
     if(type==="courses"){
       Object.assign(payload,{
         name:String(fd.get("name")||"").trim(),
+        city:String(fd.get("city")||"").trim()||null,
         location_label:String(fd.get("location_label")||"").trim()||null,
         description:String(fd.get("description")||"").trim()||null,
         description_en:String(fd.get("description_en")||"").trim()||null,
@@ -3414,3 +3416,4 @@
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
 })();
+
