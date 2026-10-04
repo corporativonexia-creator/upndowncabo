@@ -116,7 +116,7 @@ export default function StorefrontParity() {
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H67-general-advisor-contact"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H68-news-city-close"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
@@ -131,3 +131,4 @@ export default function StorefrontParity() {
   const storefront = <SharedLegacyStorefront />;
   return deviceMode === "mobile" ? <MobileStorefront>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>;
 }
+
