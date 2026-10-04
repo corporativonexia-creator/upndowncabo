@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { getStorefrontText, type StorefrontLanguage } from "../storefront-copy";
 
 function clickLegacyControl(...ids: string[]) {
   for (const id of ids) {
@@ -29,6 +30,21 @@ function collectVisibleProducts() {
 }
 
 export function MobileHeader() {
+  const [language, setLanguage] = useState<StorefrontLanguage>("es");
+  const [, setCopyVersion] = useState(0);
+  const t = (key: string) => getStorefrontText(key, language);
+  useEffect(() => {
+    const sync = () => { setLanguage(document.documentElement.lang.startsWith("en") ? "en" : "es"); setCopyVersion((value) => value + 1); };
+    sync();
+    window.addEventListener("updown:language-change", sync);
+    window.addEventListener("updown:copy-ready", sync);
+    return () => { window.removeEventListener("updown:language-change", sync); window.removeEventListener("updown:copy-ready", sync); };
+  }, []);
+  const chooseLanguage = (next: StorefrontLanguage) => {
+    if (window.__UPDOWN_SET_LANGUAGE__) window.__UPDOWN_SET_LANGUAGE__(next);
+    else { localStorage.setItem("upDownLanguage", next); clickLegacyControl(next === "en" ? "udsLangEn" : "udsLangEs"); }
+    setLanguage(next);
+  };
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -43,7 +59,13 @@ export function MobileHeader() {
     return () => { document.body.style.overflow = ""; };
   }, [searchOpen, menuOpen]);
 
-  const quickSearches = useMemo(() => ["Drivers", "Maderas", "Hierros", "Putters", "TaylorMade", "Callaway"], []);
+  const quickSearches = [
+    { label: language === "en" ? "Drivers" : "Palos de salida", query: "driver" },
+    { label: language === "en" ? "Fairway woods" : "Maderas", query: "madera" },
+    { label: language === "en" ? "Irons" : "Hierros", query: "hierro" },
+    { label: language === "en" ? "Putters" : "Palos de precisión", query: "putter" },
+    { label: "TaylorMade", query: "TaylorMade" }, { label: "Callaway", query: "Callaway" },
+  ];
 
   const runSearch = (value: string) => {
     setQuery(value);
@@ -83,47 +105,51 @@ export function MobileHeader() {
           </svg>
         </a>
 
-        <nav className="uds-native-mobile-actions" aria-label="Acciones rápidas">
-          <button type="button" aria-label="Buscar" onClick={() => { setMenuOpen(false); setSearchOpen(true); setSuggestions([]); setQuery(""); }}>
+        <nav className="uds-native-mobile-actions" aria-label={language === "en" ? "Quick actions" : "Acciones rápidas"}>
+          <div className="uds-native-language" role="group" aria-label={language === "en" ? "Language" : "Idioma"}>
+            <button type="button" lang="es" aria-label="Español" aria-pressed={language === "es"} onClick={() => chooseLanguage("es")}>ES</button>
+            <button type="button" lang="en" aria-label="English" aria-pressed={language === "en"} onClick={() => chooseLanguage("en")}>EN</button>
+          </div>
+          <button type="button" aria-label={t("mobile.search")} onClick={() => { setMenuOpen(false); setSearchOpen(true); setSuggestions([]); setQuery(""); }}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
           </button>
-          <button type="button" aria-label="Carrito" onClick={() => clickLegacyControl("udsFloatingCart", "udsCartButton", "udsDockCart")}>
+          <button type="button" aria-label={t("mobile.cart")} onClick={() => clickLegacyControl("udsFloatingCart", "udsCartButton", "udsDockCart")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
           </button>
-          <button type="button" aria-label="Menú" onClick={() => { setSearchOpen(false); setMenuOpen(true); }}>
+          <button type="button" aria-label={t("mobile.menu")} onClick={() => { setSearchOpen(false); setMenuOpen(true); }}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
         </nav>
       </header>
 
       {searchOpen && (
-        <div className="uds-native-search" role="dialog" aria-modal="true" aria-label="Buscar productos">
+        <div className="uds-native-search" role="dialog" aria-modal="true" aria-label={t("mobile.searchProducts")}>
           <div className="uds-native-search-bar">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-            <input autoFocus value={query} onChange={(event) => runSearch(event.target.value)} placeholder="Buscar" aria-label="Buscar productos" />
-            {query && <button className="uds-native-search-clear" type="button" aria-label="Limpiar búsqueda" onClick={() => runSearch("")}>×</button>}
+            <input autoFocus value={query} onChange={(event) => runSearch(event.target.value)} placeholder={t("mobile.search")} aria-label={t("mobile.searchProducts")} />
+            {query && <button className="uds-native-search-clear" type="button" aria-label={t("mobile.clearSearch")} onClick={() => runSearch("")}>×</button>}
           </div>
-          <button className="uds-native-search-close" type="button" aria-label="Cerrar búsqueda" onClick={() => setSearchOpen(false)}>×</button>
+          <button className="uds-native-search-close" type="button" aria-label={t("mobile.closeSearch")} onClick={() => setSearchOpen(false)}>×</button>
 
           <div className="uds-native-search-body">
             {!query && (
               <>
-                <div className="uds-native-search-label">Búsquedas rápidas</div>
+                <div className="uds-native-search-label">{t("mobile.quickSearches")}</div>
                 <div className="uds-native-search-links">
-                  {quickSearches.map((item) => <button key={item} type="button" onClick={() => runSearch(item)}>→ <span>{item}</span></button>)}
+                  {quickSearches.map((item) => <button key={item.query} type="button" onClick={() => runSearch(item.query)}>→ <span>{item.label}</span></button>)}
                 </div>
               </>
             )}
 
             {query && (
               <>
-                <div className="uds-native-search-label">Sugerencias</div>
+                <div className="uds-native-search-label">{t("mobile.suggestions")}</div>
                 <div className="uds-native-search-links">
                   {suggestions.length ? suggestions.map((item, index) => (
                     <button key={`${item.name}-${index}`} type="button" onClick={() => openProductFromSuggestion(item.card)}>
                       → <span>{item.name}</span>
                     </button>
-                  )) : <div className="uds-native-search-empty">Sin coincidencias todavía.</div>}
+                  )) : <div className="uds-native-search-empty">{t("mobile.noMatches")}</div>}
                 </div>
               </>
             )}
@@ -132,21 +158,21 @@ export function MobileHeader() {
       )}
 
       {menuOpen && (
-        <div className="uds-native-menu" role="dialog" aria-modal="true" aria-label="Menú">
-          <div className="uds-native-menu-head"><strong>NAVEGACIÓN</strong><button type="button" aria-label="Cerrar menú" onClick={() => setMenuOpen(false)}>×</button></div>
-          <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>Buscar equipo… <span>⌕</span></button>
+        <div className="uds-native-menu" role="dialog" aria-modal="true" aria-label={t("mobile.menu")}>
+          <div className="uds-native-menu-head"><strong>{t("mobile.navigation")}</strong><button type="button" aria-label={t("mobile.closeMenu")} onClick={() => setMenuOpen(false)}>×</button></div>
+          <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>{t("mobile.searchEquipment")} <span>⌕</span></button>
           <div className="uds-native-menu-shortcuts">
-            <button type="button" onClick={() => navigate("udsGolfClasses")}><small>ACCESO DIRECTO</small><strong>Clases de golf</strong></button>
-            <a href="https://wa.me/526241299870?text=Hola%20Carlos%20%F0%9F%91%8B%20Vengo%20de%20UP%20AND%20DOWN%20%C2%B7%20Coque.%20Me%20gustar%C3%ADa%20recibir%20informaci%C3%B3n%20para%20unirme%20a%20GHIN%20y%20conocer%20c%C3%B3mo%20funciona%20el%20registro.%20Gracias." target="_blank" rel="noopener"><small>HANDICAP OFICIAL</small><strong>GHIN</strong></a>
+            <button type="button" onClick={() => navigate("udsGolfClasses")}><small>{t("mobile.shortcuts")}</small><strong>{t("mobile.classes")}</strong></button>
+            <a data-ghin-contact="" href="https://wa.me/526241299870?text=Hola%20Carlos%20%F0%9F%91%8B%20Vengo%20de%20UP%20AND%20DOWN%20%C2%B7%20Coque.%20Me%20gustar%C3%ADa%20recibir%20informaci%C3%B3n%20para%20unirme%20a%20GHIN%20y%20conocer%20c%C3%B3mo%20funciona%20el%20registro.%20Gracias." target="_blank" rel="noopener"><small>{t("mobile.handicap")}</small><strong>GHIN</strong></a>
           </div>
           <div className="uds-native-menu-list">
-            <button type="button" onClick={() => navigate("udsCatalog")}>Tienda <span>›</span></button>
-            <button type="button" onClick={() => navigate("udsCategories")}>Categorías <span>›</span></button>
-            <button type="button" onClick={() => navigate("udsServices")}>Servicios <span>›</span></button>
-            <button type="button" onClick={() => navigate("udsCourses")}>Golf en Los Cabos <span>›</span></button>
-            <button type="button" onClick={() => navigate("udsJournal")}>Noticias <span>›</span></button>
-            <button type="button" onClick={() => navigate("udsAbout")}>Quiénes somos</button>
-            <button type="button" onClick={() => { setMenuOpen(false); clickLegacyControl("udsAdvisorContact"); }}>Hablar con un asesor</button>
+            <button type="button" onClick={() => navigate("udsCatalog")}>{t("mobile.shop")} <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsCategories")}>{t("mobile.categories")} <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsServices")}>{t("mobile.services")} <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsCourses")}>{t("mobile.courses")} <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsJournal")}>{t("news.title")} <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsAbout")}>{t("mobile.about")}</button>
+            <button type="button" onClick={() => { setMenuOpen(false); clickLegacyControl("udsAdvisorContact"); }}>{t("mobile.advisor")}</button>
           </div>
           <div className="uds-native-menu-foot">UP AND DOWN · Los Cabos<br/>WhatsApp · 624 355 4700</div>
         </div>
@@ -154,3 +180,4 @@ export function MobileHeader() {
     </>
   );
 }
+
