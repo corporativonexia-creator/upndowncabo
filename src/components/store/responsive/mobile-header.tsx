@@ -147,7 +147,7 @@ export function MobileHeader() {
             <button type="button" onClick={() => navigate("udsAbout")}>Quiénes somos</button>
             <button type="button" onClick={() => { setMenuOpen(false); clickLegacyControl("udsAdvisorContact"); }}>Hablar con un asesor</button>
           </div>
-          <div className="uds-native-menu-foot">UP AND DOWN · Los Cabos<br/>WhatsApp · 624 171 0903</div>
+          <div className="uds-native-menu-foot">UP AND DOWN · Los Cabos<br/>WhatsApp · 624 355 4700</div>
         </div>
       )}
     </>
