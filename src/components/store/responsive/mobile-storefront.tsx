@@ -19,6 +19,21 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
         .uds-device-ux--mobile #updown-store{margin:0!important;padding:0!important;overflow-x:clip!important;overflow-y:visible!important;transform:none!important;contain:none!important;perspective:none!important;filter:none!important}
         .uds-device-ux--mobile #updown-store>.uds-header{display:none!important}
 
+
+        /* Compact mobile home: discovery remains in the DOM for header search. */
+        .uds-device-ux--mobile #updown-store.uds-ux-v3 #udsExploreButton,
+        .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero-actions,
+        .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-discovery{
+          display:none!important;
+        }
+        .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero-inner{
+          padding-bottom:24px!important;
+        }
+        .uds-device-ux--mobile #updown-store.uds-ux-v3 #udsCategories{
+          margin-top:0!important;
+          padding-top:20px!important;
+        }
+
         .uds-native-mobile-header{
           position:fixed;top:0;left:0;right:0;z-index:2147483000;height:58px;margin:0;padding:0 12px;
           display:flex;align-items:center;justify-content:space-between;gap:12px;
