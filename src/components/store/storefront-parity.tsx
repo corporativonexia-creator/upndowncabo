@@ -66,30 +66,6 @@ function restoreDesktopCart(root: HTMLElement) {
   actions.appendChild(createCartButton());
 }
 
-function installMobileNavigationAuthority(root: HTMLElement) {
-  const canonicalize = () => {
-    if (getStorefrontDeviceModeFromWindow() !== "mobile") return;
-    const topbar = root.querySelector<HTMLElement>(".uds-topbar");
-    const actions = root.querySelector<HTMLElement>(".uds-top-actions");
-    const logo = root.querySelector<HTMLElement>(".uds-logo");
-    const search = root.querySelector<HTMLButtonElement>("#udsSearchTop");
-    const menu = root.querySelector<HTMLButtonElement>("#udsMenuButton");
-    if (!topbar || !actions || !logo || !search || !menu) return;
-    let cart = root.querySelector<HTMLButtonElement>("#udsCartButton");
-    if (!cart) { cart = createCartButton(); actions.appendChild(cart); }
-    topbar.insertBefore(logo, actions); actions.append(search, cart, menu);
-    const legacyMenu = root.querySelector<HTMLElement>("#udsMobileMenu");
-    if (legacyMenu) { legacyMenu.classList.remove("is-open"); legacyMenu.setAttribute("aria-hidden", "true"); }
-  };
-  const onCaptureClick = (event: MouseEvent) => {
-    if (getStorefrontDeviceModeFromWindow() !== "mobile") return;
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest(".uds-logo")) event.stopPropagation();
-  };
-  canonicalize(); document.addEventListener("click", onCaptureClick, true); window.addEventListener("resize", canonicalize);
-  return () => { document.removeEventListener("click", onCaptureClick, true); window.removeEventListener("resize", canonicalize); };
-}
-
 function installCoursePagination() {
   const grid = document.querySelector<HTMLElement>("#udsCourses .uds-course-grid");
   if (!grid) return () => {};
@@ -138,17 +114,17 @@ export default function StorefrontParity() {
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
     window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
-    let stopCoursePagination = () => {}; let stopMobileNavigationAuthority = () => {};
+    let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H64-no-announcement"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H65-native-mobile-header"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
-      if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); if (deviceMode === "mobile") stopMobileNavigationAuthority = installMobileNavigationAuthority(root); }
+      if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
       stopCoursePagination = installCoursePagination();
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
     document.body.appendChild(script);
-    return () => { observer?.disconnect(); stopCoursePagination(); stopMobileNavigationAuthority(); script.remove(); script.onload = null; script.onerror = null; };
+    return () => { observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
   }, [deviceMode]);
 
   if (!deviceMode) return null;
