@@ -30,15 +30,7 @@ function scrollToId(id: string) {
   if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function collectVisibleProducts() {
-  return Array.from(document.querySelectorAll<HTMLElement>("#udsGrid .uds-card"))
-    .map((card) => ({
-      name: card.querySelector("h3")?.textContent?.trim() || "",
-      brand: card.querySelector(".uds-category")?.textContent?.trim() || "",
-      card,
-    }))
-    .filter((item) => item.name);
-}
+function openSearch() { window.dispatchEvent(new Event("updown:open-search")); }
 
 export function MobileHeader() {
   const [services, setServices] = useState<MobileService[] | null>(null);
@@ -63,51 +55,13 @@ export function MobileHeader() {
     else { localStorage.setItem("upDownLanguage", next); clickLegacyControl(next === "en" ? "udsLangEn" : "udsLangEs"); }
     setLanguage(next);
   };
-  const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<Array<{ name: string; brand: string; card: HTMLElement }>>([]);
-
   useEffect(() => {
-    if (!searchOpen && !menuOpen) {
-      document.body.style.overflow = "";
-      return;
-    }
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [searchOpen, menuOpen]);
-
-  const quickSearches = [
-    { label: "Drivers", query: "driver" },
-    { label: "Fairway Woods", query: "madera" },
-    { label: "Irons", query: "hierro" },
-    { label: "Putters", query: "putter" },
-    { label: "TaylorMade", query: "TaylorMade" }, { label: "Callaway", query: "Callaway" },
-  ];
-
-  const runSearch = (value: string) => {
-    setQuery(value);
-    const input = document.getElementById("udsSearch") as HTMLInputElement | null;
-    if (input) {
-      input.value = value;
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-    window.setTimeout(() => {
-      const normalized = value.trim().toLowerCase();
-      const all = collectVisibleProducts();
-      setSuggestions(
-        normalized
-          ? all.filter((item) => `${item.name} ${item.brand}`.toLowerCase().includes(normalized)).slice(0, 8)
-          : []
-      );
-    }, 80);
-  };
-
-  const openProductFromSuggestion = (card: HTMLElement) => {
-    const button = card.querySelector<HTMLElement>(".uds-view-equipment");
-    setSearchOpen(false);
-    if (button) button.click(); else card.click();
-  };
+    return () => { document.body.style.overflow = previous; };
+  }, [menuOpen]);
 
   const navigate = (id: string) => {
     setMenuOpen(false);
@@ -115,7 +69,7 @@ export function MobileHeader() {
   };
 
   const navigateService = (key: string) => {
-    setMenuOpen(false); setSearchOpen(false);
+    setMenuOpen(false);
     window.setTimeout(() => { window.__UPDOWN_OPEN_SERVICE__?.(key); }, 40);
   };
   const shortcuts = [
@@ -146,57 +100,22 @@ export function MobileHeader() {
           {available(VS_GOLF_SERVICE_KEY) && <button type="button" className="uds-native-service-logo is-vs-golf" disabled={services === null} aria-label={language === "en" ? "VS Golf: Putters and Wedges service" : "VS Golf: servicio de Putters y Wedges"} onClick={() => navigateService(VS_GOLF_SERVICE_KEY)}>
             <Image src={VS_GOLF_LOGO} width={34} height={34} sizes="40px" alt="VS Golf" />
           </button>}
-          <button type="button" aria-label={t("mobile.search")} onClick={() => { setMenuOpen(false); setSearchOpen(true); setSuggestions([]); setQuery(""); }}>
+          <button type="button" aria-label={t("mobile.search")} onClick={() => { setMenuOpen(false); openSearch(); }}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
           </button>
           <button type="button" aria-label={t("mobile.cart")} onClick={() => clickLegacyControl("udsFloatingCart", "udsCartButton", "udsDockCart")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
           </button>
-          <button type="button" aria-label={t("mobile.menu")} onClick={() => { setSearchOpen(false); setMenuOpen(true); }}>
+          <button type="button" aria-label={t("mobile.menu")} onClick={() => { setMenuOpen(true); }}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
         </nav>
       </header>
 
-      {searchOpen && (
-        <div className="uds-native-search" role="dialog" aria-modal="true" aria-label={t("mobile.searchProducts")}>
-          <div className="uds-native-search-bar">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
-            <input autoFocus value={query} onChange={(event) => runSearch(event.target.value)} placeholder={t("mobile.search")} aria-label={t("mobile.searchProducts")} />
-            {query && <button className="uds-native-search-clear" type="button" aria-label={t("mobile.clearSearch")} onClick={() => runSearch("")}>×</button>}
-          </div>
-          <button className="uds-native-search-close" type="button" aria-label={t("mobile.closeSearch")} onClick={() => setSearchOpen(false)}>×</button>
-
-          <div className="uds-native-search-body">
-            {!query && (
-              <>
-                <div className="uds-native-search-label">{t("mobile.quickSearches")}</div>
-                <div className="uds-native-search-links">
-                  {quickSearches.map((item) => <button key={item.query} type="button" onClick={() => runSearch(item.query)}>→ <span>{item.label}</span></button>)}
-                </div>
-              </>
-            )}
-
-            {query && (
-              <>
-                <div className="uds-native-search-label">{t("mobile.suggestions")}</div>
-                <div className="uds-native-search-links">
-                  {suggestions.length ? suggestions.map((item, index) => (
-                    <button key={`${item.name}-${index}`} type="button" onClick={() => openProductFromSuggestion(item.card)}>
-                      → <span>{item.name}</span>
-                    </button>
-                  )) : <div className="uds-native-search-empty">{t("mobile.noMatches")}</div>}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {menuOpen && (
         <div className="uds-native-menu" role="dialog" aria-modal="true" aria-label={t("mobile.menu")}>
           <div className="uds-native-menu-head"><strong>{t("mobile.navigation")}</strong><button type="button" aria-label={t("mobile.closeMenu")} onClick={() => setMenuOpen(false)}>×</button></div>
-          <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); setSearchOpen(true); }}>{t("mobile.searchEquipment")} <span>⌕</span></button>
+          <button className="uds-native-menu-search" type="button" onClick={() => { setMenuOpen(false); window.setTimeout(openSearch, 0); }}>{t("mobile.searchEquipment")} <span>⌕</span></button>
           <div className="uds-native-menu-shortcuts">
             {services === null ? <p role="status">{language === "en" ? "Loading services…" : "Cargando servicios…"}</p> : shortcuts.map(shortcut => {
               const service = services.find(item => item.key === shortcut.key);

@@ -1,0 +1,46 @@
+.uds-search-panel{position:fixed;inset:0;box-sizing:border-box;width:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:#f8f6f2;color:#143e35;overflow:hidden;font-family:Inter,Arial,sans-serif;z-index:2147483641}
+.uds-search-panel::backdrop{background:rgba(20,62,53,.3);backdrop-filter:blur(6px)}
+.uds-search-panel *{box-sizing:border-box}
+.uds-search-shell{max-width:720px;height:100%;margin:auto;display:flex;flex-direction:column;padding:0 20px max(16px,env(safe-area-inset-bottom))}
+.uds-search-heading{position:relative;padding:36px 48px 22px 0;flex-shrink:0}
+.uds-search-handle{position:absolute;top:10px;left:calc(50% - 18px);width:36px;height:4px;border-radius:8px;background:#ccd4ce}
+.uds-search-signature{display:block;font:700 10px/1.3 Georgia,serif;letter-spacing:.15em;color:#58736b;margin-bottom:10px}
+.uds-search-heading h2{margin:0;font:500 clamp(28px,7vw,38px)/1.08 "Cormorant Garamond",Georgia,serif;letter-spacing:-.025em;text-wrap:balance}
+.uds-search-dismiss{position:absolute;right:0;top:30px;width:44px;height:44px;display:grid;place-items:center;border:1px solid #dce2dc;border-radius:50%;background:#fff;color:#143e35;cursor:pointer}
+.uds-search-dismiss svg,.uds-search-form svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;flex-shrink:0}
+.uds-search-form{display:flex;align-items:center;gap:12px;min-height:56px;margin:0;padding:4px 12px 4px 16px;border:1px solid #cbd7cd;border-radius:16px;background:#fff;box-shadow:0 4px 16px #143e3505;flex-shrink:0}
+.uds-search-form:focus-within{border-color:#577c6d;box-shadow:0 0 0 3px #143e350c}
+.uds-search-form input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#143e35;font:400 16px/1.4 Inter,Arial,sans-serif;padding:10px 0}
+.uds-search-form input::placeholder{color:#65766f;opacity:1}
+.uds-search-form input::-webkit-search-cancel-button{display:none}
+.uds-search-form button{flex-shrink:0;width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:#526e63;font-size:25px;cursor:pointer}
+.uds-search-content{overflow:auto;overscroll-behavior:contain;min-height:0;padding:26px 2px 24px;scrollbar-width:thin}
+.uds-search-content section{margin:0 0 26px}
+.uds-search-content h3{font:600 12px/1.4 Inter,Arial,sans-serif;letter-spacing:.025em;color:#526b60;margin:0 0 12px}
+.uds-search-chips{display:flex;flex-wrap:wrap;gap:9px}
+.uds-search-chips button{min-height:44px;border:1px solid #d3ded4;border-radius:24px;padding:11px 17px;background:#edf1e9;color:#143e35;font:500 14px/1.3 Inter,Arial,sans-serif;cursor:pointer}
+.uds-search-chips.is-brands button{background:transparent;border-color:#deded4;display:flex;align-items:center;gap:16px}
+.uds-search-section-head{display:flex;justify-content:space-between;align-items:center}
+.uds-search-section-head h3{margin:0}
+.uds-search-section-head button{min-height:44px;border:0;background:transparent;color:#526b60;text-decoration:underline;font-size:12px;cursor:pointer;padding:10px}
+.uds-search-recents{display:flex;flex-direction:column}
+.uds-search-recents button{display:flex;gap:12px;align-items:center;min-height:44px;padding:10px 0;background:transparent;border:0;border-bottom:1px solid #e1e5dc;color:#143e35;text-align:left;font:400 14px/1.4 Inter,Arial,sans-serif;overflow-wrap:anywhere;cursor:pointer}
+.uds-search-recents button span{color:#728576;font-size:20px}
+.uds-search-count{margin:0 0 15px;color:#526b60;font-size:12px;line-height:1.5}
+.uds-search-results{display:flex;flex-direction:column;gap:8px}
+.uds-search-result{width:100%;display:flex;align-items:center;gap:13px;text-align:left;border:1px solid #e1e6dd;border-radius:15px;background:#fff;color:#143e35;padding:10px;cursor:pointer}
+.uds-search-thumb{display:grid;place-items:center;flex:0 0 76px;width:76px;height:76px;background:#f5f5f0;border-radius:10px;overflow:hidden}
+.uds-search-thumb img{width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}
+.uds-search-result-copy{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.uds-search-result-copy small{font:400 10px/1.3 Inter,Arial,sans-serif;color:#617669}
+.uds-search-result-copy strong{font:500 15px/1.3 "Cormorant Garamond",Georgia,serif;overflow-wrap:anywhere}
+.uds-search-result-copy>span{font:600 13px/1.4 Inter,Arial,sans-serif}
+.uds-search-arrow{font-size:22px;color:#728576;padding:0 4px}
+.uds-search-more,.uds-search-empty button{display:block;min-height:44px;margin:20px auto 0;border:1px solid #cbd7cd;border-radius:24px;padding:11px 22px;background:#143e35;color:white;font:500 13px/1.4 Inter,Arial,sans-serif;cursor:pointer}
+.uds-search-empty{padding:24px 8px;text-align:center}
+.uds-search-empty strong{font:500 24px/1.2 "Cormorant Garamond",Georgia,serif}
+.uds-search-empty p{font-size:14px;line-height:1.6;color:#617669}
+.uds-search-panel button:focus-visible{outline:2px solid #143e35;outline-offset:3px}
+@media(hover:hover){.uds-search-chips button:hover,.uds-search-result:hover{background:#e9efe5;border-color:#a9bfae}}
+@media(min-width:768px){.uds-search-panel{inset:5vh 0 auto;width:min(740px,92vw);height:85dvh;margin:0 auto;border-radius:24px;box-shadow:0 24px 80px #143e3526}.uds-search-shell{padding:0 32px 24px}.uds-search-heading{padding-top:32px}.uds-search-handle{display:none}.uds-search-content{padding-top:28px}.uds-search-result-copy strong{font-size:18px}}
+@media(prefers-reduced-motion:no-preference){.uds-search-panel[open]{animation:udsSearchEnter .2s ease-out}@keyframes udsSearchEnter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}}

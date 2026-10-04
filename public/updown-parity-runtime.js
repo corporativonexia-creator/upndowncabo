@@ -1,11 +1,12 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H82";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H83";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
   if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("UP AND DOWN: faltan variables públicas de Supabase.");
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   const el=id=>document.getElementById(id);
+  window.__UPDOWN_SEARCH_STATUS__="loading";
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
   let modalGalleryImages=[],modalGalleryIndex=0;
   let udsViewerScrollY=0;
@@ -34,6 +35,8 @@
   }
 
   function renderCatalogState(){
+    window.__UPDOWN_SEARCH_STATUS__="ready";
+    window.dispatchEvent(new Event("updown:catalog-ready"));
     filteredProducts=[...products];
     renderCategories();
     renderCommerceFilters();
@@ -1412,6 +1415,7 @@
         return;
       }
       el("udsStatus").className="uds-status is-error";
+      if(!products.length){window.__UPDOWN_SEARCH_STATUS__="error";window.dispatchEvent(new Event("updown:catalog-ready"));}
       el("udsStatus").innerHTML=`<strong>${currentLanguage==="en"?"We could not load the catalog.":"No fue posible cargar el catálogo."}</strong><br>${escapeHtml(error.message)}`;
       return;
     }
@@ -1448,11 +1452,24 @@
     syncCatalogFiltersToMaster();applyFilters();
     if(scroll)el("udsCatalog").scrollIntoView({behavior:"smooth",block:"start"});
   }
+  // Search the full catalog without changing the user's collection filters.
+  function normalizeSearch(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();}
+  window.__UPDOWN_SEARCH_PRODUCTS__=(query)=>{
+    const terms=normalizeSearch(query).split(/\s+/).filter(Boolean);
+    const aliases={irons:["iron","hierro"],iron:["iron","hierro"],hierros:["iron","hierro"],woods:["wood","madera"],wood:["wood","madera"],maderas:["wood","madera"],drivers:["driver"],putters:["putter"],wedges:["wedge"],hybrids:["hybrid","hibrido"]};
+    if(!terms.length)return [];
+    return products.filter(p=>{
+      const hay=normalizeSearch([p.name,p.brand,p.model,p.categories?.name,p.categories?.slug,categoryLabel(p.categories),p.short_description,p.short_description_en,...Object.values(p.specifications||{}).map(displaySpecValue)].filter(Boolean).join(" "));
+      return terms.every(term=>(aliases[term]||[term]).some(word=>hay.includes(word)));
+    }).map(p=>({id:p.id,name:p.name,category:categoryLabel(p.categories),image:productGallery(p)[0]||"",price:money(p.sale_price??p.price,p.currency,true)}));
+  };
+  window.__UPDOWN_OPEN_SEARCH_PRODUCT__=id=>{
+    const product=products.find(p=>p.id===id);
+    if(!product)return false;
+    openProduct(product);return true;
+  };
   function focusDiscoverySearch(){
-    el("udsAdvancedFilters")?.classList.add("is-open");
-    el("udsFiltersToggle")?.setAttribute("aria-expanded","true");
-    el("udsHome")?.querySelector(".uds-discovery")?.scrollIntoView({behavior:"smooth",block:"center"});
-    setTimeout(()=>el("udsSearch")?.focus(),450);
+    window.dispatchEvent(new Event("updown:open-search"));
   }
 
   function clearCommerceFilters(){

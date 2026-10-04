@@ -1,5 +1,7 @@
 "use client";
 
+import { StoreSearch } from "./responsive/store-search";
+
 import { useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { storefrontCopy } from "./storefront-copy";
@@ -115,6 +117,9 @@ export default function StorefrontParity() {
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
     window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
+    window.__UPDOWN_SEARCH_STATUS__ = "loading";
+    window.__UPDOWN_SEARCH_PRODUCTS__ = undefined;
+    window.__UPDOWN_OPEN_SEARCH_PRODUCT__ = undefined;
     window.__UPDOWN_SERVICES__ = undefined;
     window.__UPDOWN_OPEN_SERVICE__ = undefined;
     window.dispatchEvent(new Event("updown:services-ready"));
@@ -134,7 +139,7 @@ export default function StorefrontParity() {
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H82-mobile-service-access"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H83-branded-search"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
@@ -147,7 +152,7 @@ export default function StorefrontParity() {
 
   if (!deviceMode) return null;
   const storefront = <SharedLegacyStorefront />;
-  return deviceMode === "mobile" ? <MobileStorefront>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>;
+  return <>{deviceMode === "mobile" ? <MobileStorefront>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>}<StoreSearch /></>;
 }
 
 
