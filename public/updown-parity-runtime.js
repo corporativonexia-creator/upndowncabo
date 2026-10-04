@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H78";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H79";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -3591,14 +3591,16 @@
     const delta=last?Math.min(now-last,50):0;last=now;
     const rect=strip.getBoundingClientRect();
     const paused=document.hidden||reduced.matches||touching||hovering||drag||strip.matches(":focus-visible")||now<pauseUntil||rect.bottom<=0||rect.top>=window.innerHeight;
-    if(paused)position=strip.scrollLeft;
+    if(paused){position=strip.scrollLeft;track.style.removeProperty("transform");}
     else {
       const half=track.scrollWidth/2;
       if(half>strip.clientWidth){
         // Keep fractional progress: some browsers round every scrollLeft assignment.
-        position+=delta*.016;
+        position+=delta*.028;
         if(position>=half)position-=half;
         strip.scrollLeft=position;
+        // Preserve subpixel motion even when native scrolling rounds to whole pixels.
+        track.style.setProperty("transform",`translate3d(${strip.scrollLeft-position}px,0,0)`,"important");
       }
     }
     requestAnimationFrame(tick);

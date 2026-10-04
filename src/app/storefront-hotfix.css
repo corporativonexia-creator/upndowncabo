@@ -513,3 +513,6 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
 #updown-store.uds-ux-v3 .uds-brand-strip { cursor:grab!important; touch-action:pan-x pan-y!important; }
 #updown-store.uds-ux-v3 .uds-brand-strip.is-dragging { cursor:grabbing!important; user-select:none!important; }
 #updown-store.uds-ux-v3 .uds-brand-name img { -webkit-user-drag:none; user-select:none; }
+
+/* H79: retain subpixel interpolation during automatic brand movement. */
+#updown-store.uds-ux-v3 .uds-brand-track { will-change:transform; }
