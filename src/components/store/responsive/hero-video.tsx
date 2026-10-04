@@ -1,16 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const HERO_POSTER = "https://assets.cdn.filesafe.space/8Lo9S9qjQlin7rbzFWW8/media/6a95dadd02832ae8617d41f5.jpg";
 
 export function HeroVideo() {
   const [hero, setHero] = useState<Element | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     setHero(document.querySelector("#updown-store .uds-hero"));
   }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
+    const tryPlay = () => {
+      const result = video.play();
+      if (result && typeof result.catch === "function") result.catch(() => {});
+    };
+
+    tryPlay();
+    video.addEventListener("loadedmetadata", tryPlay);
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    window.addEventListener("pageshow", tryPlay);
+    document.addEventListener("visibilitychange", tryPlay);
+    document.addEventListener("pointerdown", tryPlay, { once: true, passive: true });
+    document.addEventListener("touchstart", tryPlay, { once: true, passive: true });
+
+    return () => {
+      video.removeEventListener("loadedmetadata", tryPlay);
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      window.removeEventListener("pageshow", tryPlay);
+      document.removeEventListener("visibilitychange", tryPlay);
+      document.removeEventListener("pointerdown", tryPlay);
+      document.removeEventListener("touchstart", tryPlay);
+    };
+  }, [hero]);
 
   return (
     <>
@@ -41,25 +75,17 @@ export function HeroVideo() {
         @media (max-width:1023px){
           #updown-store .uds-hero-video{object-position:47% 50%}
         }
-        @media (prefers-reduced-motion:reduce){
-          #updown-store .uds-hero-video{display:none!important}
-          #updown-store .uds-hero::before{
-            background:
-              linear-gradient(180deg,rgba(5,19,15,.08) 0%,rgba(5,19,15,.12) 32%,rgba(5,19,15,.82) 100%),
-              linear-gradient(90deg,rgba(5,19,15,.56) 0%,rgba(5,19,15,.10) 68%),
-              url("${HERO_POSTER}") center 58%/cover no-repeat!important;
-          }
-        }
       `}</style>
       {hero
         ? createPortal(
             <video
+              ref={videoRef}
               className="uds-hero-video"
               autoPlay
               muted
               loop
               playsInline
-              preload="metadata"
+              preload="auto"
               poster={HERO_POSTER}
               aria-hidden="true"
               tabIndex={-1}
