@@ -21,7 +21,7 @@ function mount(){
   const newProduct=document.getElementById('udNew');
   if(newProduct)newProduct.style.display='none';
 
-  // Afiliados es una sección administrativa, no una salida externa.
+  // Keep the legacy link as a fallback until the real seller tab is mounted.
   const affiliates=document.getElementById('udAffiliatesLink') || [...nav.children].find(el=>norm(el.textContent).includes('afiliad'));
   if(affiliates){
     affiliates.textContent='Afiliados';
@@ -36,12 +36,13 @@ function mount(){
   const pos=pick(t=>t.includes('pos')||t.includes('caja'));
   const orders=pick(t=>t==='pedidos');
   const sellers=pick(t=>t==='vendedores');
+  if(sellers&&affiliates)affiliates.remove();
   const classes=pick(t=>t==='clases');
   const content=pick(t=>t==='contenido');
   const store=pick(t=>t.startsWith('tienda'));
   const sellerPortal=pick(t=>t.includes('panel vendedor'));
 
-  const desired=[products,inventory,pos,orders,sellers,affiliates,classes,content,store,sellerPortal].filter(Boolean);
+  const desired=[products,inventory,pos,orders,sellers,sellers?null:affiliates,classes,content,store,sellerPortal].filter(Boolean);
   desired.forEach(el=>nav.appendChild(el));
   // Conserva cualquier módulo futuro/no reconocido al final, sin eliminar funcionalidad.
   [...nav.children].filter(el=>!desired.includes(el)).forEach(el=>nav.appendChild(el));

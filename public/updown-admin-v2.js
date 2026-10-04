@@ -3397,7 +3397,7 @@
 
     // Respect ?section=vendedores/content for old redirects/bookmarks.
     const section=new URLSearchParams(location.search).get("section");
-    if(section==="vendedores") switchView("sellers");
+    if(section==="vendedores"||section==="sellers") switchView("sellers");
     if(section==="contenido") switchView("content");
     if(section==="clases") switchView("lessons");
     if(section==="pos") switchView("pos");
