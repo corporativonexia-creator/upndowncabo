@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H80";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H81";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -2586,13 +2586,12 @@
     const image=String(course.image_url||"").trim();
     const map=String(course.map_url||"").trim();
     const official=String(course.official_url||"").trim();
-
-    return `<article class="uds-course uds-managed-course ${image?"":"is-no-image"}" data-content-active="true">
-      ${image?`<img alt="${mcEsc(name)}" class="uds-course-bg" loading="lazy" decoding="async" src="${mcEsc(image)}"/>`:""}
+    return `<article class="uds-course uds-managed-course ${image?"":"is-no-image"}" data-content-active="true" data-managed-course-id="${mcEsc(course.id)}">
+      <div class="uds-course-media">${image?`<img alt="${mcEsc(name)}" class="uds-course-bg" loading="lazy" decoding="async" src="${mcEsc(image)}"/>`:""}</div>
       <div class="uds-course-copy">
-        ${location?`<div class="uds-eyebrow" style="color:#d9c08c">${mcEsc(location)}</div>`:""}
+        ${location?`<div class="uds-eyebrow">${mcEsc(location)}</div>`:""}
         <h3>${mcEsc(name)}</h3>
-        ${description?`<p>${mcEsc(description)}</p>`:""}
+        ${description?`<p class="uds-course-description">${mcEsc(description)}</p><button type="button" class="uds-course-read" data-course-read="" aria-haspopup="dialog" aria-label="${mcEsc((mcLang()==="en"?"Read more about ":"Leer más sobre ")+name)}">${mcLang()==="en"?"Read more":"Leer más"}<span aria-hidden="true">↗</span></button>`:""}
         ${(map||official)?`<div class="uds-course-actions">
           ${map?`<a href="${mcEsc(map)}" rel="noopener noreferrer" target="_blank">${mcLang()==="en"?"Directions":"Cómo llegar"}</a>`:""}
           ${official?`<a href="${mcEsc(official)}" rel="noopener noreferrer" target="_blank">${mcLang()==="en"?"Official site":"Sitio oficial"}</a>`:""}
@@ -2610,138 +2609,119 @@
   }
 
   function mcJournalCard(article,index){
-    const eyebrow=mcText(article,"eyebrow");
-    const title=mcText(article,"title");
-    const summary=mcText(article,"summary");
-    const body=mcText(article,"body");
-    const image=String(article.image_url||"").trim();
-    const number=String(index+1).padStart(2,"0");
-
+    const eyebrow=mcText(article,"eyebrow"),title=mcText(article,"title"),summary=mcText(article,"summary"),body=mcText(article,"body");
+    const image=String(article.image_url||"").trim(),number=String(index+1).padStart(2,"0");
     return `<article class="uds-journal-card uds-managed-journal-card" data-content-active="true" data-journal-card="" data-priority="${article.is_priority?"true":"false"}" data-managed-journal-id="${mcEsc(article.id)}">
       <div class="uds-journal-media ${image?"":"is-no-image"}">
-        ${image?`<img alt="${mcEsc(title)}" loading="lazy" decoding="async" src="${mcEsc(image)}"/>`:""}
-        <span class="uds-journal-number">${number}</span>
-        <div class="uds-journal-summary">
-          ${eyebrow?`<small>${mcEsc(eyebrow)}</small>`:""}
-          <h3>${mcEsc(title)}</h3>
-        </div>
+        ${image?`<img alt="${mcEsc(title)}" loading="lazy" decoding="async" src="${mcEsc(image)}"/>`:""}<span class="uds-journal-number">${number}</span>
       </div>
       <div class="uds-journal-body">
+        <div class="uds-journal-summary">${eyebrow?`<small>${mcEsc(eyebrow)}</small>`:""}<h3>${mcEsc(title)}</h3></div>
         ${summary?`<p class="uds-journal-lead">${mcEsc(summary)}</p>`:""}
-        ${body?`<button aria-expanded="false" class="uds-journal-toggle" type="button">
-          <span>${mcLang()==="en"?"Read article":"Leer artículo"}</span>
-          <span class="uds-journal-toggle-icon">+</span>
-        </button>
-        <div class="uds-journal-content">
-          <div class="uds-journal-content-inner">
-            <div class="uds-journal-article uds-managed-journal-article">
-              ${mcParagraphs(body)}
-            </div>
-          </div>
-        </div>`:""}
+        ${body?`<button class="uds-journal-toggle" type="button" aria-haspopup="dialog" aria-label="${mcEsc((mcLang()==="en"?"Read article: ":"Leer artículo: ")+title)}"><span>${mcLang()==="en"?"Read article":"Leer artículo"}</span><span aria-hidden="true">↗</span></button>`:""}
       </div>
     </article>`;
   }
 
-  let mcJournalExpanded=false;
-
+  let mcJournalVisible=4;
   function mcBindJournal(){
-    const grid=document.getElementById("udsJournalGrid");
-    if(!grid)return;
-
-    grid.querySelectorAll(".uds-journal-toggle").forEach(toggle=>{
-      toggle.onclick=()=>{
-        const card=toggle.closest(".uds-journal-card");
-        if(!card)return;
-        const opening=!card.classList.contains("is-open");
-
-        grid.querySelectorAll(".uds-journal-card.is-open").forEach(other=>{
-          if(other===card)return;
-          other.classList.remove("is-open");
-          const t=other.querySelector(".uds-journal-toggle");
-          if(t){
-            t.setAttribute("aria-expanded","false");
-            const label=t.querySelector("span:first-child");
-            const icon=t.querySelector(".uds-journal-toggle-icon");
-            if(label)label.textContent=mcLang()==="en"?"Read article":"Leer artículo";
-            if(icon)icon.textContent="+";
-          }
-        });
-
-        card.classList.toggle("is-open",opening);
-        toggle.setAttribute("aria-expanded",opening?"true":"false");
-        const label=toggle.querySelector("span:first-child");
-        const icon=toggle.querySelector(".uds-journal-toggle-icon");
-        if(label)label.textContent=opening
-          ?(mcLang()==="en"?"Close article":"Cerrar artículo")
-          :(mcLang()==="en"?"Read article":"Leer artículo");
-        if(icon)icon.textContent=opening?"−":"+";
-      };
+    document.querySelectorAll('#udsJournalGrid .uds-journal-toggle').forEach(toggle=>{
+      toggle.onclick=()=>mcOpenReader('article',toggle.closest('[data-managed-journal-id]').dataset.managedJournalId,toggle);
     });
-
-    const more=document.getElementById("udsJournalMore");
-    if(more){
-      const hasMore=mcState.articles.length>3;
-      more.classList.toggle("uds-hidden",!hasMore);
-      more.hidden=!hasMore;
-
-      if(hasMore){
-        more.textContent=mcJournalExpanded
-          ?(mcLang()==="en"?"Show fewer articles":"Ver menos artículos")
-          :(mcLang()==="en"?"View more articles":"Ver más artículos");
-
-        more.onclick=()=>{
-          mcJournalExpanded=!mcJournalExpanded;
-          mcRenderJournal();
-        };
-      }else{
-        more.onclick=null;
-      }
-    }
   }
-
   function mcRenderJournal(){
-    const grid=document.getElementById("udsJournalGrid");
-    const more=document.getElementById("udsJournalMore");
+    const grid=document.getElementById("udsJournalGrid"),more=document.getElementById("udsJournalMore");
     if(!grid)return false;
-
     const articles=Array.isArray(mcState.articles)?mcState.articles:[];
-    if(articles.length<=3)mcJournalExpanded=false;
-
-    const shown=mcJournalExpanded?articles:articles.slice(0,3);
-    grid.innerHTML=shown.map(mcJournalCard).join("");
-    grid.dataset.source="supabase";
-    grid.dataset.managedCount=String(articles.length);
-
-    grid.querySelectorAll(".uds-journal-card").forEach(card=>{
-      card.classList.remove("uds-journal-list-hidden","is-expanded");
-      card.hidden=false;
-    });
-
+    const shown=articles.slice(0,mcJournalVisible);
+    grid.innerHTML=shown.map(mcJournalCard).join("");grid.dataset.source="supabase";grid.dataset.managedCount=String(articles.length);
     if(more){
-      const hasMore=articles.length>3;
-      more.hidden=!hasMore;
-      more.classList.toggle("uds-hidden",!hasMore);
-      more.setAttribute("aria-expanded",String(hasMore&&mcJournalExpanded));
-      if(hasMore){
-        more.textContent=mcJournalExpanded
-          ?(mcLang()==="en"?"View fewer articles":"Ver menos artículos")
-          :(mcLang()==="en"?"View more articles":"Ver más artículos");
-        more.onclick=()=>{
-          mcJournalExpanded=!mcJournalExpanded;
-          mcRenderJournal();
-          if(!mcJournalExpanded){
-            document.getElementById("udsJournal")?.scrollIntoView({behavior:"smooth",block:"start"});
-          }
-        };
-      }else{
-        more.onclick=null;
-      }
+      const hasMore=articles.length>shown.length;
+      more.hidden=!hasMore;more.classList.toggle("uds-hidden",!hasMore);
+      more.textContent=mcLang()==="en"?"View more news":"Ver más noticias";
+      more.removeAttribute('aria-expanded');more.setAttribute('aria-controls','udsJournalGrid');
+      more.onclick=hasMore?()=>{
+        const previous=shown.length;mcJournalVisible+=4;mcRenderJournal();
+        const firstNew=grid.querySelectorAll('.uds-journal-card')[previous];
+        if(firstNew){firstNew.tabIndex=-1;firstNew.focus({preventScroll:true});firstNew.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'})}
+      }:null;
     }
-
-    mcBindJournal();
-    return true;
+    mcBindJournal();return true;
   }
+
+  // H81: one native dialog gives both editorial readers a full-width mobile layout.
+  let mcReader=null,mcReaderState=null,mcDisposed=false,mcLanguageObserver=null,mcBootTimer=null;
+  function mcReaderRecord(){
+    if(!mcReaderState)return null;
+    const list=mcReaderState.kind==='course'?mcState.courses:mcState.articles;
+    return list.find(item=>String(item.id)===mcReaderState.id)||null;
+  }
+  function mcReaderMarkup(item,kind){
+    const course=kind==='course';
+    const title=course?String(item.name||''):mcText(item,'title');
+    const eyebrow=course?String(item.location_label||''):mcText(item,'eyebrow');
+    const image=String(item.image_url||'').trim();
+    const summary=course?'':mcText(item,'summary');
+    const body=mcText(item,course?'description':'body');
+    return `${image?`<img class="uds-reader-image" src="${mcEsc(image)}" alt="${mcEsc(title)}"/>`:''}
+      <div class="uds-reader-copy">${eyebrow?`<p class="uds-reader-eyebrow">${mcEsc(eyebrow)}</p>`:''}
+      <h2 id="udsEditorialReaderTitle">${mcEsc(title)}</h2>
+      ${summary?`<p class="uds-reader-lead">${mcEsc(summary)}</p>`:''}
+      <div class="uds-reader-article">${mcParagraphs(body)}</div>
+      ${course&&(item.map_url||item.official_url)?`<div class="uds-reader-actions">
+        ${item.map_url?`<a href="${mcEsc(item.map_url)}" target="_blank" rel="noopener noreferrer">${mcLang()==='en'?'Directions':'Cómo llegar'}</a>`:''}
+        ${item.official_url?`<a href="${mcEsc(item.official_url)}" target="_blank" rel="noopener noreferrer">${mcLang()==='en'?'Official site':'Sitio oficial'}</a>`:''}
+      </div>`:''}</div>`;
+  }
+  function mcEnsureReader(){
+    if(mcReader)return mcReader;
+    mcReader=document.createElement('dialog');mcReader.id='udsEditorialReader';mcReader.className='uds-editorial-reader';
+    mcReader.setAttribute('aria-labelledby','udsEditorialReaderTitle');
+    mcReader.innerHTML='<header class="uds-reader-toolbar"><span class="uds-reader-section"></span><button type="button" class="uds-reader-close" autofocus><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><div class="uds-reader-scroll" tabindex="0"></div>';
+    document.body.appendChild(mcReader);
+    mcReader.querySelector('.uds-reader-close').onclick=()=>mcCloseReader();
+    mcReader.addEventListener('cancel',event=>{event.preventDefault();mcCloseReader()});
+    mcReader.addEventListener('close',()=>{if(mcReaderState)mcCloseReader()});
+    return mcReader;
+  }
+  function mcRefreshReader(){
+    if(!mcReaderState)return;
+    const item=mcReaderRecord();if(!item){mcCloseReader();return}
+    const scroll=mcReader.querySelector('.uds-reader-scroll');const top=scroll.scrollTop;
+    scroll.innerHTML=mcReaderMarkup(item,mcReaderState.kind);scroll.scrollTop=top;
+    mcReader.querySelector('.uds-reader-section').textContent=mcReaderState.kind==='course'?(mcLang()==='en'?'Golf courses':'Campos de golf'):(mcLang()==='en'?'News':'Noticias');
+    mcReader.querySelector('.uds-reader-close').setAttribute('aria-label',mcLang()==='en'?'Close content':'Cerrar contenido');
+  }
+  function mcOpenReader(kind,id,trigger){
+    if(mcReaderState)mcCloseReader(false);
+    const properties=['position','top','left','right','width','overflow'];
+    const styles=properties.map(key=>[key,document.body.style.getPropertyValue(key),document.body.style.getPropertyPriority(key)]);
+    mcReaderState={kind,id:String(id),trigger,y:window.scrollY,styles};
+    const reader=mcEnsureReader();mcRefreshReader();
+    if(!mcReaderState)return;
+    document.body.style.setProperty('position','fixed');document.body.style.setProperty('top',`-${mcReaderState.y}px`);
+    document.body.style.setProperty('left','0');document.body.style.setProperty('right','0');document.body.style.setProperty('width','100%');document.body.style.setProperty('overflow','hidden');
+    reader.showModal();reader.querySelector('.uds-reader-scroll').scrollTop=0;reader.querySelector('.uds-reader-close').focus({preventScroll:true});
+  }
+  function mcCloseReader(restore=true){
+    if(!mcReaderState)return;
+    const saved=mcReaderState;mcReaderState=null;
+    if(mcReader?.open)mcReader.close();
+    saved.styles.forEach(([key,value,priority])=>{if(value)document.body.style.setProperty(key,value,priority);else document.body.style.removeProperty(key)});
+    window.scrollTo({top:saved.y,left:0,behavior:'instant'});
+    if(restore){
+      const selector=saved.kind==='course'?'[data-course-read]':'.uds-journal-toggle';
+      const cards=[...document.querySelectorAll(saved.kind==='course'?'[data-managed-course-id]':'[data-managed-journal-id]')];
+      const current=cards.find(card=>String(saved.kind==='course'?card.dataset.managedCourseId:card.dataset.managedJournalId)===saved.id)?.querySelector(selector);
+      const target=saved.trigger?.isConnected?saved.trigger:current;target?.focus({preventScroll:true});
+    }
+  }
+  function mcDispose(){
+    mcDisposed=true;clearInterval(mcBootTimer);mcLanguageObserver?.disconnect();mcCloseReader(false);mcReader?.remove();mcReader=null;
+    window.removeEventListener('updown:storefront-dispose',mcDispose);
+  }
+  window.addEventListener('updown:storefront-dispose',mcDispose);
+
   function mcCourseCity(course){
     const explicit=String(course.city||"").trim();
     const text=(explicit||String(course.location_label||"")).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -2772,6 +2752,7 @@
     }
     const shown=mcState.courses.filter(course=>mcState.city==="all"||mcCourseCity(course)===mcState.city);
     grid.innerHTML=shown.map(mcCourseCard).join("");
+    grid.querySelectorAll("[data-course-read]").forEach(button=>button.onclick=()=>mcOpenReader("course",button.closest("[data-managed-course-id]").dataset.managedCourseId,button));
     grid.dataset.source="supabase";
     grid.dataset.managedCount=String(shown.length);
     return true;
@@ -2791,6 +2772,7 @@
     mcRenderCourses();
     mcRenderJournal();
     mcRenderInstructors();
+    mcRefreshReader();
   }
 
   async function mcLoad(){
@@ -2820,6 +2802,7 @@
 
       await mcLoadLeadContext();
 
+      if(mcDisposed)return;
       // Managed content is authoritative, including empty result sets.
       mcRenderAll();
     }catch(error){
@@ -2833,19 +2816,19 @@
     const root=document.getElementById("updown-store");
     if(!root)return;
     let last=document.documentElement.lang||"";
-    const observer=new MutationObserver(()=>{
+    mcLanguageObserver=new MutationObserver(()=>{
       const next=document.documentElement.lang||"";
       if(next!==last){
         last=next;
         mcRenderAll();
       }
     });
-    observer.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
+    mcLanguageObserver.observe(document.documentElement,{attributes:true,attributeFilter:["lang"]});
   }
 
   function mcBoot(){
     let tries=0;
-    const timer=setInterval(()=>{
+    const timer=mcBootTimer=setInterval(()=>{
       tries++;
       if(document.getElementById("udsCourses")&&document.getElementById("udsJournalGrid")){
         clearInterval(timer);

@@ -131,7 +131,7 @@ export default function StorefrontParity() {
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H80-managed-services"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H81-editorial-reader"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
@@ -139,7 +139,7 @@ export default function StorefrontParity() {
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
     document.body.appendChild(script);
-    return () => { copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
+    return () => { window.dispatchEvent(new Event("updown:storefront-dispose")); copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
   }, [deviceMode]);
 
   if (!deviceMode) return null;

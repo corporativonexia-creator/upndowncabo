@@ -538,3 +538,69 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
  #updown-store.uds-ux-v3 #udsServices .uds-service-title small{font-size:10px!important;letter-spacing:.04em!important}
  #updown-store.uds-ux-v3 #udsServices .uds-service-icon{width:28px!important;height:28px!important;margin-bottom:8px!important}
 }
+
+/* H81: readable editorial cards and a native fullscreen reader. */
+#updown-store.uds-ux-v3 #udsCourses .uds-course-grid[data-source="supabase"]{align-items:stretch!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course{display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;max-height:none!important;background:#103c32!important;border:1px solid rgba(255,255,255,.16)!important;scroll-snap-align:start!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course::after{display:none!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-course-media{position:relative;aspect-ratio:3/2;overflow:hidden;background:linear-gradient(135deg,#2b6351,#123a31)}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course .uds-course-copy{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;padding:20px!important;flex:1!important;display:flex!important;flex-direction:column!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course .uds-course-copy .uds-eyebrow{color:#e2cc9f!important;font-size:11px!important;letter-spacing:.07em!important;line-height:1.5!important;white-space:normal!important;overflow-wrap:anywhere!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course .uds-course-copy h3{font-size:clamp(25px,2.3vw,32px)!important;line-height:1.12!important;margin:8px 0 12px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-managed-course .uds-course-description{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;overflow:hidden!important;font-size:14px!important;line-height:1.55!important;color:#e7eee9!important;margin:0!important;min-height:65px!important;max-height:none!important}
+#updown-store.uds-ux-v3 #udsCourses .uds-course-read{display:flex;align-items:center;gap:8px;align-self:flex-start;min-height:44px;padding:4px 0;margin:3px 0 6px;border:0;background:transparent;color:#e7cc96;font:600 13px/1.4 Inter,Arial,sans-serif;cursor:pointer}
+#updown-store.uds-ux-v3 #udsCourses .uds-course-read:hover{text-decoration:underline;text-underline-offset:4px}
+#updown-store.uds-ux-v3 #udsCourses .uds-course-read:focus-visible{outline:2px solid #e7cc96;outline-offset:3px;border-radius:4px}
+#updown-store.uds-ux-v3 #udsCourses .uds-course-actions{margin-top:auto!important;padding-top:4px!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px!important;align-items:stretch!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-card{display:flex!important;flex-direction:column!important;grid-column:auto!important;grid-row:auto!important;height:auto!important;min-width:0!important;border-radius:18px!important;background:#fff!important;border:1px solid rgba(20,62,53,.1)!important;box-shadow:0 8px 24px rgba(20,62,53,.04)!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-card .uds-journal-media{aspect-ratio:16/9!important;height:auto!important;min-height:0!important;max-height:none!important;flex-shrink:0!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-media::after{background:linear-gradient(180deg,rgba(7,31,25,.12),transparent 65%)!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-body{display:flex!important;flex-direction:column!important;flex:1!important;padding:22px!important;min-height:0!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-summary{position:static!important;left:auto!important;right:auto!important;bottom:auto!important;color:#143e35!important;margin:0 0 12px!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-summary small{font:700 11px/1.5 Inter,Arial,sans-serif!important;letter-spacing:.08em!important;color:#80683c!important;overflow-wrap:anywhere!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-card .uds-journal-summary h3{font-size:clamp(22px,2.3vw,30px)!important;line-height:1.18!important;margin:7px 0 0!important;color:#143e35!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-lead{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:3!important;overflow:hidden!important;font-size:14px!important;line-height:1.55!important;color:#66736f!important;margin:0 0 16px!important}
+#updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-toggle{margin-top:auto!important;padding:12px 0 0!important;min-height:44px!important;font-size:11px!important;line-height:1.4!important;letter-spacing:.04em!important;text-transform:none!important;border-radius:0!important;gap:8px!important}
+#updown-store.uds-ux-v3 #udsJournal .uds-journal-more{min-height:44px!important;padding:12px 24px!important;font-size:12px!important;letter-spacing:.05em!important;text-decoration:none!important}
+#updown-store.uds-ux-v3 #udsJournal .uds-journal-more[hidden]{display:none!important}
+.uds-editorial-reader{position:fixed;inset:0;margin:0;padding:0;border:0;width:100vw;max-width:none;height:100dvh;max-height:none;overflow:hidden;background:#fbfaf7;color:#143e35;font-family:Inter,Arial,sans-serif;box-sizing:border-box}
+.uds-editorial-reader[open]{display:flex;flex-direction:column}
+.uds-editorial-reader::backdrop{background:rgba(8,27,22,.6)}
+.uds-reader-toolbar{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:16px;padding:max(12px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) 12px max(18px,env(safe-area-inset-left));background:rgba(251,250,247,.97);border-bottom:1px solid #dce4de}
+.uds-reader-section{font-size:13px;font-weight:700;letter-spacing:.06em}
+.uds-reader-close{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border:1px solid #d8e1db;border-radius:50%;background:#fff;color:#143e35;cursor:pointer}
+.uds-reader-close svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8}
+.uds-reader-close:focus-visible{outline:3px solid #c8a86b;outline-offset:3px}
+.uds-reader-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:max(32px,env(safe-area-inset-bottom))}
+.uds-reader-image{display:block;width:100%;max-height:340px;height:32dvh;object-fit:cover}
+.uds-reader-copy{box-sizing:border-box;width:100%;max-width:800px;margin:0 auto;padding:30px max(22px,env(safe-area-inset-right)) 40px max(22px,env(safe-area-inset-left))}
+.uds-reader-eyebrow{font-size:12px;font-weight:700;letter-spacing:.07em;line-height:1.6;color:#80683c;margin:0 0 12px;overflow-wrap:anywhere}
+.uds-reader-copy h2{font:600 clamp(32px,4vw,48px)/1.1 "Cormorant Garamond",Georgia,serif;margin:0 0 22px;overflow-wrap:anywhere}
+.uds-reader-lead{font-size:17px;line-height:1.65;font-weight:500;margin:0 0 24px;color:#4c655a}
+.uds-reader-article{font-size:16px;line-height:1.8;color:#374b42;overflow-wrap:anywhere}
+.uds-reader-article p{margin:0 0 22px}
+.uds-reader-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.uds-reader-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:1px solid #cbd8cf;border-radius:999px;color:#143e35;text-decoration:none;font-size:13px;font-weight:700;background:#fff}
+#updown-store.uds-ux-v3 .uds-benefits{border:1px solid #dce5de!important;border-radius:22px!important;background:#dce5de!important;gap:1px!important;box-shadow:0 12px 36px rgba(20,62,53,.06)!important}
+#updown-store.uds-ux-v3 .uds-benefit{padding:26px!important;background:linear-gradient(145deg,#fff,#f8faf6)!important;border:0!important;min-height:158px!important}
+#updown-store.uds-ux-v3 .uds-benefit svg{box-sizing:content-box;width:30px!important;height:30px!important;padding:11px!important;border-radius:16px!important;background:#eaf1eb!important;stroke:#245b49!important;stroke-width:1.5!important}
+#updown-store.uds-ux-v3 .uds-benefit strong{font-size:11px!important;line-height:1.5!important;letter-spacing:.06em!important;margin-top:16px!important}
+#updown-store.uds-ux-v3 .uds-benefit span{font-size:12px!important;line-height:1.6!important;color:#64756c!important}
+@media(max-width:700px){
+ #updown-store.uds-ux-v3 #udsCourses .uds-managed-course .uds-course-copy{padding:18px!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid{gap:12px!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-card .uds-journal-media{aspect-ratio:4/3!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-body{padding:14px!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-card .uds-journal-summary h3{font-size:20px!important;line-height:1.15!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-summary small{font-size:10px!important;letter-spacing:.04em!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-lead{font-size:12px!important;line-height:1.55!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-toggle{font-size:11px!important}
+ #updown-store.uds-ux-v3 #udsJournal #udsJournalGrid .uds-journal-number{top:10px!important;left:10px!important;width:30px!important;height:30px!important}
+ #updown-store.uds-ux-v3 .uds-benefit{padding:20px 17px!important;min-height:156px!important}
+ #updown-store.uds-ux-v3 .uds-benefit svg{width:28px!important;height:28px!important;padding:9px!important;border-radius:14px!important}
+ .uds-reader-image{height:26dvh;max-height:260px}
+ .uds-reader-copy{padding-top:24px}
+ .uds-reader-article{font-size:15.5px;line-height:1.8}
+ .uds-reader-lead{font-size:16px}
+}
