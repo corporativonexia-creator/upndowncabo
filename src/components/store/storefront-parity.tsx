@@ -131,7 +131,7 @@ export default function StorefrontParity() {
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H69-owned-bilingual-copy"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.0-H70-golf-category-hero"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
