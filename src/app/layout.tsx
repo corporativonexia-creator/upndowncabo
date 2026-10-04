@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./storefront-hotfix.css";
+import "./updown-official-logo.css";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -32,4 +33,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-
