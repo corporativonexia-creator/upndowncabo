@@ -9,40 +9,22 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
 
     const root = document.getElementById("updown-store");
     const header = root?.querySelector<HTMLElement>(".uds-header");
-    const announcement = root?.querySelector<HTMLElement>(".uds-announcement");
     if (!root || !header) return;
 
-    // Mobile owns its header completely. The legacy runtime used to mutate the
-    // same node into a floating capsule while scrolling; keeping those classes
-    // alive made the header jump and eventually leave the viewport.
-    const pinHeader = () => {
-      header.classList.remove("is-mobile-capsule");
-      announcement?.classList.remove("is-mobile-hidden");
-      header.style.setProperty("position", "fixed", "important");
-      header.style.setProperty("top", "0px", "important");
-      header.style.setProperty("left", "0px", "important");
-      header.style.setProperty("right", "0px", "important");
-      header.style.setProperty("width", "100%", "important");
-      header.style.setProperty("margin", "0px", "important");
-      header.style.setProperty("transform", "none", "important");
-      header.style.setProperty("translate", "none", "important");
-      header.style.setProperty("opacity", "1", "important");
-      header.style.setProperty("visibility", "visible", "important");
-      header.style.setProperty("z-index", "2147483000", "important");
+    // The legacy runtime adds a capsule class while scrolling. Remove only that
+    // class when it appears. Do not observe/write the style attribute: doing so
+    // creates a MutationObserver feedback loop and keeps the page busy forever.
+    const normalizeHeaderClass = () => {
+      if (header.classList.contains("is-mobile-capsule")) {
+        header.classList.remove("is-mobile-capsule");
+      }
     };
 
-    pinHeader();
-    const observer = new MutationObserver(pinHeader);
-    observer.observe(header, { attributes: true, attributeFilter: ["class", "style"] });
-    if (announcement) observer.observe(announcement, { attributes: true, attributeFilter: ["class", "style"] });
-    window.addEventListener("scroll", pinHeader, { passive: true });
-    window.addEventListener("resize", pinHeader);
+    normalizeHeaderClass();
+    const observer = new MutationObserver(normalizeHeaderClass);
+    observer.observe(header, { attributes: true, attributeFilter: ["class"] });
 
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", pinHeader);
-      window.removeEventListener("resize", pinHeader);
-    };
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -52,25 +34,97 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
         .uds-device-ux--mobile{margin:0!important;padding:0!important;overflow:visible!important;transform:none!important;contain:none!important}
         .uds-device-ux--mobile .uds-announcement{display:none!important}
         .uds-device-ux--mobile #updown-store{margin:0!important;padding:0!important;overflow-x:clip!important;overflow-y:visible!important;transform:none!important;contain:none!important;perspective:none!important;filter:none!important}
+
         .uds-device-ux--mobile #updown-store .uds-header,
         .uds-device-ux--mobile #updown-store .uds-header.is-scrolled,
         .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule{
-          position:fixed!important;inset:0 0 auto 0!important;top:0!important;left:0!important;right:0!important;
-          width:100%!important;height:auto!important;margin:0!important;padding:0!important;border-radius:0!important;
-          transform:none!important;translate:none!important;opacity:1!important;visibility:visible!important;overflow:visible!important;
+          position:fixed!important;
+          top:0!important;
+          left:0!important;
+          right:0!important;
+          bottom:auto!important;
+          width:100%!important;
+          height:70px!important;
+          margin:0!important;
+          padding:0!important;
+          border-radius:0!important;
+          transform:none!important;
+          translate:none!important;
+          opacity:1!important;
+          visibility:visible!important;
+          overflow:visible!important;
           z-index:2147483000!important;
         }
+
         .uds-device-ux--mobile #updown-store .uds-topbar,
         .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-topbar{
-          width:min(100% - 24px,1280px)!important;min-height:70px!important;height:70px!important;margin:0 auto!important;padding:0!important;
-          display:grid!important;grid-template-columns:auto 1fr auto!important;place-items:initial!important;align-items:center!important;
+          width:calc(100% - 24px)!important;
+          max-width:none!important;
+          height:70px!important;
+          min-height:70px!important;
+          margin:0 12px!important;
+          padding:0!important;
+          display:grid!important;
+          grid-template-columns:minmax(72px,1fr) auto!important;
+          align-items:center!important;
+          gap:10px!important;
         }
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo{width:auto!important;min-width:auto!important;height:auto!important;justify-self:center!important;background:transparent!important;box-shadow:none!important}
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo::before,
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo::after{display:none!important}
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-menu-btn{display:inline-flex!important}
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-top-actions{display:flex!important;justify-self:end!important}
-        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-search-top{display:inline-flex!important}
+
+        .uds-device-ux--mobile #updown-store .uds-logo,
+        .uds-device-ux--mobile #updown-store .uds-header.is-mobile-capsule .uds-logo{
+          grid-column:1!important;
+          grid-row:1!important;
+          justify-self:start!important;
+          width:76px!important;
+          min-width:76px!important;
+          height:auto!important;
+          margin:0!important;
+          padding:0!important;
+          background:transparent!important;
+          box-shadow:none!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-logo-copy{display:none!important}
+        .uds-device-ux--mobile #updown-store .uds-logo::before,
+        .uds-device-ux--mobile #updown-store .uds-logo::after{display:none!important}
+
+        .uds-device-ux--mobile #updown-store .uds-desktop-nav,
+        .uds-device-ux--mobile #updown-store .uds-lang-switch{display:none!important}
+
+        .uds-device-ux--mobile #updown-store .uds-top-actions{
+          grid-column:2!important;
+          grid-row:1!important;
+          justify-self:end!important;
+          display:flex!important;
+          align-items:center!important;
+          gap:8px!important;
+          margin:0!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-search-top,
+        .uds-device-ux--mobile #updown-store #udsCartButton{
+          display:inline-flex!important;
+          flex:0 0 auto!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-menu-btn{
+          display:inline-flex!important;
+          position:static!important;
+          grid-column:auto!important;
+          grid-row:auto!important;
+          order:3!important;
+          flex:0 0 auto!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-top-actions .uds-search-top{order:1!important}
+        .uds-device-ux--mobile #updown-store .uds-top-actions #udsCartButton{order:2!important}
+
+        /* Put the menu button after Search + Cart without cloning controls. */
+        .uds-device-ux--mobile #updown-store .uds-topbar{position:relative!important}
+        .uds-device-ux--mobile #updown-store .uds-menu-btn{
+          position:absolute!important;
+          right:0!important;
+          top:50%!important;
+          transform:translateY(-50%)!important;
+        }
+        .uds-device-ux--mobile #updown-store .uds-top-actions{padding-right:52px!important}
+
         .uds-device-ux--mobile #updown-store main{margin-top:0!important;padding-top:70px!important}
       `}</style>
       {children}
