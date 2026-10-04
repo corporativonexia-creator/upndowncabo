@@ -920,7 +920,7 @@
   function buildWhatsAppUrl(product=null,purpose="question"){
     const affiliate=getStoredAffiliate();
     const advisor=productAdvisor();
-    let phone=String(advisor.phone||"526241710903").replace(/\D/g,"")||"526241710903";
+    let phone=String(advisor.phone||"526243554700").replace(/\D/g,"")||"526243554700";
     if(phone.length===10)phone=`52${phone}`;
 
     const hasSellerReferral=Boolean(
@@ -1687,7 +1687,7 @@
       const kind=link.dataset.serviceWhatsapp;
       const message=serviceMessages[kind]?.[lang];
       if(!message)return;
-      const phone=kind==="ghin"?"526241299870":"526241710903";
+      const phone=kind==="ghin"?"526241299870":"526243554700";
       link.href=`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     });
 
@@ -1700,7 +1700,7 @@
       const message=lang==="en"
         ?"Hi UP AND DOWN, I need assistance with the shop."
         :"Hola UP AND DOWN, necesito asistencia con la tienda.";
-      footerWa.href=`https://wa.me/526241710903?text=${encodeURIComponent(message)}`;
+      footerWa.href=`https://wa.me/526243554700?text=${encodeURIComponent(message)}`;
     }
   }
 
@@ -3303,7 +3303,7 @@
 
     const footer=document.createElement("div");
     footer.className="uds53-footer";
-    footer.innerHTML=`UP AND DOWN · Los Cabos<br>WhatsApp · 624 171 0903`;
+    footer.innerHTML=`UP AND DOWN · Los Cabos<br>WhatsApp · 624 355 4700`;
     menu.appendChild(footer);
   }
 
