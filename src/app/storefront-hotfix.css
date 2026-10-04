@@ -604,3 +604,12 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
  .uds-reader-article{font-size:15.5px;line-height:1.8}
  .uds-reader-lead{font-size:16px}
 }
+
+/* The fixed top navigation replaces the legacy dock at every viewport width,
+   including phones in landscape. Keep its controls available to legacy handlers. */
+#updown-store .uds-mobile-dock,
+#updown-store [class*="mobile-dock"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
