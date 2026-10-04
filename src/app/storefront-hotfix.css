@@ -635,7 +635,7 @@ html.uds-image-viewer-open .uds-native-mobile-header { visibility:hidden!importa
     background:#fff!important;
   }
 
-  #updown-store.uds-ux-v3 #udsCloseModal {
+  #updown-store.uds-ux-v3 #udsModal.is-open #udsCloseModal {
     position:absolute!important;
     top:calc(6px + env(safe-area-inset-top))!important;
     right:max(12px, env(safe-area-inset-right))!important;
@@ -757,3 +757,11 @@ dialog.uds-native-menu:not([open]) { display:none!important; }
 dialog.uds-native-menu[open] { display:block!important; }
 dialog.uds-native-menu::backdrop { background:rgba(20,62,53,.25); }
 .uds-native-menu-trigger svg { pointer-events:none; }
+
+/* Closed product dialogs must not leave invisible controls above the header.
+   pointer-events:none on the parent does not disable a child with auto.
+   Removing the closed dialog from layout also prevents keyboard focus leaks.
+   The runtime adds/removes is-open when opening/closing the product dialog. */
+#updown-store.uds-ux-v3 #udsModal:not(.is-open) {
+  display:none!important;
+}
