@@ -108,69 +108,40 @@ export function HeroVideo() {
         }
         #updown-store .uds-scroll-note{z-index:3!important}
 
-        /* Mobile: preserve the complete frame at its intrinsic ratio.
-           Match legacy UX specificity so old image-band hotfixes cannot win. */
+        /* Mobile keeps the complete video frame; copy sits over its lower edge. */
         @media (max-width:1023px){
-          #updown-store .uds-hero,
           #updown-store.uds-ux-v3 .uds-hero{
-            width:100%!important;
-            max-width:none!important;
-            min-height:0!important;
-            height:auto!important;
-            margin:0!important;
-            padding:0!important;
-            display:flex!important;
-            flex-direction:column!important;
-            align-items:stretch!important;
-            gap:0!important;
-            background:#0c211c!important;
+            width:100%!important;max-width:none!important;min-height:0!important;
+            height:auto!important;margin:0!important;padding:0!important;
+            display:block!important;aspect-ratio:16 / 9!important;background:#0c211c!important;
           }
-          #updown-store .uds-hero-video,
           #updown-store.uds-ux-v3 .uds-hero-video{
-            position:relative!important;
-            inset:auto!important;
-            order:-1!important;
-            flex:0 0 auto!important;
-            width:100%!important;
-            height:auto!important;
-            min-width:0!important;
-            min-height:0!important;
-            max-width:100%!important;
-            max-height:none!important;
-            aspect-ratio:auto 16 / 9;
-            object-fit:contain!important;
-            object-position:center!important;
-            transform:none!important;
+            position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+            min-width:0!important;min-height:0!important;max-width:100%!important;max-height:none!important;
+            object-fit:contain!important;object-position:center!important;transform:none!important;
           }
-          #updown-store .uds-hero::before,
-          #updown-store.uds-ux-v3 .uds-hero::before,
-          #updown-store.uds-ux-v3 .uds-hero::after{
-            display:none!important;
-            content:none!important;
+          #updown-store.uds-ux-v3 .uds-hero::before{
+            display:block!important;content:""!important;inset:0!important;z-index:1!important;
+            background:linear-gradient(180deg,rgba(5,19,15,0) 20%,rgba(5,19,15,.08) 40%,rgba(5,19,15,.78) 100%)!important;
           }
-          #updown-store .uds-hero-inner,
-          #updown-store.uds-ux-v3 .uds-hero-inner{
-            order:0!important;
-            flex:0 0 auto!important;
-            width:100%!important;
-            max-width:none!important;
-            box-sizing:border-box!important;
-            margin:0!important;
-            padding:24px 20px 42px!important;
-            background:#0c211c!important;
+          #updown-store.uds-ux-v3 .uds-hero::after{display:none!important;content:none!important;}
+          .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero-inner{
+            position:absolute!important;inset:auto 0 0!important;z-index:2!important;
+            width:100%!important;max-width:none!important;box-sizing:border-box!important;
+            margin:0!important;padding:12px 16px 14px!important;background:transparent!important;
           }
-          #updown-store .uds-hero h1,
           #updown-store.uds-ux-v3 .uds-hero h1{
-            margin-top:10px!important;
-            margin-bottom:14px!important;
+            margin:0 0 7px!important;font-size:clamp(19px,4.8vw,30px)!important;line-height:1.15!important;
+          }
+          #updown-store.uds-ux-v3 .uds-hero h1 span{
+            margin:6px 0 0!important;font-size:clamp(12px,3.3vw,18px)!important;line-height:1.25!important;
           }
           #updown-store.uds-ux-v3 .uds-hero-copy{
-            width:100%!important;
-            max-width:600px!important;
-            margin-top:0!important;
+            width:100%!important;max-width:none!important;margin:0!important;
+            font-size:clamp(9px,2.4vw,12px)!important;line-height:1.5!important;color:rgba(255,255,255,.9)!important;
           }
-          #updown-store.uds-ux-v3 .uds-hero-actions{margin-top:22px!important}
-          #updown-store.uds-ux-v3 .uds-scroll-note{display:none!important}
+          #updown-store.uds-ux-v3 .uds-hero-actions,
+          #updown-store.uds-ux-v3 .uds-scroll-note{display:none!important;}
         }
 
         @media (min-width:1024px){
@@ -208,3 +179,4 @@ export function HeroVideo() {
     </>
   );
 }
+
