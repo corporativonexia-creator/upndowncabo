@@ -3,7 +3,7 @@
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
-  if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("UP AND DOWN: faltan variables pÃºblicas de Supabase.");
+  if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("UP AND DOWN: faltan variables públicas de Supabase.");
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   const el=id=>document.getElementById(id);
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
@@ -13,7 +13,7 @@
   let currentLanguage=localStorage.getItem("upDownLanguage")||"es";
   let activeCollection="";
   let cart=JSON.parse(localStorage.getItem("upDownCart")||"[]");
-  const conditionLabels={new:"Nuevo",preowned:"Seminuevo",demo:"Demo"};
+  const conditionLabels={new:"Nuevo",preowned:"Seminuevo",demo:"Demostración"};
   const conditionLabelsEn={new:"New",preowned:"Pre-owned",demo:"Demo"};
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
   const CATALOG_CACHE_KEY="upDownCatalogCacheV1";
@@ -168,7 +168,7 @@
 
       if(!current){
         adjustments.push(
-          currentLanguage==="en"?`${item.name} is no longer available and was removed from your cart.`:`${item.name} ya no está disponible y se retirÃ³ del carrito.`
+          currentLanguage==="en"?`${item.name} is no longer available and was removed from your cart.`:`${item.name} ya no está disponible y se retiró del carrito.`
         );
         changed=true;
         return;
@@ -178,7 +178,7 @@
 
       if(currentStock<=0){
         adjustments.push(
-          currentLanguage==="en"?`${current.name} is sold out and was removed from your cart.`:`${current.name} está agotado y se retirÃ³ del carrito.`
+          currentLanguage==="en"?`${current.name} is sold out and was removed from your cart.`:`${current.name} está agotado y se retiró del carrito.`
         );
         changed=true;
         return;
@@ -200,7 +200,7 @@
 
       if(validQuantity!==previousQuantity){
         adjustments.push(
-          currentLanguage==="en"?`${current.name} was adjusted to ${validQuantity} unit${validQuantity===1?"":"s"} based on availability.`:`${current.name} se ajustÃ³ a ${validQuantity} unidad${validQuantity===1?"":"es"} por disponibilidad.`
+          currentLanguage==="en"?`${current.name} was adjusted to ${validQuantity} unit${validQuantity===1?"":"s"} based on availability.`:`${current.name} se ajustó a ${validQuantity} unidad${validQuantity===1?"":"es"} por disponibilidad.`
         );
         changed=true;
       }
@@ -240,7 +240,7 @@
       const message=
         adjustments.length===1
           ? adjustments[0]
-          : currentLanguage==="en"?`We updated ${adjustments.length} items in your cart due to inventory changes.`:`Actualizamos ${adjustments.length} artÃ­culos de tu carrito por cambios de inventario.`;
+          : currentLanguage==="en"?`We updated ${adjustments.length} items in your cart due to inventory changes.`:`Actualizamos ${adjustments.length} artículos de tu carrito por cambios de inventario.`;
 
       showToast(message);
     }
@@ -269,23 +269,23 @@
     if(!cartList)return;
 
     if(!cart.length){
-      cartList.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"Your cart is ready for your next selection.":"Tu carrito está listo para tu prÃ³xima selecciÃ³n."}</div>`;
+      cartList.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"Your cart is ready for your next selection.":"Tu carrito está listo para tu próxima selección."}</div>`;
       return;
     }
 
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
-      row.innerHTML=`<img src="${escapeHtml(item.image||"")}" alt="${escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">âˆ’</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">Ã—</button>`;
+      row.innerHTML=`<img src="${escapeHtml(item.image||"")}" alt="${escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
       row.querySelector(".uds-minus").onclick=()=>changeQty(item.id,-1);row.querySelector(".uds-plus").onclick=()=>changeQty(item.id,1);row.querySelector(".uds-remove").onclick=()=>removeFromCart(item.id);el("udsCartList").appendChild(row)
     })
   }
   function addToCart(product){
     if(Number(product.stock)<=0){showToast(currentLanguage==="en"?"This product is sold out.":"Este producto está agotado.");return}
-    const ex=cart.find(i=>i.id===product.id);if(ex){if(ex.quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste el stock disponible.");return}ex.quantity+=1}
+    const ex=cart.find(i=>i.id===product.id);if(ex){if(ex.quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste el existencias disponible.");return}ex.quantity+=1}
     else cart.push({id:product.id,name:product.name,slug:product.slug,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     saveCart();showToast(currentLanguage==="en"?`${product.name} added to cart.`:`${product.name} agregado al carrito.`)
   }
-  function changeQty(id,d){const item=cart.find(i=>i.id===id);if(!item)return;const next=item.quantity+d;if(next<=0)return removeFromCart(id);if(next>item.stock)return showToast(currentLanguage==="en"?"No more units are available.":"No hay mÃ¡s unidades disponibles.");item.quantity=next;saveCart()}
+  function changeQty(id,d){const item=cart.find(i=>i.id===id);if(!item)return;const next=item.quantity+d;if(next<=0)return removeFromCart(id);if(next>item.stock)return showToast(currentLanguage==="en"?"No more units are available.":"No hay más unidades disponibles.");item.quantity=next;saveCart()}
   function removeFromCart(id){cart=cart.filter(i=>i.id!==id);saveCart()}
 
   function openOverlay(){el("udsOverlay").classList.add("is-open");document.body.style.overflow="hidden"}
@@ -536,7 +536,7 @@
   function stockCopy(stock){
     stock=Number(stock||0);
     if(stock<=0)return {text:currentLanguage==="en"?"Sold out":"Agotado",cls:"is-out"};
-    if(stock===1)return {text:currentLanguage==="en"?"Last one":"Ãšltima pieza",cls:"is-low"};
+    if(stock===1)return {text:currentLanguage==="en"?"Last one":"Última pieza",cls:"is-low"};
     if(stock<=3)return {text:currentLanguage==="en"?"Low stock":"Pocas unidades",cls:"is-low"};
     return {text:currentLanguage==="en"?"Available":"Disponible",cls:""};
   }
@@ -585,7 +585,7 @@
     }).slice(0,4);
     rail.innerHTML="";
     selection.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);rail.appendChild(card)});
-    if(!selection.length)rail.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No new arrivals or offers yet.":"AÃºn no hay novedades u ofertas."}</div>`;
+    if(!selection.length)rail.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No new arrivals or offers yet.":"Aún no hay novedades u ofertas."}</div>`;
   }
   function renderPicks(){
     const grid=el("udsPicksGrid");if(!grid)return;
@@ -593,7 +593,7 @@
     const selected=picks.length?picks:products.slice(0,4);
     grid.innerHTML="";
     selected.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);grid.appendChild(card)});
-    if(!selected.length)grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No highlighted products yet.":"AÃºn no hay productos destacados."}</div>`;
+    if(!selected.length)grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No highlighted products yet.":"Aún no hay productos destacados."}</div>`;
   }
   function categoryImage(category,index){
     const p=products.find(x=>x.categories?.slug===category.slug&&x.cover_image_url);
@@ -613,7 +613,7 @@
     const button=document.createElement("button");
     button.type="button";
     button.className=`uds-mobile-category ${className}`.trim();
-    button.innerHTML=`<span>${escapeHtml(label)}</span><span aria-hidden="true">â†’</span>`;
+    button.innerHTML=`<span>${escapeHtml(label)}</span><span aria-hidden="true">→</span>`;
 
     button.onclick=()=>{
       if(typeof onClick==="function"){
@@ -651,7 +651,7 @@
     grid.innerHTML="";
     menu.innerHTML="";
     select.innerHTML=`<option value="all">${currentLanguage==="en"?"All categories":"Todas las categorías"}</option>`;
-    if(mobileSelect)mobileSelect.innerHTML=`<option value="all">${currentLanguage==="en"?"Category: all":"CategorÃ­a: todas"}</option>`;
+    if(mobileSelect)mobileSelect.innerHTML=`<option value="all">${currentLanguage==="en"?"Category: all":"Categoría: todas"}</option>`;
 
     appendMobileSection(currentLanguage==="en"?"Explore":"Explorar");
 
@@ -692,12 +692,12 @@
     });
 
     appendMobileMenuButton({
-      label:currentLanguage==="en"?"About us":"QuiÃ©nes somos",
+      label:currentLanguage==="en"?"About us":"Quiénes somos",
       target:"udsAbout",
       className:"is-editorial"
     });
 
-    appendMobileSection(currentLanguage==="en"?"Shop by category":"Comprar por categorÃ­a");
+    appendMobileSection(currentLanguage==="en"?"Shop by category":"Comprar por categoría");
 
     appendMobileMenuButton({
       label:currentLanguage==="en"?"All products":"Todos los productos",
@@ -717,7 +717,7 @@
           decoding="async"
         >
         <span class="uds-category-tile-content">
-          <small>${currentLanguage==="en"?"Explore collection":"Explorar colecciÃ³n"}</small>
+          <small>${currentLanguage==="en"?"Explore collection":"Explorar colección"}</small>
           <strong>${escapeHtml(categoryLabel(category))}</strong>
         </span>
       `;
@@ -791,15 +791,15 @@
       if(activeCategory==="all"){
         hint.textContent=currentLanguage==="en"
           ?"Choose a category to reveal only the technical filters that apply."
-          :"Elige una categorÃ­a para mostrar Ãºnicamente los filtros tÃ©cnicos que correspondan.";
+          :"Elige una categoría para mostrar únicamente los filtros técnicos que correspondan.";
       }else if(clubContext){
         hint.textContent=currentLanguage==="en"
           ?"Only technical filters available for this club category are shown."
-          :"Mostramos Ãºnicamente los filtros tÃ©cnicos disponibles para esta categorÃ­a de palos.";
+          :"Mostramos únicamente los filtros técnicos disponibles para esta categoría de palos.";
       }else{
         hint.textContent=currentLanguage==="en"
           ?"Club-specific filters are hidden because they do not apply to this category."
-          :"Ocultamos mano, flex y loft porque no corresponden a esta categorÃ­a.";
+          :"Ocultamos mano, flex y loft porque no corresponden a esta categoría.";
       }
     }
   }
@@ -812,12 +812,12 @@
 
     setSelectOptions(el("udsBrandFilter"),brands,currentLanguage==="en"?"All brands":"Todas las marcas");
     setSelectOptions(el("udsHandFilter"),hands,currentLanguage==="en"?"Any hand":"Cualquier mano");
-    setSelectOptions(el("udsFlexFilter"),flexes,currentLanguage==="en"?"Any flex":"Cualquier flex");
-    setSelectOptions(el("udsLoftFilter"),lofts,currentLanguage==="en"?"Any loft":"Cualquier loft");
+    setSelectOptions(el("udsFlexFilter"),flexes,currentLanguage==="en"?"Any flex":"Cualquier flexibilidad");
+    setSelectOptions(el("udsLoftFilter"),lofts,currentLanguage==="en"?"Any loft":"Cualquier ángulo de la cara");
     setSelectOptions(el("udsCatalogBrand"),brands,currentLanguage==="en"?"All brands":"Todas las marcas");
     setSelectOptions(el("udsCatalogHand"),hands,currentLanguage==="en"?"Any hand":"Cualquier mano");
-    setSelectOptions(el("udsCatalogFlex"),flexes,currentLanguage==="en"?"Any flex":"Cualquier flex");
-    setSelectOptions(el("udsCatalogLoft"),lofts,currentLanguage==="en"?"Any loft":"Cualquier loft");
+    setSelectOptions(el("udsCatalogFlex"),flexes,currentLanguage==="en"?"Any flex":"Cualquier flexibilidad");
+    setSelectOptions(el("udsCatalogLoft"),lofts,currentLanguage==="en"?"Any loft":"Cualquier ángulo de la cara");
     if(el("udsCatalogCategory")){
       el("udsCatalogCategory").innerHTML=`<option value="all">${currentLanguage==="en"?"All categories":"Todas las categorías"}</option>`+categories.map(c=>`<option value="${escapeHtml(c.slug)}">${escapeHtml(categoryLabel(c))}</option>`).join("");
     }
@@ -854,12 +854,12 @@
 
     if(el("udsClearFilters")){
       el("udsClearFilters").textContent=focused
-        ?(currentLanguage==="en"?"Close search":"Cerrar bÃºsqueda")
+        ?(currentLanguage==="en"?"Close search":"Cerrar búsqueda")
         :(currentLanguage==="en"?"Clear filters":"Limpiar filtros");
     }
     if(el("udsDiscoveryClear")){
       el("udsDiscoveryClear").textContent=focused
-        ?(currentLanguage==="en"?"Close search":"Cerrar bÃºsqueda")
+        ?(currentLanguage==="en"?"Close search":"Cerrar búsqueda")
         :(currentLanguage==="en"?"Clear filters":"Borrar filtros");
     }
   }
@@ -920,8 +920,8 @@
     return affiliate?.seller_name?{name:affiliate.seller_name,code:affiliate.code,phone:affiliate.seller_phone||""}:{name:"UP AND DOWN · Los Cabos",code:"",phone:""};
   }
   function conditionNote(product){
-    if(product.item_condition==="new")return currentLanguage==="en"?"New product as listed in the catalog.":"Producto nuevo segÃºn la condición registrada en catálogo.";
-    if(product.item_condition==="demo")return currentLanguage==="en"?"Demo unit. Ask for current cosmetic details before purchase.":"Unidad demo. Solicita detalles estéticos actuales antes de comprar.";
+    if(product.item_condition==="new")return currentLanguage==="en"?"New product as listed in the catalog.":"Producto nuevo según la condición registrada en catálogo.";
+    if(product.item_condition==="demo")return currentLanguage==="en"?"Demo unit. Ask for current cosmetic details before purchase.":"Unidad demostración. Solicita detalles estéticos actuales antes de comprar.";
     if(product.item_condition==="preowned")return currentLanguage==="en"?"Pre-owned. Ask for current photos and wear details before purchase.":"Seminuevo. Solicita fotos actuales y detalle de desgaste antes de comprar.";
     return currentLanguage==="en"?"Ask our team for current condition details.":"Consulta con nuestro equipo los detalles actuales de condición.";
   }
@@ -943,43 +943,43 @@
       const summary=golfSummary(product);
       const lines=currentLanguage==="en"
         ?[
-            `Hi ${advisor.name} ðŸ‘‹`,
+            `Hi ${advisor.name} 👋`,
             "",
-            "Iâ€™m looking at this equipment:",
+            "I’m looking at this equipment:",
             `*${product.name}*`,
-            `SKU: ${product.sku||"â€”"}`,
+            `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuration: ${summary}`]:[]),
             `Price: ${money(product.sale_price??product.price,product.currency)}`,
             "",
             "Can you help me confirm whether this configuration is right for my game?"
           ]
         :[
-            `Hola ${advisor.name} ðŸ‘‹`,
+            `Hola ${advisor.name} 👋`,
             "",
             "Estoy viendo este equipo:",
             `*${product.name}*`,
-            `SKU: ${product.sku||"â€”"}`,
+            `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuración: ${summary}`]:[]),
             `Precio: ${money(product.sale_price??product.price,product.currency)}`,
             "",
-            "Â¿Me ayudas a confirmar si esta configuraciÃ³n es adecuada para mi juego?"
+            "¿Me ayudas a confirmar si esta configuración es adecuada para mi juego?"
           ];
 
       return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
     }
 
     // General UP AND DOWN / Concierge flow remains unchanged.
-    const lines=currentLanguage==="en"?["Hi UP AND DOWN ðŸ‘‹"]:["Hola UP AND DOWN ðŸ‘‹"];
-    if(affiliate?.seller_name)lines.push(currentLanguage==="en"?`Iâ€™m shopping with ${affiliate.seller_name}'s referral (${affiliate.code}).`:`Estoy comprando con la referencia de ${affiliate.seller_name} (${affiliate.code}).`);
+    const lines=currentLanguage==="en"?["Hi UP AND DOWN 👋"]:["Hola UP AND DOWN 👋"];
+    if(affiliate?.seller_name)lines.push(currentLanguage==="en"?`I’m shopping with ${affiliate.seller_name}'s referral (${affiliate.code}).`:`Estoy comprando con la referencia de ${affiliate.seller_name} (${affiliate.code}).`);
     if(product){
-      lines.push("",currentLanguage==="en"?"Iâ€™m looking at this equipment:":"Estoy viendo este equipo:",`*${product.name}*`,`SKU: ${product.sku||"â€”"}`);
+      lines.push("",currentLanguage==="en"?"I’m looking at this equipment:":"Estoy viendo este equipo:",`*${product.name}*`,`SKU: ${product.sku||"—"}`);
       const summary=golfSummary(product);if(summary)lines.push(currentLanguage==="en"?`Configuration: ${summary}`:`Configuración: ${summary}`);
       lines.push(currentLanguage==="en"?`Price: ${money(product.sale_price??product.price,product.currency)}`:`Precio: ${money(product.sale_price??product.price,product.currency)}`);
     }
     lines.push("");
-    if(purpose==="trade")lines.push(currentLanguage==="en"?"I have golf equipment I may want to trade in. Can you tell me how the in-store evaluation works?":"Tengo equipo de golf que podrÃ­a dar a cuenta. Â¿Me explican cÃ³mo funciona la valoraciÃ³n en tienda?");
-    else if(product)lines.push(currentLanguage==="en"?"Can you help me confirm whether this configuration fits my game?":"Â¿Me ayudan a confirmar si esta configuraciÃ³n es adecuada para mi juego?");
-    else lines.push(currentLanguage==="en"?"Iâ€™d like help choosing the right golf equipment for my game.":"Quiero asesorÃ­a para elegir el equipo correcto para mi juego.");
+    if(purpose==="trade")lines.push(currentLanguage==="en"?"I have golf equipment I may want to trade in. Can you tell me how the in-store evaluation works?":"Tengo equipo de golf que podría dar a cuenta. ¿Me explican cómo funciona la valoración en tienda?");
+    else if(product)lines.push(currentLanguage==="en"?"Can you help me confirm whether this configuration fits my game?":"¿Me ayudan a confirmar si esta configuración es adecuada para mi juego?");
+    else lines.push(currentLanguage==="en"?"I’d like help choosing the right golf equipment for my game.":"Quiero asesoría para elegir el equipo correcto para mi juego.");
     return `https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`;
   }
   function openConcierge(product=null,purpose="question"){
@@ -992,7 +992,7 @@
     const name=affiliate?.seller_name||(currentLanguage==="en"?"UP AND DOWN · Los Cabos":"UP AND DOWN · Los Cabos");
     el("udsAdvisorName").textContent=name;
     el("udsAdvisorInitial").textContent=affiliate?.seller_name?String(affiliate.seller_name).trim().charAt(0).toUpperCase()||"U":"U";
-    el("udsAdvisorLabel").textContent=affiliate?.seller_name?(currentLanguage==="en"?"Your Golf Advisor":"Tu Golf Advisor"):(currentLanguage==="en"?"Golf Advisor":"Golf Advisor");
+    el("udsAdvisorLabel").textContent=affiliate?.seller_name?(currentLanguage==="en"?"Your Golf Advisor":"Tu asesor de golf"):(currentLanguage==="en"?"Golf Advisor":"Asesor de golf");
     el("udsAdvisorContact").textContent=affiliate?.seller_name?(currentLanguage==="en"?"Contact my advisor":"Consultar con mi asesor"):(currentLanguage==="en"?"Talk to an advisor":"Hablar con un asesor");
   }
   function modalSpecEntries(product){
@@ -1002,10 +1002,10 @@
     ];
     const g=rawGolfSpecs(product);
     if(g.hand)preferred.push([currentLanguage==="en"?"Hand":"Mano",normalizeHand(g.hand)]);
-    if(g.loft)preferred.push(["Loft",g.loft]);
-    if(g.flex)preferred.push(["Flex",g.flex]);
-    if(g.shaft)preferred.push(["Shaft",g.shaft]);
-    if(g.grip)preferred.push(["Grip",g.grip]);
+    if(g.loft)preferred.push([currentLanguage==="en"?"Loft":"Ángulo de la cara",g.loft]);
+    if(g.flex)preferred.push([currentLanguage==="en"?"Flex":"Flexibilidad",g.flex]);
+    if(g.shaft)preferred.push([currentLanguage==="en"?"Shaft":"Varilla",g.shaft]);
+    if(g.grip)preferred.push([currentLanguage==="en"?"Grip":"Empuñadura",g.grip]);
     const used=new Set(preferred.map(([k])=>normalizeSpecKey(k)));
     Object.entries(product.specifications||{}).forEach(([key,value])=>{
       const display=displaySpecValue(value);if(!display)return;
@@ -1043,7 +1043,7 @@
     el("udsModalCondition").textContent=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     el("udsModalConditionNote").textContent=conditionNote(product);
     el("udsModalStock").textContent=stock.text;
-    el("udsModalAdvisorLabel").textContent=advisor.code?(currentLanguage==="en"?"Assisted by":"Atendido por"):(currentLanguage==="en"?"Golf Concierge":"Golf Concierge");
+    el("udsModalAdvisorLabel").textContent=advisor.code?(currentLanguage==="en"?"Assisted by":"Atendido por"):(currentLanguage==="en"?"Golf advisor":"Asesor de golf");
     el("udsModalAdvisorName").textContent=advisor.name;
     const isSoldOut=Number(product.stock)<=0;
     el("udsModal").classList.toggle("is-sold-out",isSoldOut);
@@ -1060,7 +1060,7 @@
     el("udsModalTrade").textContent=currentLanguage==="en"?"Have equipment to trade in?":"¿Tienes equipo para intercambiar?";
     el("udsTrustInventory").textContent=currentLanguage==="en"?"Updated inventory":"Inventario actualizado";
     el("udsTrustPayment").textContent=currentLanguage==="en"?"Secure Stripe payment":"Pago seguro con Stripe";
-    el("udsTrustAdvice").textContent=currentLanguage==="en"?"Personal advice":"AsesorÃ­a personal";
+    el("udsTrustAdvice").textContent=currentLanguage==="en"?"Personal advice":"Asesoría personal";
     closePanels(false);openOverlay();el("udsModal").classList.add("is-open");el("udsModal").setAttribute("aria-hidden","false"); requestAnimationFrame(()=>{const m=el("udsModal");if(m)m.scrollTop=0;const g=m?.querySelector(".uds-modal-grid");if(g)g.scrollTop=0;});
   }
 
@@ -1108,7 +1108,7 @@
       }
     }catch(error){}
 
-    // Conserva visible la referencia del vendedor despuÃ©s de Stripe.
+    // Conserva visible la referencia del vendedor después de Stripe.
     syncStoredAffiliateReferenceInUrl();
   }
 
@@ -1286,7 +1286,7 @@
     }=readCheckoutReturn();
 
     if(status==="success"){
-      // Una sesiÃ³n ya procesada no debe vaciar ni abrir el aviso otra vez.
+      // Una sesión ya procesada no debe vaciar ni abrir el aviso otra vez.
       if(
         sessionId &&
         hasProcessedSession(sessionId)
@@ -1342,7 +1342,7 @@
       const error=ce||pe;
       if(restoredFromCache){
         console.warn("[UPDOWN catalog refresh]",error);
-        showToast(currentLanguage==="en"?"Showing the latest saved catalog while the connection recovers.":"Mostramos el Ãºltimo catálogo guardado mientras se recupera la conexiÃ³n.");
+        showToast(currentLanguage==="en"?"Showing the latest saved catalog while the connection recovers.":"Mostramos el último catálogo guardado mientras se recupera la conexión.");
         return;
       }
       el("udsStatus").className="uds-status is-error";
@@ -1356,7 +1356,7 @@
     revealCatalog();
     reconcileCart({silent:false}).catch(e=>{
       console.error("[UPDOWN cart reconcile]",e);
-      showToast(currentLanguage==="en"?"The catalog loaded, but we could not update your cart.":"El catálogo cargÃ³, pero no pudimos actualizar tu carrito.");
+      showToast(currentLanguage==="en"?"The catalog loaded, but we could not update your cart.":"El catálogo cargó, pero no pudimos actualizar tu carrito.");
     });
   }
 
@@ -1477,16 +1477,16 @@
   if(el("udsDockAdvisor"))el("udsDockAdvisor").onclick=()=>openConcierge(modalProduct&&el("udsModal").classList.contains("is-open")?modalProduct:null,"question");
   if(el("udsDockCart"))el("udsDockCart").onclick=openCart;
   if(el("udsCheckoutButton"))el("udsCheckoutButton").onclick=async()=>{
-    if(!cart.length)return showToast(currentLanguage==="en"?"Your cart is empty.":"Tu carrito está vacÃ­o.");
+    if(!cart.length)return showToast(currentLanguage==="en"?"Your cart is empty.":"Tu carrito está vacío.");
     if(window.__UPDOWN_CHECKOUT_ENABLED__!==true){
-      return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El checkout está desactivado en esta vista de migración.");
+      return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
     const b=el("udsCheckoutButton");b.disabled=true;b.textContent=currentLanguage==="en"?"Validating inventory…":"Validando inventario…";
     try{await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
       const {data,error}=await db.functions.invoke("create-checkout-session",{body:{items:cart.map(i=>({id:i.id,quantity:i.quantity})),seller_ref:getStoredAffiliate()?.code||null}});
       if(error){let msg=error.message||(currentLanguage==="en"?"We could not start the payment.":"No fue posible iniciar el pago.");try{if(error.context&&typeof error.context.json==="function"){const body=await error.context.json();msg=body?.error||msg}}catch(e){}try{await reconcileCart({silent:false})}catch(e){}throw new Error(msg)}
-      if(!data?.url)throw new Error(currentLanguage==="en"?"Stripe did not return a payment URL.":"Stripe no devolviÃ³ una dirección de pago.");window.location.assign(data.url)
-    }catch(e){console.error(e);showToast(e instanceof Error?e.message:(currentLanguage==="en"?"We could not start checkout.":"No pudimos iniciar el checkout."))}finally{b.textContent=currentLanguage==="en"?"Secure checkout":"Finalizar compra segura";b.disabled=!cart.length}
+      if(!data?.url)throw new Error(currentLanguage==="en"?"Stripe did not return a payment URL.":"Stripe no devolvió una dirección de pago.");window.location.assign(data.url)
+    }catch(e){console.error(e);showToast(e instanceof Error?e.message:(currentLanguage==="en"?"We could not start checkout.":"No pudimos iniciar el pago."))}finally{b.textContent=currentLanguage==="en"?"Secure checkout":"Finalizar compra segura";b.disabled=!cart.length}
   };
 
 
@@ -1496,158 +1496,44 @@
   // Translates all static commercial/editorial UI and the
   // dynamic labels generated by the storefront.
   // =========================================================
-  const STATIC_EN={
-    "Golf seleccionado · Pago seguro · AsesorÃ­a personal en Los Cabos":"Curated golf · Secure payment · Personal advice in Los Cabos",
-    "Bien elegido.":"Well chosen.",
-    "Equipo seleccionado para jugar mejor, con asesorÃ­a personal en Los Cabos.":"Curated equipment to play better, with personal advice in Los Cabos.",
-    "Explorar equipo":"Explore equipment",
-    "Filtros":"Filters",
-    "Encuentra lo que buscas.":"Find what you need.",
-    "Elegidos por Coque.":"Chosen by Coque.",
-    "Una selecciÃ³n corta de equipo que sÃ­ llevarÃ­amos al campo.":"A short selection of equipment we would take to the course.",
-    "Cargando selecciÃ³n…":"Loading selection…",
-    "Lo nuevo.":"What's new.",
-    "Las incorporaciones mÃ¡s recientes al inventario.":"The newest additions to inventory.",
-    "Tu próximo equipo.":"Your next equipment.",
-    "Busca, filtra y abre cada producto para ver configuraciÃ³n, condición y disponibilidad.":"Search, filter and open each product to view configuration, condition and availability.",
-    "MÃ¡s que equipo.":"More than equipment.",
-    "ReparaciÃ³n, trade-in, mantenimiento y entrenamiento con atenciÃ³n directa.":"Repair, trade-in, maintenance and training with direct personal service.",
-    "Golf en Los Cabos.":"Golf in Los Cabos.",
-    "Tres campos para explorar. Confirma horarios y condiciones directamente con cada club.":"Three courses to explore. Confirm schedules and access directly with each club.",
-    "Noticias.":"Noticias.",
-    "Tres lecturas breves para tomar mejores decisiones dentro y fuera del campo.":"Three short reads for better decisions on and off the course.",
-    "Golf seleccionado, servicio personal y experiencia local en Los Cabos.":"Curated golf, personal service and local experience in Los Cabos.",
-    "Curated golf equipment · Compra segura con Stripe · AtenciÃ³n personalizada en Los Cabos":"Curated golf equipment · Secure Stripe checkout · Personal service in Los Cabos",
-    "Antes de elegir instructor":"Before choosing an instructor",
-    "CuÃ©ntanos sobre tu juego.":"Tell us about your game.",
-    "Con estos datos podremos orientarte mejor y entender quÃ© buscan los golfistas que llegan a UP AND DOWN.":"This helps us guide you better and understand what golfers coming to UP AND DOWN are looking for.",
-    "Nombre":"Name",
-    "Tu nombre":"Your name",
-    "TelÃ©fono / WhatsApp":"Phone / WhatsApp",
-    "Nivel de juego":"Playing level",
-    "Selecciona tu nivel":"Select your level",
-    "Estoy empezando":"I'm just starting",
-    "Principiante":"Beginner",
-    "Intermedio":"Intermediate",
-    "Avanzado":"Advanced",
-    "Competitivo":"Competitive",
-    "Â¿QuÃ© te gustarÃ­a mejorar?":"What would you like to improve?",
-    "Selecciona un objetivo":"Select a goal",
-    "Empezar desde cero":"Start from scratch",
-    "Consistencia del swing":"Swing consistency",
-    "MÃ¡s distancia / driver":"More distance / driver",
-    "Hierros y precisiÃ³n":"Irons and accuracy",
-    "Juego corto":"Short game",
-    "Estrategia en campo":"Course strategy",
-    "Otro":"Other",
-    "CuÃ©ntanos un poco mÃ¡s":"Tell us a little more",
-    "Ej. Quiero ser mÃ¡s consistente con el driver y perder menos golpes desde el tee.":"E.g. I want to be more consistent with my driver and lose fewer shots off the tee.",
-    "Autorizo a UP AND DOWN a contactarme por WhatsApp, SMS o llamada para atender mi solicitud de clases y dar seguimiento relacionado con servicios de golf. Mi informaciÃ³n serÃ¡ utilizada para gestionar esta solicitud, atenciÃ³n comercial y anÃ¡lisis interno; no serÃ¡ vendida a terceros. Puedo solicitar dejar de recibir mensajes en cualquier momento.":"I authorize UP AND DOWN to contact me by WhatsApp, SMS or phone to handle my lesson request and follow up on related golf services. My information will be used to manage this request, commercial service and internal analytics; it will not be sold to third parties. I may ask to stop receiving messages at any time.",
-    "Guardar y ver instructores":"Save and view instructors",
-    "Instructores UP AND DOWN":"UP AND DOWN instructors",
-    "Elige con quiÃ©n quieres trabajar.":"Choose who you'd like to work with.",
-    "Tus datos quedaron guardados. Ahora puedes contactar directamente al instructor que prefieras.":"Your information was saved. You can now contact the instructor you prefer directly.",
-    "Profesional e instructor":"Golf professional & instructor",
-    "Planear una clase con Rodrigo":"Plan a lesson with Rodrigo",
-    "Planear una clase con Mario":"Plan a lesson with Mario",
-    "CuÃ©ntanos un poco mÃ¡s (opcional)":"Tell us a little more (optional)",
-    "Â¿Quieres registrar a otra persona?":"Would you like to register another person?",
-    "Puedes registrar a otra persona y los instructores seguirÃ¡n disponibles mientras completas sus datos.":"You can register another person while keeping the instructors available as you complete their details.",
-    "Registrar a otra persona":"Register another person",
-
-
-    "Novedades":"New arrivals","Tienda":"Shop","CategorÃ­as":"Categories","Servicios":"Services","Campos de golf":"Golf courses",
-    "Equipo nuevo, seminuevo y piezas seleccionadas para tu juego, con asesorÃ­a personal en Los Cabos.":"New, pre-owned and curated golf equipment for your game, with personal advice in Los Cabos.",
-    "Explorar colecciÃ³n":"Explore collection","Hierros":"Irons","Seminuevos":"Pre-owned","Descubre":"Discover",
-    "Buscar productos":"Search products","CategorÃ­a":"Category","Todas las categorías":"All categories","CondiciÃ³n":"Condition","Cualquier condición":"Any condition","Nuevo":"New","Seminuevo":"Pre-owned","MÃ¡s filtros":"More filters",
-    "CategorÃ­a: todas":"Category: all","CondiciÃ³n: cualquiera":"Condition: any","Todas las marcas":"All brands","Cualquier mano":"Any hand","Cualquier flex":"Any flex","Cualquier loft":"Any loft","Relevancia":"Relevance","MÃ¡s recientes":"Newest","Precio: menor a mayor":"Price: low to high","Precio: mayor a menor":"Price: high to low",
-    "Los filtros de mano, loft y flex aparecen automÃ¡ticamente cuando esos datos existen en las especificaciones del producto.":"Hand, loft and flex filters appear automatically when those details exist in the product specifications.",
-    "Borrar filtros":"Clear filters","Aplicar filtros y ver productos":"Apply filters & view products","Tu Golf Advisor":"Your Golf Advisor","Consultar con mi asesor":"Contact my advisor","Juego corto":"Short game","Seminuevos seleccionados":"Curated pre-owned",
-    "ReciÃ©n llegados":"New arrivals","ReciÃ©n llegados.":"New arrivals.","Una selecciÃ³n dinÃ¡mica de los productos mÃ¡s recientes y piezas destacadas del catálogo.":"A dynamic selection of the newest products and highlighted pieces in the catalog.","Cargando novedades…":"Loading new arrivals…","Compra por categorÃ­a.":"Shop by category.","Ver toda la tienda":"View full shop",
-    "El equipo correcto cambia el juego.":"The right equipment changes the game.","Consulta disponibilidad, compara condiciones y arma tu selecciÃ³n con inventario actualizado.":"Check availability, compare conditions and build your selection with updated inventory.","Filtra sin salir del catálogo":"Filter without leaving the catalog","· ajusta tu bÃºsqueda y resultados aquÃ­ mismo":"· refine your search and results right here","Filtrar catálogo":"Filter catalog","Aplicar filtros":"Apply filters",
-    "Inventario actualizado":"Updated inventory","Pago seguro con Stripe":"Secure Stripe payment","AsesorÃ­a personal":"Personal advice","Consultando catálogo…":"Checking catalog…","Limpiar filtros":"Clear filters","Conectando con el catálogo…":"Connecting to catalog…",
-    "Detalles que bajan golpes.":"Details that can save strokes.","Pelotas, guantes, accesorios y piezas seleccionadas para jugar con mÃ¡s confianza. Menos ruido; mejores decisiones.":"Balls, gloves, accessories and selected essentials to play with more confidence. Less noise; better decisions.","Explorar pelotas y accesorios":"Explore balls & accessories",
-    "Servicios UP AND DOWN":"UP AND DOWN Services","MÃ¡s que equipo. AcompaÃ±amiento para tu juego.":"More than equipment. Support for your game.","RevisiÃ³n, valoraciÃ³n, mantenimiento y entrenamiento personalizado con atenciÃ³n directa y procesos sencillos.":"Inspection, trade-in evaluation, maintenance and personalized training with direct service and a simple process.",
-    "DiagnÃ³stico inicial sin costo":"Complimentary initial assessment","ReparaciÃ³n de equipo":"Equipment repair","Â¿Tu equipo presenta desgaste, daÃ±o o alguna falla? LlÃ©valo a la tienda para una revisiÃ³n inicial sin costo. Evaluaremos su condición y te explicaremos las alternativas disponibles antes de realizar cualquier trabajo.":"Is your equipment showing wear, damage or a malfunction? Bring it to the shop for a complimentary initial assessment. We will evaluate its condition and explain the available options before any work begins.","RevisiÃ³n fÃ­sica del equipo.":"Physical inspection of the equipment.","DiagnÃ³stico inicial sin compromiso.":"No-obligation initial assessment.","CotizaciÃ³n previa antes de iniciar cualquier reparaciÃ³n.":"Quote provided before any repair begins.","Solicitar informaciÃ³n":"Request information","La reparaciÃ³n y el precio final se confirman Ãºnicamente despuÃ©s de revisar fÃ­sicamente el equipo.":"The repair scope and final price are confirmed only after a physical inspection of the equipment.",
-    "ValoraciÃ³n presencial":"In-store evaluation","Intercambios con tienda":"Trade-ins","Trae tus palos, bolsa o equipo participante para una valoraciÃ³n presencial. Revisaremos marca, modelo, condición, antigÃ¼edad y demanda para determinar si puede considerarse como parte de pago en la compra de otro producto.":"Bring your clubs, bag or eligible equipment for an in-store evaluation. We will review brand, model, condition, age and demand to determine whether it can be considered toward the purchase of another product.","ValoraciÃ³n basada en condición real y demanda.":"Evaluation based on actual condition and demand.","Posibilidad de aplicar el valor como crÃ©dito en tienda.":"Potential to apply the value as store credit.","AceptaciÃ³n sujeta a revisiÃ³n y elegibilidad del equipo.":"Acceptance is subject to inspection and equipment eligibility.","Valorar mi equipo":"Evaluate my equipment","La recepciÃ³n del equipo no garantiza su aceptaciÃ³n ni un valor especÃ­fico.":"Receiving the equipment does not guarantee acceptance or a specific value.",
-    "PrevenciÃ³n y cuidado":"Care & prevention","Mantenimiento":"Maintenance","MantÃ©n tu equipo listo para la siguiente ronda. Revisamos grips, limpieza general, ajustes bÃ¡sicos y seÃ±ales de desgaste para recomendar el mantenimiento adecuado.":"Keep your equipment ready for the next round. We inspect grips, perform general cleaning, basic adjustments and look for signs of wear to recommend the right maintenance.","Limpieza general de cabezas y varillas.":"General cleaning of clubheads and shafts.","RevisiÃ³n y posible cambio de grips.":"Grip inspection and replacement when needed.","InspecciÃ³n visual de desgaste y ajustes menores.":"Visual wear inspection and minor adjustments.","Consultar mantenimiento":"Ask about maintenance","El alcance del servicio se determina despuÃ©s de revisar el estado actual del equipo.":"The service scope is determined after reviewing the equipment's current condition.",
-    "Entrenamiento personalizado":"Personalized training","Clase de entrenamiento":"Training session","Sesiones personalizadas para trabajar tÃ©cnica, consistencia y toma de decisiones. Elige un horario disponible y comparte tus objetivos para preparar mejor la clase.":"Personalized sessions focused on technique, consistency and decision-making. Choose an available time and share your goals so the session can be better prepared.","Opciones para nivel principiante, intermedio o avanzado.":"Options for beginner, intermediate or advanced players.","Objetivos posibles: swing, driver, juego corto, putting o consistencia general.":"Possible goals: swing, driver, short game, putting or overall consistency.","ConfirmaciÃ³n y seguimiento mediante HighLevel.":"Confirmation and follow-up through HighLevel.","Consultar por WhatsApp":"Ask on WhatsApp",
-    "Juega donde el desierto toca el mar.":"Play where the desert meets the sea.","Directorio informativo para ubicar algunos de los campos mÃ¡s representativos. Los horarios y condiciones de acceso pueden cambiar; consulta siempre al club.":"An informative directory to help you locate some of the area's most representative courses. Hours and access conditions may change; always confirm directly with the club.",
-    "San JosÃ© del Cabo":"San JosÃ© del Cabo","Km 7.5 Carretera Transpeninsular. Campo Jack Nicklaus Signature con 27 hoyos y vistas al mar y al desierto.":"Km 7.5 Transpeninsular Highway. A 27-hole Jack Nicklaus Signature course with ocean and desert views.","CÃ³mo llegar":"Directions","Sitio oficial":"Official website","Corredor TurÃ­stico":"Tourist Corridor","Km 19.5 Carretera Transpeninsular. Trazado de Robert Trent Jones Jr. con fairways amplios y vistas al Mar de CortÃ©s.":"Km 19.5 Transpeninsular Highway. A Robert Trent Jones Jr. layout with generous fairways and Sea of Cortez views.","Complejo de 27 hoyos diseÃ±ado por Jack Nicklaus y Greg Norman, a pocos minutos del centro histÃ³rico de San JosÃ© del Cabo.":"A 27-hole complex designed by Jack Nicklaus and Greg Norman, just minutes from historic downtown San JosÃ© del Cabo.",
-    "Historias para jugar mejor.":"Stories to play better.","GuÃ­as breves creadas para disfrutar el golf en Los Cabos con mejores decisiones, mÃ¡s preparaciÃ³n y menos improvisaciÃ³n.":"Short guides created to help you enjoy golf in Los Cabos with better decisions, better preparation and less improvisation.","Destino · Los Cabos":"Destination · Los Cabos","CÃ³mo elegir el campo ideal para tu ronda.":"How to choose the right course for your round.","Mar, desierto, viento y diferentes niveles de dificultad: cada campo de Los Cabos ofrece una experiencia distinta.":"Ocean, desert, wind and different levels of difficulty: every course in Los Cabos offers a different experience.","Leer artÃ­culo":"Read article","Cerrar artÃ­culo":"Close article",
-    "Antes de elegir un campo, piensa primero en la experiencia que buscas. Una ronda panorÃ¡mica no siempre es la mÃ¡s indulgente, y un trazado tÃ©cnico puede ser excelente para un jugador experimentado, pero frustrante para quien apenas está retomando el juego.":"Before choosing a course, first think about the experience you want. A scenic round is not always the most forgiving, and a technical layout may be excellent for an experienced player but frustrating for someone just getting back into the game.","Experiencia":"Experience","Consulta dificultad, tipo de terreno y ritmo estimado de juego.":"Check difficulty, terrain type and expected pace of play.","Clima":"Weather","En Los Cabos, el viento y la hora de salida pueden cambiar completamente la ronda.":"In Los Cabos, wind and tee time can completely change the round.","LogÃ­stica":"Logistics","Revisa ubicaciÃ³n, acceso, cÃ³digo de vestimenta y polÃ­ticas del club.":"Check location, access, dress code and club policies.","La recomendaciÃ³n de Coque":"Coque's recommendation","Para una primera visita, prioriza una combinaciÃ³n equilibrada de paisaje, accesibilidad y nivel de dificultad. Cuando ya conozcas cÃ³mo juegas con el viento y la firmeza del terreno local, serÃ¡ mÃ¡s fÃ¡cil buscar retos tÃ©cnicos especÃ­ficos.":"For a first visit, prioritize a balanced combination of scenery, accessibility and difficulty. Once you understand how your game reacts to the local wind and firm conditions, it will be easier to seek out specific technical challenges.","Los horarios, condiciones de acceso y disponibilidad pueden cambiar. UP AND DOWN funciona Ãºnicamente como directorio informativo; confirma siempre los detalles directamente con el campo.":"Hours, access conditions and availability may change. UP AND DOWN serves only as an informational directory; always confirm details directly with the course.",
-    "CÃ³mo elegir un driver sin comprar solo distancia.":"How to choose a driver without buying distance alone.","La cabeza mÃ¡s nueva o el loft mÃ¡s bajo no garantizan mejores salidas. El objetivo real es encontrar consistencia.":"The newest head or lowest loft does not guarantee better drives. The real goal is consistency.","Un buen driver debe ayudarte a repetir un patrÃ³n de vuelo Ãºtil, no solamente producir un golpe espectacular de vez en cuando. Loft, flexibilidad de la varilla, longitud, peso y distribuciÃ³n de masa trabajan juntos.":"A good driver should help you repeat a useful ball flight, not just produce one spectacular shot once in a while. Loft, shaft flex, length, weight and mass distribution all work together.","MÃ¡s loft puede facilitar el lanzamiento y reducir la pÃ©rdida de distancia por golpes bajos.":"More loft can help launch the ball and reduce distance loss from low strikes.","Varilla":"Shaft","El flex correcto debe acompaÃ±ar tu velocidad y tempo, no tu ego. El ego rara vez encuentra fairway.":"The right flex should match your speed and tempo, not your ego. Ego rarely finds the fairway.","PerdÃ³n":"Forgiveness","Una cabeza estable conserva mÃ¡s velocidad cuando el impacto no ocurre en el centro.":"A stable head preserves more speed when impact is off-center.","Prioriza dispersiÃ³n":"Prioritize dispersion","Compara la distancia promedio y la dispersiÃ³n, no Ãºnicamente el golpe mÃ¡s largo. Diez metros menos dentro del fairway suelen valer mÃ¡s que veinte metros adicionales desde una posiciÃ³n complicada.":"Compare average distance and dispersion, not only your longest shot. Ten fewer meters from the fairway are often worth more than twenty extra meters from trouble.","Cuando sea posible, prueba distintas configuraciones antes de decidir. La selecciÃ³n correcta debe sentirse repetible y cÃ³moda durante toda la ronda.":"Whenever possible, test different configurations before deciding. The right setup should feel repeatable and comfortable throughout the round.",
-    "QuÃ© llevar para jugar bajo el clima de Los Cabos.":"What to carry for golf in Los Cabos weather.","Sol intenso, viento y cambios de temperatura entre la maÃ±ana y la tarde exigen una bolsa bien planeada.":"Strong sun, wind and temperature changes from morning to afternoon call for a well-planned golf bag.","Prepararte para el entorno ayuda tanto como elegir el palo correcto. AdemÃ¡s de tu equipo habitual, considera protecciÃ³n solar, hidrataciÃ³n, capas ligeras y accesorios que mantengan el agarre estable.":"Preparing for the environment matters almost as much as choosing the right club. Along with your usual equipment, consider sun protection, hydration, light layers and accessories that keep your grip secure.","ProtecciÃ³n":"Protection","Gorra, lentes, bloqueador y manga ligera para exposiciÃ³n prolongada.":"Cap, sunglasses, sunscreen and a light sleeve for prolonged exposure.","Agarre":"Grip","Guante adicional y toalla seca para mantener control cuando aumenta el calor.":"An extra glove and dry towel help maintain control as temperatures rise.","HidrataciÃ³n":"Hydration","Agua y electrolitos antes de sentir sed; el clima seco puede engaÃ±ar.":"Water and electrolytes before you feel thirsty; the dry climate can be deceptive.","Menos peso, mejor selecciÃ³n":"Less weight, better selection","No necesitas llenar todos los bolsillos. Lleva solamente lo que resuelva una necesidad real durante la ronda y revisa previamente si el campo ofrece agua, prÃ¡ctica, restaurante o tienda.":"You do not need to fill every pocket. Carry only what solves a real need during the round and check in advance whether the course offers water, practice facilities, a restaurant or a shop.","En salidas tempranas puede sentirse fresco, mientras que al mediodÃ­a la radiaciÃ³n aumenta considerablemente. Una capa ligera y transpirable suele ser la mejor soluciÃ³n.":"Early tee times can feel cool, while midday sun exposure rises considerably. A light, breathable layer is often the best solution.",
-    "EnvÃ­o seguro":"Secure shipping","CoordinaciÃ³n personalizada.":"Personalized coordination.","Pago seguro":"Secure payment","Procesado con Stripe.":"Processed with Stripe.","AtenciÃ³n personal":"Personal service","Por golfistas, para golfistas.":"By golfers, for golfers.","Disponibilidad conciliada antes del pago.":"Availability reconciled before payment.","Equipamiento premium para golfistas que viven el juego con pasiÃ³n, precisiÃ³n y estilo.":"Premium equipment for golfers who live the game with passion, precision and style.","Todos los productos":"All products","ConÃ©ctate":"Connect","Golf Concierge":"Golf Concierge","Consulta equipo y configuraciÃ³n":"Ask about equipment & setup",
-    "Tu carrito":"Your cart","productos":"products","Buscar":"Search","Asesor":"Advisor","Carrito":"Cart","Subtotal":"Subtotal","Finalizar compra segura":"Secure checkout","Inventario validado antes de continuar a Stripe.":"Inventory is validated before continuing to Stripe.","Precio expresado en pesos mexicanos (MXN).":"Price shown in Mexican pesos (MXN).","Para qué jugador":"Player profile","Configuración":"Configuration","CondiciÃ³n y disponibilidad":"Condition & availability","Producto":"Product","Consulta detalles con nuestro equipo.":"Ask our team for details.","Disponible":"Available","Agregar al carrito":"Add to cart","Consultar este equipo":"Ask about this equipment","Preguntar sobre este equipo":"Ask about this equipment","¿Tienes equipo para intercambiar?":"Have equipment to trade in?","Pago confirmado":"Payment confirmed","Tu pedido está en juego.":"Your order is in play.","Recibimos tu compra correctamente. Nuestro equipo continuarÃ¡ con la preparaciÃ³n y coordinaciÃ³n de entrega.":"Your purchase was received successfully. Our team will continue with preparation and delivery coordination.","Continuar comprando":"Continue shopping"
-,
-    "Novedades y ofertas.":"New arrivals & offers.",
-    "Lo mÃ¡s reciente del inventario y oportunidades con precio especial.":"The newest inventory plus selected opportunities with special pricing.",
-    "Cargando novedades y ofertas…":"Loading new arrivals & offers…",
-    "ReparaciÃ³n, intercambio, mantenimiento, clases, restauraciones y acceso a GHIN con atenciÃ³n directa.":"Repair, trade-in, maintenance, lessons, restorations and GHIN access with direct service.",
-    "Clases de golf":"Golf lessons",
-    "Sesiones para trabajar tÃ©cnica, consistencia y toma de decisiones segÃºn tu nivel y objetivos.":"Sessions focused on technique, consistency and decision-making based on your level and goals.",
-    "Principiante, intermedio o avanzado.":"Beginner, intermediate or advanced.",
-    "Swing, driver, juego corto o putting.":"Swing, driver, short game or putting.",
-    "Agenda y seguimiento directo.":"Direct scheduling and follow-up.",
-    "Restauraciones de Putters":"Putter restorations",
-    "Recupera una pieza especial":"Restore a special piece",
-    "Evaluamos tu putter para orientarte sobre opciones de restauraciÃ³n, acabado y recuperaciÃ³n estÃ©tica de acuerdo con su estado actual.":"We evaluate your putter and guide you through restoration, finish and cosmetic recovery options based on its current condition.",
-    "RevisiÃ³n previa del putter.":"Initial putter inspection.",
-    "Opciones segÃºn material y condición.":"Options based on material and condition.",
-    "CotizaciÃ³n antes de iniciar.":"Quote before work begins.",
-    "Consultar restauraciÃ³n":"Ask about restoration",
-    "La viabilidad del trabajo se confirma despuÃ©s de revisar la pieza.":"Feasibility is confirmed after inspecting the piece.",
-    "Handicap oficial":"Official handicap",
-    "ObtÃ©n informaciÃ³n para incorporarte a GHIN y llevar un seguimiento reconocido de tu Handicap Index.":"Get information about joining GHIN and maintaining a recognized Handicap Index.",
-    "InformaciÃ³n sobre el registro.":"Registration information.",
-    "OrientaciÃ³n para comenzar.":"Guidance to get started.",
-    "Contacto directo con Carlos.":"Direct contact with Carlos.",
-    "Quiero informaciÃ³n de GHIN":"I want GHIN information",
-    "Una selecciÃ³n local de campos. Mostramos Ãºnicamente los que estÃ©n publicados por UP AND DOWN.":"A local course selection. We only show courses published by UP AND DOWN.",
-    "Historias, guÃ­as y notas para jugar, elegir y disfrutar mejor el golf en Los Cabos.":"Stories, guides and notes to play, choose and enjoy golf in Los Cabos.",
-    "Ver mÃ¡s artÃ­culos":"View more articles",
-    "Ver menos artÃ­culos":"View fewer articles",
-    "Golf, con criterio local.":"Golf, with local perspective.",
-    "UP AND DOWN reÃºne tienda, asesorÃ­a y servicios para hacer mÃ¡s simple elegir, cuidar y disfrutar tu equipo de golf en Los Cabos.":"UP AND DOWN brings together shop, advice and services to make choosing, caring for and enjoying your golf equipment in Los Cabos simpler.",
-    "No buscamos llenar tu bolsa por llenar. Preferimos ayudarte a encontrar lo que tiene sentido para tu juego, acompaÃ±arte cuando tu equipo necesita atenciÃ³n y conectarte con experiencias que suman dentro y fuera del campo.":"We are not here to fill your bag for the sake of it. We prefer to help you find what makes sense for your game, support you when your equipment needs attention and connect you with experiences that add value on and off the course.",
-    "Conoce nuestros servicios":"Explore our services",
-    "QuiÃ©nes somos":"About us",
-    "Explorar":"Explore",
-    "Cerrar bÃºsqueda":"Close search",
-    "Elige una categorÃ­a para mostrar Ãºnicamente los filtros tÃ©cnicos que correspondan.":"Choose a category to reveal only the technical filters that apply.",
-    "Mostramos Ãºnicamente los filtros tÃ©cnicos disponibles para esta categorÃ­a de palos.":"Only technical filters available for this club category are shown.",
-    "Ocultamos mano, flex y loft porque no corresponden a esta categorÃ­a.":"Club-specific filters are hidden because they do not apply to this category."
-  };
-  const STATIC_ES=Object.fromEntries(Object.entries(STATIC_EN).map(([es,en])=>[en,es]));
-  const ATTR_EN={
-    "Abrir carrito":"Open cart","Abrir menÃº":"Open menu","Accesos rÃ¡pidos a la tienda":"Quick shop links","Acciones rÃ¡pidas de compra":"Quick purchase actions","Bolsa y equipo de golf en campo":"Golf bag and equipment on the course","Buscar":"Search","Buscar producto, marca, modelo o shaft…":"Search product, brand, model or shaft…","Buscar productos":"Search products","Calendario de clase de entrenamiento UP AND DOWN":"UP AND DOWN training session calendar","Campo de golf costero":"Coastal golf course","Campo de golf en Los Cabos":"Golf course in Los Cabos","Campo de golf entre desierto y mar":"Golf course between desert and sea","Carrito":"Cart","Cerrar carrito":"Close cart","Cerrar detalle":"Close details","Cerrar menÃº":"Close menu","Colecciones rÃ¡pidas":"Quick collections","Compromisos de compra":"Purchase commitments","GalerÃ­a del producto":"Product gallery","Golfista preparando un golpe":"Golfer preparing a shot","Green de golf":"Golf green","Imagen anterior":"Previous image","Ir a tienda":"Go to shop","Marcas de golf":"Golf brands","NavegaciÃ³n mÃ³vil":"Mobile navigation","NavegaciÃ³n principal":"Main navigation","Pelotas de golf sobre green":"Golf balls on a green","Siguiente imagen":"Next image","UP AND DOWN, inicio":"UP AND DOWN, home","Visitar la pÃ¡gina oficial de UP AND DOWN":"Visit the official UP AND DOWN website","Â¿Necesitas asistencia? EscrÃ­benos por WhatsApp":"Need assistance? Message us on WhatsApp"
-  };
-  const ATTR_ES=Object.fromEntries(Object.entries(ATTR_EN).map(([es,en])=>[en,es]));
+  function siteText(key){
+    const row=(window.__UPDOWN_TEXTS__||[]).find(item=>item.key===key);
+    return row?.[currentLanguage]||row?.es||key;
+  }
   const CATEGORY_EN={
     "driver":"Drivers","drivers":"Drivers","hierro":"Irons","hierros":"Irons","iron":"Irons","irons":"Irons","madera":"Fairway Woods","maderas":"Fairway Woods","wood":"Fairway Woods","woods":"Fairway Woods","hibrido":"Hybrids","hibridos":"Hybrids","hybrid":"Hybrids","hybrids":"Hybrids","wedge":"Wedges","wedges":"Wedges","putter":"Putters","putters":"Putters","pelota":"Golf Balls","pelotas":"Golf Balls","golf balls":"Golf Balls","bola":"Golf Balls","bolas":"Golf Balls","guante":"Gloves","guantes":"Gloves","glove":"Gloves","gloves":"Gloves","bolsa":"Golf Bags","bolsas":"Golf Bags","bag":"Golf Bags","bags":"Golf Bags","accesorio":"Accessories","accesorios":"Accessories","accessories":"Accessories","ropa":"Apparel","apparel":"Apparel","calzado":"Golf Shoes","zapatos":"Golf Shoes","shoes":"Golf Shoes","tees":"Tees","tee":"Tees"
   };
   function categoryLabel(category){
     if(!category)return currentLanguage==="en"?"Golf":"Golf";
-    if(currentLanguage!=="en")return category.name||category.slug||"Golf";
+    if(currentLanguage!=="en"){
+      const key=normalizeSpecKey(category.slug||category.name||"");
+      if(/driver/.test(key))return "Palos de salida";
+      if(/wedge/.test(key))return "Cuñas";
+      if(/putter/.test(key))return "Palos de precisión";
+      if(/tee/.test(key))return "Soportes para pelota";
+      return category.name||category.slug||"Golf";
+    }
     const candidates=[category.slug,category.name].filter(Boolean).map(v=>normalizeSpecKey(v));
     for(const key of candidates){if(CATEGORY_EN[key])return CATEGORY_EN[key];for(const [needle,label] of Object.entries(CATEGORY_EN)){if(key===needle||key.includes(needle))return label}}
     return category.name||"Golf";
   }
   function localizeStaticDom(lang){
     const root=document.getElementById("updown-store");if(!root)return;
-    const map=lang==="en"?STATIC_EN:STATIC_ES;
+    const map={};
+    (window.__UPDOWN_TEXTS__||[]).forEach(row=>{
+      [row.source_text,row.es,row.en].forEach(source=>{if(source)map[source]=row[lang]||row.es;});
+    });
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
     const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+    const managed="script,style,[translate='no'],.uds-managed-course,.uds-managed-journal-card,.uds-managed-teacher,#udsModalTitle,#udsModalDescription,#udsPlayerFit,.uds-card h3,.uds-card .uds-description";
     nodes.forEach(node=>{
-      if(node.parentElement?.closest("script,style"))return;
-      const raw=node.nodeValue||"";const trimmed=raw.trim();if(!trimmed)return;
-      const translated=map[trimmed];if(!translated)return;
-      node.nodeValue=raw.replace(trimmed,translated);
+      if(node.parentElement?.closest(managed))return;
+      const raw=node.nodeValue||"",trimmed=raw.trim();
+      if(map[trimmed]&&trimmed!==map[trimmed])node.nodeValue=raw.replace(trimmed,map[trimmed]);
     });
-    const attrMap=lang==="en"?ATTR_EN:ATTR_ES;
     root.querySelectorAll("[aria-label],[placeholder],[title],[alt]").forEach(node=>{
-      ["aria-label","placeholder","title","alt"].forEach(attr=>{const value=node.getAttribute(attr);if(value&&attrMap[value])node.setAttribute(attr,attrMap[value])});
+      if(node.closest(managed))return;
+      ["aria-label","placeholder","title","alt"].forEach(attr=>{const value=node.getAttribute(attr);if(value&&map[value])node.setAttribute(attr,map[value]);});
     });
   }
   function localizedProductText(product,field){
@@ -1660,8 +1546,8 @@
 
   function ghinMessage(lang=currentLanguage){
     return lang==="en"
-      ?"Hi Carlos ðŸ‘‹ Iâ€™m coming from UP AND DOWN · Coque. Iâ€™d like information about joining GHIN and how registration works. Thank you."
-      :"Hola Carlos ðŸ‘‹ Vengo de UP AND DOWN · Coque. Me gustarÃ­a recibir informaciÃ³n para unirme a GHIN y conocer cÃ³mo funciona el registro. Gracias.";
+      ?"Hi Carlos 👋 I’m coming from UP AND DOWN · Coque. I’d like information about joining GHIN and how registration works. Thank you."
+      :"Hola Carlos 👋 Vengo de UP AND DOWN · Coque. Me gustaría recibir información para unirme a GHIN y conocer cómo funciona el registro. Gracias.";
   }
   function buildGhinWhatsAppUrl(lang=currentLanguage){
     return `https://wa.me/526241299870?text=${encodeURIComponent(ghinMessage(lang))}`;
@@ -1670,11 +1556,11 @@
   function localizeWhatsAppLinks(lang){
     const serviceMessages={
       repair:{
-        es:"Hola UP AND DOWN, quiero solicitar informaciÃ³n sobre reparaciÃ³n de equipo de golf.",
+        es:"Hola UP AND DOWN, quiero solicitar información sobre reparación de equipo de golf.",
         en:"Hi UP AND DOWN, I would like information about golf equipment repair."
       },
       trade:{
-        es:"Hola UP AND DOWN, quiero llevar mi equipo a valoraciÃ³n para conocer si puede aplicar para intercambio en tienda.",
+        es:"Hola UP AND DOWN, quiero llevar mi equipo a valoración para conocer si puede aplicar para intercambio en tienda.",
         en:"Hi UP AND DOWN, I would like to bring in my equipment for an evaluation to see whether it may qualify for a trade-in."
       },
       maintenance:{
@@ -1682,11 +1568,11 @@
         en:"Hi UP AND DOWN, I would like information about maintenance service for my golf equipment."
       },
       classes:{
-        es:"Hola UP AND DOWN, quiero informaciÃ³n sobre las clases de golf y los horarios disponibles.",
+        es:"Hola UP AND DOWN, quiero información sobre las clases de golf y los horarios disponibles.",
         en:"Hi UP AND DOWN, I would like information about golf lessons and available times."
       },
       "putter-restoration":{
-        es:"Hola UP AND DOWN, quiero consultar el servicio de reparaciÃ³n de Putters para mi equipo de golf.",
+        es:"Hola UP AND DOWN, quiero consultar el servicio de reparación de Putters para mi equipo de golf.",
         en:"Hi UP AND DOWN, I would like information about the putter restoration service for my golf equipment."
       },
       ghin:{
@@ -1718,20 +1604,20 @@
 
   const commerceTranslations={
     es:{
-      announcement:"Curated golf equipment · Compra segura con Stripe · AtenciÃ³n personalizada en Los Cabos",
-      nav:["Novedades","Tienda","CategorÃ­as","Servicios","Clases","Campos de golf","Noticias","GHIN","QuiÃ©nes somos"],
-      hero:"○ Seminuevos ○ Reparaciones ○ Trading ○ Clases ○ Fittings",
-      explore:"Explorar equipo â†’",featured:"Coqueâ€™s Picks",search:"Buscar producto, marca, modelo o shaft…",filters:"Filtros",
+      announcement:"Equipo de golf seleccionado · Compra segura · Atención personalizada en Los Cabos",
+      nav:["Novedades","Tienda","Categorías","Servicios","Clases","Campos de golf","Noticias","GHIN","Quiénes somos"],
+      hero:"Seminuevos · Reparaciones · Intercambios · Clases · Ajuste de equipo",
+      explore:"Explorar equipo →",featured:"Selección de Coque",search:"Buscar producto, marca, modelo o varilla…",filters:"Filtros",
       resultsEmpty:"No encontramos productos con esos filtros.",clear:"Limpiar filtros",
-      newEyebrow:"Latest arrivals & offers",newTitle:"Novedades y ofertas.",newIntro:"Lo mÃ¡s reciente del inventario y oportunidades con precio especial.",
-      categoryEyebrow:"Shop by category",categoryTitle:"Compra por categorÃ­a.",categoryLink:"Ver toda la tienda",
-      catalogEyebrow:"The collection",catalogTitle:"El equipo correcto cambia el juego.",catalogIntro:"Consulta disponibilidad, compara configuraciones y arma tu selecciÃ³n con inventario actualizado."
+      newEyebrow:"NOVEDADES Y OFERTAS",newTitle:"Novedades y ofertas.",newIntro:"Lo más reciente del inventario y oportunidades con precio especial.",
+      categoryEyebrow:"CATEGORÍAS",categoryTitle:"Compra por categoría.",categoryLink:"Ver toda la tienda",
+      catalogEyebrow:"COLECCIÓN COMPLETA",catalogTitle:"El equipo correcto cambia el juego.",catalogIntro:"Consulta disponibilidad, compara configuraciones y arma tu selección con inventario actualizado."
     },
     en:{
       announcement:"Curated golf equipment · Secure Stripe checkout · Personal service in Los Cabos",
       nav:["New arrivals","Shop","Categories","Services","Lessons","Golf courses","Noticias","GHIN","About us"],
       hero:"○ Seminuevos ○ Reparaciones ○ Trading ○ Clases ○ Fittings",
-      explore:"Explore equipment â†’",featured:"Coqueâ€™s Picks",search:"Search product, brand, model or shaft…",filters:"Filters",
+      explore:"Explore equipment →",featured:"Coque’s Picks",search:"Search product, brand, model or shaft…",filters:"Filters",
       resultsEmpty:"No products match these filters.",clear:"Clear filters",
       newEyebrow:"Latest arrivals & offers",newTitle:"New arrivals & offers.",newIntro:"The newest inventory plus selected opportunities with special pricing.",
       categoryEyebrow:"Shop by category",categoryTitle:"Shop by category.",categoryLink:"View full shop",
@@ -1740,8 +1626,10 @@
   };
   function applyLanguage(lang){
     currentLanguage=lang==="en"?"en":"es";localStorage.setItem("upDownLanguage",currentLanguage);
-    const t=commerceTranslations[currentLanguage];
-    document.documentElement.lang=currentLanguage;
+    const t={...commerceTranslations[currentLanguage],
+      hero:siteText("hero.services"),newEyebrow:siteText("new.eyebrow"),
+      categoryEyebrow:siteText("category.eyebrow"),catalogEyebrow:siteText("catalog.eyebrow")};
+    document.documentElement.lang=currentLanguage==="en"?"en":"es-MX";
     
     const navCopy={
       new:t.nav[0],
@@ -1756,7 +1644,7 @@
       const key=node.getAttribute("data-nav-key");
       if(key&&navCopy[key])node.textContent=navCopy[key];
     });
-    el("udsHeroCopy").textContent=t.hero;el("udsExploreButton").innerHTML=t.explore.replace("â†’","<span>â†’</span>");if(el("udsFeaturedButton"))el("udsFeaturedButton").textContent=t.featured;el("udsSearch").placeholder=t.search;
+    el("udsHeroCopy").textContent=t.hero;el("udsExploreButton").innerHTML=t.explore.replace("→","<span>→</span>");if(el("udsFeaturedButton"))el("udsFeaturedButton").textContent=t.featured;el("udsSearch").placeholder=t.search;
     el("udsFiltersToggle").childNodes[0].nodeValue=`${t.filters} `;el("udsClearFilters").textContent=t.clear;
     const newHead=document.querySelector("#udsNew .uds-section-head");
     const categoryHead=document.querySelector("#udsCategories .uds-section-head");
@@ -1777,10 +1665,10 @@
           :(currentLanguage==="en"?"View all categories":"Ver todas las categorías");
       }
     }
-    if(catalogHead){catalogHead.querySelector(".uds-eyebrow").textContent=t.catalogEyebrow;catalogHead.querySelector("h2").textContent=currentLanguage==="en"?"Your next equipment.":"Tu próximo equipo.";catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuraciÃ³n, condición y disponibilidad."}
+    if(catalogHead){catalogHead.querySelector(".uds-eyebrow").textContent=t.catalogEyebrow;catalogHead.querySelector("h2").textContent=currentLanguage==="en"?"Your next equipment.":"Tu próximo equipo.";catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuración, condición y disponibilidad."}
     el("udsLangEs").classList.toggle("is-active",currentLanguage==="es");el("udsLangEn").classList.toggle("is-active",currentLanguage==="en");el("udsLangEs").setAttribute("aria-pressed",String(currentLanguage==="es"));el("udsLangEn").setAttribute("aria-pressed",String(currentLanguage==="en"));
-    el("udsConditionFilter").options[0].text=currentLanguage==="en"?"Any condition":"Cualquier condición";el("udsConditionFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionFilter").options[3].text="Demo";
-    el("udsConditionMobileFilter").options[0].text=currentLanguage==="en"?"Condition: any":"CondiciÃ³n: cualquiera";el("udsConditionMobileFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionMobileFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionMobileFilter").options[3].text="Demo";
+    el("udsConditionFilter").options[0].text=currentLanguage==="en"?"Any condition":"Cualquier condición";el("udsConditionFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionFilter").options[3].text=currentLanguage==="en"?"Demo":"Demostración";
+    el("udsConditionMobileFilter").options[0].text=currentLanguage==="en"?"Condition: any":"Condición: cualquiera";el("udsConditionMobileFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionMobileFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionMobileFilter").options[3].text=currentLanguage==="en"?"Demo":"Demostración";
     if(el("udsCatalogSearch"))el("udsCatalogSearch").placeholder=t.search;
     if(el("udsDiscoveryApply"))el("udsDiscoveryApply").textContent=currentLanguage==="en"?"Apply filters & view products":"Aplicar filtros y ver productos";
     if(el("udsDiscoveryClear"))el("udsDiscoveryClear").textContent=currentLanguage==="en"?"Clear filters":"Borrar filtros";
@@ -1792,17 +1680,18 @@
     localizeWhatsAppLinks(currentLanguage);
     setupJournalVisibility();
     const heroHeading=document.querySelector("#updown-store .uds-hero h1");
-    if(heroHeading)heroHeading.innerHTML="Up and Down Golf Shop<span>Todo lo que necesitas para tu juego</span>";
-    const servicesIntro=document.querySelector("#udsServices .uds-section-intro");
-    if(servicesIntro)servicesIntro.textContent="Múltiples servicios, atención personalizada.";
-    const newsIntro=document.querySelector("#udsJournal .uds-section-intro");
-    if(newsIntro)newsIntro.textContent="Guías de equipo, campos de golf y noticias.";
-    const aboutLabel=document.querySelector("#udsAbout .uds-eyebrow");
-    if(aboutLabel)aboutLabel.textContent="QUIÉNES SOMOS";
+    if(heroHeading)heroHeading.innerHTML=`${escapeHtml(siteText("hero.title"))}<span>${escapeHtml(siteText("hero.subtitle"))}</span>`;
+    document.querySelectorAll('[data-nav-key="journal"],.uds-footer-links a[href="#udsJournal"]').forEach(node=>node.textContent=siteText("news.title"));
+    const newsHeading=document.querySelector("#udsJournal .uds-eyebrow");if(newsHeading)newsHeading.textContent=siteText("news.title");
+    window.dispatchEvent(new CustomEvent("updown:language-change",{detail:currentLanguage}));
   }
+  window.__UPDOWN_SET_LANGUAGE__=applyLanguage;
+  if(window.__UPDOWN_LANGUAGE_LISTENER__)window.removeEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
+  window.__UPDOWN_LANGUAGE_LISTENER__=()=>applyLanguage(currentLanguage);
+  window.addEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
   if(el("udsLangEs"))if(el("udsLangEs"))el("udsLangEs").onclick=()=>applyLanguage("es");if(el("udsLangEn"))if(el("udsLangEn"))el("udsLangEn").onclick=()=>applyLanguage("en");
 
-  // NavegaciÃ³n inmersiva y fija.
+  // Navegación inmersiva y fija.
   const udsHeader=document.querySelector("#updown-store .uds-header");
   const udsAnnouncement=document.querySelector("#updown-store .uds-announcement");
   const udsLogo=document.querySelector("#updown-store .uds-logo");
@@ -1896,7 +1785,7 @@
     en:{new:"I'm just starting",beginner:"Beginner",intermediate:"Intermediate",advanced:"Advanced",competitive:"Competitive"}
   };
   const udsGoalLabels={
-    es:{starting:"empezar desde cero",consistency:"mejorar la consistencia del swing",distance:"ganar distancia con el driver",irons:"mejorar hierros y precisiÃ³n",short_game:"mejorar el juego corto",putting:"mejorar el putting",strategy:"trabajar estrategia en campo",other:"trabajar un objetivo especÃ­fico"},
+    es:{starting:"empezar desde cero",consistency:"mejorar la consistencia del swing",distance:"ganar distancia con el driver",irons:"mejorar hierros y precisión",short_game:"mejorar el juego corto",putting:"mejorar el putting",strategy:"trabajar estrategia en campo",other:"trabajar un objetivo específico"},
     en:{starting:"start from scratch",consistency:"improve swing consistency",distance:"gain distance with the driver",irons:"improve irons and accuracy",short_game:"improve the short game",putting:"improve putting",strategy:"work on course strategy",other:"work on a specific goal"}
   };
 
@@ -1942,8 +1831,8 @@
     if(lang==="en"){
       const lines=[
         d.name
-          ?`Hi ${instructorName}, I'm ${d.name} ðŸ‘‹ I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
-          :`Hi ${instructorName} ðŸ‘‹ I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
+          ?`Hi ${instructorName}, I'm ${d.name} 👋 I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
+          :`Hi ${instructorName} 👋 I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
       ];
       lines.push("");
       if(skill)lines.push(`Playing level: ${skill}`);
@@ -1955,12 +1844,12 @@
 
     const lines=[
       d.name
-        ?`Hola ${instructorName}, soy ${d.name} ðŸ‘‹ Vengo de UP AND DOWN · Coque. Ya registrÃ© anteriormente una solicitud de clases en la pÃ¡gina y me gustarÃ­a coordinar una clase contigo.`
-        :`Hola ${instructorName} ðŸ‘‹ Vengo de UP AND DOWN · Coque. Ya registrÃ© anteriormente una solicitud de clases en la pÃ¡gina y me gustarÃ­a coordinar una clase contigo.`
+        ?`Hola ${instructorName}, soy ${d.name} 👋 Vengo de UP AND DOWN · Coque. Ya registré anteriormente una solicitud de clases en la página y me gustaría coordinar una clase contigo.`
+        :`Hola ${instructorName} 👋 Vengo de UP AND DOWN · Coque. Ya registré anteriormente una solicitud de clases en la página y me gustaría coordinar una clase contigo.`
     ];
     lines.push("");
     if(skill)lines.push(`Nivel de juego: ${skill}`);
-    if(goal)lines.push(`QuÃ© me gustarÃ­a mejorar: ${goal}`);
+    if(goal)lines.push(`Qué me gustaría mejorar: ${goal}`);
     if(comment)lines.push(`Comentarios: ${comment}`);
     if(shortRef)lines.push(`Ref: ${shortRef}`);
     return lines.join("\n");
@@ -2091,11 +1980,11 @@
       el("udsClassName")?.focus();return;
     }
     if(phoneDigits.length<10||phoneDigits.length>15){
-      udsClassFormMessage(currentLanguage==="en"?"Enter a valid phone or WhatsApp number.":"Ingresa un telÃ©fono o WhatsApp vÃ¡lido.","error");
+      udsClassFormMessage(currentLanguage==="en"?"Enter a valid phone or WhatsApp number.":"Ingresa un teléfono o WhatsApp válido.","error");
       el("udsClassPhone")?.focus();return;
     }
     if(!skill||!goal){
-      udsClassFormMessage(currentLanguage==="en"?"Choose your playing level and what you want to improve.":"Selecciona tu nivel de juego y quÃ© te gustarÃ­a mejorar.","error");
+      udsClassFormMessage(currentLanguage==="en"?"Choose your playing level and what you want to improve.":"Selecciona tu nivel de juego y qué te gustaría mejorar.","error");
       return;
     }
     if(!consent){
@@ -2160,7 +2049,7 @@
 
     }catch(error){
       console.error("Golf lesson lead error",error);
-      udsClassFormMessage(currentLanguage==="en"?"We couldn't save your request. Please try again.":"No pudimos guardar tu solicitud. IntÃ©ntalo nuevamente.","error");
+      udsClassFormMessage(currentLanguage==="en"?"We couldn't save your request. Please try again.":"No pudimos guardar tu solicitud. Inténtalo nuevamente.","error");
       if(button){
         button.textContent=currentLanguage==="en"?"Save and view instructors":"Guardar y ver instructores";
       }
@@ -2238,7 +2127,7 @@
   });
 
 
-  // MenÃº superior -> Clases: abre directamente el servicio y lleva al usuario a la card.
+  // Menú superior -> Clases: abre directamente el servicio y lleva al usuario a la card.
   const udsClassesNav=document.querySelector('#updown-store [data-nav-key="classes"]');
   udsClassesNav?.addEventListener("click",(event)=>{
     event.preventDefault();
@@ -2269,12 +2158,12 @@
         other.classList.remove("is-expanded");
         const otherButton=other.querySelector(".uds-journal-toggle");
         otherButton.setAttribute("aria-expanded","false");
-        otherButton.querySelector("span:first-child").textContent=currentLanguage==="en"?"Read article":"Leer artÃ­culo";
+        otherButton.querySelector("span:first-child").textContent=currentLanguage==="en"?"Read article":"Leer artículo";
       });
       if(willOpen){
         card.classList.add("is-expanded");
         button.setAttribute("aria-expanded","true");
-        button.querySelector("span:first-child").textContent=currentLanguage==="en"?"Close article":"Cerrar artÃ­culo";
+        button.querySelector("span:first-child").textContent=currentLanguage==="en"?"Close article":"Cerrar artículo";
         setTimeout(()=>card.scrollIntoView({behavior:"smooth",block:"center"}),180);
       }
     });
@@ -2373,7 +2262,7 @@
     .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 
   const mcLang=()=>{
-    try{return typeof currentLanguage!=="undefined"&&currentLanguage==="en"?"en":"es"}
+    try{return document.documentElement.lang.startsWith("en")?"en":"es"}
     catch{return document.documentElement.lang==="en"?"en":"es"}
   };
 
@@ -2383,7 +2272,7 @@
   };
 
   async function mcFetch(table,query){
-    if(!MC_SUPABASE_URL||!MC_SUPABASE_KEY)throw new Error("Falta configuraciÃ³n pÃºblica de Supabase para contenido administrado.");
+    if(!MC_SUPABASE_URL||!MC_SUPABASE_KEY)throw new Error("Falta configuración pública de Supabase para contenido administrado.");
     const response=await fetch(`${MC_SUPABASE_URL}/rest/v1/${table}?${query}`,{
       headers:{
         apikey:MC_SUPABASE_KEY,
@@ -2457,7 +2346,7 @@
     en:{new:"Just starting",beginner:"Beginner",intermediate:"Intermediate",advanced:"Advanced",competitive:"Competitive"}
   };
   const mcGoalLabels={
-    es:{starting:"Empezar desde cero",consistency:"Consistencia del swing",distance:"MÃ¡s distancia / driver",irons:"Hierros y precisiÃ³n",short_game:"Juego corto",putting:"Putting",strategy:"Estrategia en campo",other:"Otro"},
+    es:{starting:"Empezar desde cero",consistency:"Consistencia del swing",distance:"Más distancia / driver",irons:"Hierros y precisión",short_game:"Juego corto",putting:"Putting",strategy:"Estrategia en campo",other:"Otro"},
     en:{starting:"Start from zero",consistency:"Swing consistency",distance:"More distance / driver",irons:"Irons and accuracy",short_game:"Short game",putting:"Putting",strategy:"Course strategy",other:"Other"}
   };
 
@@ -2473,8 +2362,8 @@
     const lines=[];
     if(lang==="en"){
       lines.push(d.name
-        ?`Hi ${firstName}, I'm ${d.name} ðŸ‘‹ I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
-        :`Hi ${firstName} ðŸ‘‹ I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`);
+        ?`Hi ${firstName}, I'm ${d.name} 👋 I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`
+        :`Hi ${firstName} 👋 I came from UP AND DOWN · Coque. I already registered a lesson request on the website and I'd like to coordinate a lesson with you.`);
       lines.push("");
       if(skill)lines.push(`Playing level: ${skill}`);
       if(goal)lines.push(`What I'd like to improve: ${goal}`);
@@ -2482,11 +2371,11 @@
       if(shortRef)lines.push(`Ref: ${shortRef}`);
     }else{
       lines.push(d.name
-        ?`Hola ${firstName}, soy ${d.name} ðŸ‘‹ Vengo de UP AND DOWN · Coque. Ya registrÃ© anteriormente una solicitud de clases en la pÃ¡gina y me gustarÃ­a coordinar una clase contigo.`
-        :`Hola ${firstName} ðŸ‘‹ Vengo de UP AND DOWN · Coque. Ya registrÃ© anteriormente una solicitud de clases en la pÃ¡gina y me gustarÃ­a coordinar una clase contigo.`);
+        ?`Hola ${firstName}, soy ${d.name} 👋 Vengo de UP AND DOWN · Coque. Ya registré anteriormente una solicitud de clases en la página y me gustaría coordinar una clase contigo.`
+        :`Hola ${firstName} 👋 Vengo de UP AND DOWN · Coque. Ya registré anteriormente una solicitud de clases en la página y me gustaría coordinar una clase contigo.`);
       lines.push("");
       if(skill)lines.push(`Nivel de juego: ${skill}`);
-      if(goal)lines.push(`QuÃ© me gustarÃ­a mejorar: ${goal}`);
+      if(goal)lines.push(`Qué me gustaría mejorar: ${goal}`);
       if(comment)lines.push(`Comentarios: ${comment}`);
       if(shortRef)lines.push(`Ref: ${shortRef}`);
     }
@@ -2566,7 +2455,7 @@
         <h3>${mcEsc(name)}</h3>
         ${description?`<p>${mcEsc(description)}</p>`:""}
         ${(map||official)?`<div class="uds-course-actions">
-          ${map?`<a href="${mcEsc(map)}" rel="noopener noreferrer" target="_blank">${mcLang()==="en"?"Directions":"CÃ³mo llegar"}</a>`:""}
+          ${map?`<a href="${mcEsc(map)}" rel="noopener noreferrer" target="_blank">${mcLang()==="en"?"Directions":"Cómo llegar"}</a>`:""}
           ${official?`<a href="${mcEsc(official)}" rel="noopener noreferrer" target="_blank">${mcLang()==="en"?"Official site":"Sitio oficial"}</a>`:""}
         </div>`:""}
       </div>
@@ -2601,7 +2490,7 @@
       <div class="uds-journal-body">
         ${summary?`<p class="uds-journal-lead">${mcEsc(summary)}</p>`:""}
         ${body?`<button aria-expanded="false" class="uds-journal-toggle" type="button">
-          <span>${mcLang()==="en"?"Read article":"Leer artÃ­culo"}</span>
+          <span>${mcLang()==="en"?"Read article":"Leer artículo"}</span>
           <span class="uds-journal-toggle-icon">+</span>
         </button>
         <div class="uds-journal-content">
@@ -2635,7 +2524,7 @@
             t.setAttribute("aria-expanded","false");
             const label=t.querySelector("span:first-child");
             const icon=t.querySelector(".uds-journal-toggle-icon");
-            if(label)label.textContent=mcLang()==="en"?"Read article":"Leer artÃ­culo";
+            if(label)label.textContent=mcLang()==="en"?"Read article":"Leer artículo";
             if(icon)icon.textContent="+";
           }
         });
@@ -2645,9 +2534,9 @@
         const label=toggle.querySelector("span:first-child");
         const icon=toggle.querySelector(".uds-journal-toggle-icon");
         if(label)label.textContent=opening
-          ?(mcLang()==="en"?"Close article":"Cerrar artÃ­culo")
-          :(mcLang()==="en"?"Read article":"Leer artÃ­culo");
-        if(icon)icon.textContent=opening?"âˆ’":"+";
+          ?(mcLang()==="en"?"Close article":"Cerrar artículo")
+          :(mcLang()==="en"?"Read article":"Leer artículo");
+        if(icon)icon.textContent=opening?"−":"+";
       };
     });
 
@@ -2659,8 +2548,8 @@
 
       if(hasMore){
         more.textContent=mcJournalExpanded
-          ?(mcLang()==="en"?"Show fewer articles":"Ver menos artÃ­culos")
-          :(mcLang()==="en"?"View more articles":"Ver mÃ¡s artÃ­culos");
+          ?(mcLang()==="en"?"Show fewer articles":"Ver menos artículos")
+          :(mcLang()==="en"?"View more articles":"Ver más artículos");
 
         more.onclick=()=>{
           mcJournalExpanded=!mcJournalExpanded;
@@ -2697,8 +2586,8 @@
       more.setAttribute("aria-expanded",String(hasMore&&mcJournalExpanded));
       if(hasMore){
         more.textContent=mcJournalExpanded
-          ?(mcLang()==="en"?"View fewer articles":"Ver menos artÃ­culos")
-          :(mcLang()==="en"?"View more articles":"Ver mÃ¡s artÃ­culos");
+          ?(mcLang()==="en"?"View fewer articles":"Ver menos artículos")
+          :(mcLang()==="en"?"View more articles":"Ver más artículos");
         more.onclick=()=>{
           mcJournalExpanded=!mcJournalExpanded;
           mcRenderJournal();
@@ -2728,12 +2617,19 @@
     const cities=[...new Set(mcState.courses.map(mcCourseCity).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
     if(mcState.city!=="all"&&!cities.includes(mcState.city))mcState.city="all";
     const select=document.getElementById("udsCourseCity");
+    const all=mcLang()==="en"?"All":"Todos";
     if(select){
-      select.innerHTML='<option value="all">Todos</option>'+cities.map(city=>`<option value="${mcEsc(city)}">${mcEsc(city)}</option>`).join("");
+      select.innerHTML=`<option value="all">${all}</option>`+cities.map(city=>`<option value="${mcEsc(city)}">${mcEsc(city)}</option>`).join("");
       select.value=mcState.city;
-      const triangle=document.querySelector("#udsCourses .uds-city-triangle");
-      if(triangle)triangle.onclick=()=>{select.focus();if(typeof select.showPicker==="function")select.showPicker();else select.click();};
       select.onchange=()=>{mcState.city=select.value;mcRenderCourses();};
+    }
+    const filter=document.querySelector("#udsCourses .uds-course-city-filter");
+    if(filter){
+      let details=filter.querySelector("details");
+      if(!details){details=document.createElement("details");details.className="uds-city-picker";filter.appendChild(details);}
+      details.innerHTML=`<summary aria-label="${mcLang()==="en"?"Filter courses by city":"Filtrar campos por ciudad"}"><span class="uds-city-triangle" aria-hidden="true">▶</span><span>${mcEsc(mcState.city==="all"?all:mcState.city)}</span></summary><div class="uds-city-options">${["all",...cities].map(city=>`<button type="button" data-city="${mcEsc(city)}" aria-pressed="${city===mcState.city}">${mcEsc(city==="all"?all:city)}</button>`).join("")}</div>`;
+      details.querySelectorAll("button[data-city]").forEach(button=>button.onclick=()=>{mcState.city=button.dataset.city;details.open=false;mcRenderCourses();filter.querySelector("summary")?.focus();});
+      details.onkeydown=event=>{if(event.key==="Escape"){details.open=false;details.querySelector("summary")?.focus();}};
     }
     const shown=mcState.courses.filter(course=>mcState.city==="all"||mcCourseCity(course)===mcState.city);
     grid.innerHTML=shown.map(mcCourseCard).join("");
@@ -3283,7 +3179,7 @@
 
     const head=document.createElement("div");
     head.className="uds53-head";
-    head.innerHTML=`<strong>${txt("NavegaciÃ³n","Navigation")}</strong><button class="uds53-close" type="button" aria-label="${txt("Cerrar menÃº","Close menu")}">Ã—</button>`;
+    head.innerHTML=`<strong>${txt("Navegación","Navigation")}</strong><button class="uds53-close" type="button" aria-label="${txt("Cerrar menú","Close menu")}">×</button>`;
     head.querySelector("button")?.addEventListener("click",closeMenu);
     menu.appendChild(head);
 
@@ -3309,8 +3205,8 @@
 
     const shop=[
       {label:txt("Novedades y ofertas","New arrivals & offers"),onClick:()=>scrollToId("udsNew")},
-      {label:txt("ColecciÃ³n completa","Full collection"),onClick:()=>scrollToId("udsCatalog")},
-      {label:txt("Compra por categorÃ­a","Shop by category"),onClick:()=>scrollToId("udsCategories")},
+      {label:txt("Colección completa","Full collection"),onClick:()=>scrollToId("udsCatalog")},
+      {label:txt("Compra por categoría","Shop by category"),onClick:()=>scrollToId("udsCategories")},
     ];
     menu.appendChild(makeGroup(txt("Tienda","Shop"),shop));
 
@@ -3318,15 +3214,15 @@
       label:c.label,
       onClick:()=>applyCategory(c.value)
     }));
-    menu.appendChild(makeGroup(txt("CategorÃ­as","Categories"),categories.length?categories:[
+    menu.appendChild(makeGroup(txt("Categorías","Categories"),categories.length?categories:[
       {label:txt("Ver categorías","View categories"),onClick:()=>scrollToId("udsCategories")}
     ]));
 
     menu.appendChild(makeGroup(txt("Servicios","Services"),[
-      {label:txt("ReparaciÃ³n","Repair"),onClick:()=>openService(/reparaci|repair/i)},
+      {label:txt("Reparación","Repair"),onClick:()=>openService(/reparaci|repair/i)},
       {label:txt("Intercambios","Trade-ins"),onClick:()=>openService(/intercambio|trade/i)},
       {label:txt("Mantenimiento","Maintenance"),onClick:()=>openService(/mantenimiento|maintenance/i)},
-      {label:txt("RestauraciÃ³n de Putters","Putter Restoration"),onClick:()=>openService(/putter/i)},
+      {label:txt("Restauración de Putters","Putter Restoration"),onClick:()=>openService(/putter/i)},
     ]));
 
     menu.appendChild(makeGroup(txt("Golf en Los Cabos","Golf in Los Cabos"),[
@@ -3334,7 +3230,7 @@
       {label:"Noticias",onClick:()=>scrollToId("udsJournal")},
     ]));
 
-    menu.appendChild(makeButton(txt("QuiÃ©nes somos","About us"),"uds53-direct",()=>scrollToId("udsAbout")));
+    menu.appendChild(makeButton(txt("Quiénes somos","About us"),"uds53-direct",()=>scrollToId("udsAbout")));
     menu.appendChild(makeButton(txt("Hablar con un asesor","Talk to an advisor"),"uds53-direct",()=>{
       closeMenu();
       setTimeout(()=>el("udsAdvisorContact")?.click() || el("udsDockAdvisor")?.click(),60);
@@ -3416,9 +3312,9 @@
 
     if(dockMenu){
       dockMenu.id="udsDockMenu";
-      dockMenu.setAttribute("aria-label",txt("Abrir menÃº","Open menu"));
+      dockMenu.setAttribute("aria-label",txt("Abrir menú","Open menu"));
       const label=dockMenu.querySelector("span");
-      if(label)label.textContent=txt("MenÃº","Menu");
+      if(label)label.textContent=txt("Menú","Menu");
 
       dockMenu.addEventListener("click",e=>{
         e.preventDefault();
@@ -3621,5 +3517,6 @@
  const modal=document.getElementById("udsModal"); if(modal)modal.addEventListener("click",()=>requestAnimationFrame(apply59),{passive:true});
  window.__UPDOWN_HOTFIX59_OK__=true;
 })();
+
 
 
