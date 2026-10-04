@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H54";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H71";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -16,7 +16,7 @@
   const conditionLabels={new:"Nuevo",preowned:"Seminuevo",demo:"Demostración"};
   const conditionLabelsEn={new:"New",preowned:"Pre-owned",demo:"Demo"};
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
-  const CATALOG_CACHE_KEY="upDownCatalogCacheV1";
+  const CATALOG_CACHE_KEY="upDownCatalogCacheV2";
   const QUERY_TIMEOUT_MS=8000;
 
   function timeoutSignal(ms=QUERY_TIMEOUT_MS){
@@ -595,14 +595,8 @@
     selected.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);grid.appendChild(card)});
     if(!selected.length)grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No highlighted products yet.":"Aún no hay productos destacados."}</div>`;
   }
-  function categoryImage(category,index){
-    const p=products.find(x=>x.categories?.slug===category.slug&&x.cover_image_url);
-    const fallbacks=[
-      "https://images.unsplash.com/photo-1591491719565-1ef4ef9a5422?auto=format&fit=crop&w=1300&q=85",
-      "https://images.unsplash.com/photo-1592919505780-303950717480?auto=format&fit=crop&w=1300&q=85",
-      "https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?auto=format&fit=crop&w=1300&q=85",
-      "https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?auto=format&fit=crop&w=1300&q=85"
-    ];return p?.cover_image_url||fallbacks[index%fallbacks.length]
+  function categoryImage(category){
+    return category.image_url||"/assets/category-placeholder.svg";
   }
   function appendMobileMenuButton({
     label,
@@ -1335,7 +1329,7 @@
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
-      db.from("categories").select("id,name,slug,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
+      db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
       db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
     ]);
     if(ce||pe){
@@ -1642,7 +1636,7 @@
     const newHead=document.querySelector("#udsNew .uds-section-head");
     const categoryHead=document.querySelector("#udsCategories .uds-section-head");
     const catalogHead=document.querySelector("#udsCatalog .uds-section-head");
-    if(newHead){newHead.querySelector(".uds-eyebrow").textContent=t.newEyebrow;newHead.querySelector("h2").textContent=t.newTitle;newHead.querySelector(".uds-section-intro").textContent=t.newIntro}
+    if(newHead){newHead.querySelector("h2").textContent=t.newTitle;newHead.querySelector(".uds-section-intro").textContent=t.newIntro}
     if(categoryHead){
       const eyebrow=categoryHead.querySelector(".uds-eyebrow");
       const heading=categoryHead.querySelector("h2");
@@ -1658,7 +1652,7 @@
           :(currentLanguage==="en"?"View all categories":"Ver todas las categorías");
       }
     }
-    if(catalogHead){catalogHead.querySelector(".uds-eyebrow").textContent=t.catalogEyebrow;catalogHead.querySelector("h2").textContent=currentLanguage==="en"?"Your next equipment.":"Tu próximo equipo.";catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuración, condición y disponibilidad."}
+    if(catalogHead){catalogHead.querySelector("h2").textContent=siteText("section.catalog");catalogHead.querySelector(".uds-section-intro").textContent=currentLanguage==="en"?"Search, filter and open each product to view configuration, condition and availability.":"Busca, filtra y abre cada producto para ver configuración, condición y disponibilidad."}
     el("udsLangEs").classList.toggle("is-active",currentLanguage==="es");el("udsLangEn").classList.toggle("is-active",currentLanguage==="en");el("udsLangEs").setAttribute("aria-pressed",String(currentLanguage==="es"));el("udsLangEn").setAttribute("aria-pressed",String(currentLanguage==="en"));
     el("udsConditionFilter").options[0].text=currentLanguage==="en"?"Any condition":"Cualquier condición";el("udsConditionFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionFilter").options[3].text=currentLanguage==="en"?"Demo":"Demostración";
     el("udsConditionMobileFilter").options[0].text=currentLanguage==="en"?"Condition: any":"Condición: cualquiera";el("udsConditionMobileFilter").options[1].text=currentLanguage==="en"?"New":"Nuevo";el("udsConditionMobileFilter").options[2].text=currentLanguage==="en"?"Pre-owned":"Seminuevo";el("udsConditionMobileFilter").options[3].text=currentLanguage==="en"?"Demo":"Demostración";
@@ -1673,9 +1667,12 @@
     localizeWhatsAppLinks(currentLanguage);
     setupJournalVisibility();
     const heroHeading=document.querySelector("#updown-store .uds-hero h1");
-    if(heroHeading)heroHeading.innerHTML=`${escapeHtml(siteText("hero.title"))}<span>${escapeHtml(siteText("hero.subtitle"))}</span>`;
+    if(heroHeading)heroHeading.textContent=siteText("hero.subtitle");
     document.querySelectorAll('[data-nav-key="journal"],.uds-footer-links a[href="#udsJournal"]').forEach(node=>node.textContent=siteText("news.title"));
-    const newsHeading=document.querySelector("#udsJournal .uds-eyebrow");if(newsHeading)newsHeading.textContent=siteText("news.title");
+    const newsHeading=document.querySelector("#udsJournal h2");if(newsHeading)newsHeading.textContent=siteText("news.title");
+    document.querySelectorAll("#updown-store [data-store-copy]").forEach(node=>{
+      node.textContent=siteText(node.getAttribute("data-store-copy"));
+    });
     window.dispatchEvent(new CustomEvent("updown:language-change",{detail:currentLanguage}));
   }
   window.__UPDOWN_SET_LANGUAGE__=applyLanguage;

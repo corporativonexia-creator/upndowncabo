@@ -40,14 +40,24 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
           background:rgba(248,246,242,.82);color:#143E35;border-bottom:1px solid rgba(20,62,53,.12);
           box-shadow:0 8px 24px rgba(20,62,53,.08);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);
         }
-        .uds-native-mobile-logo{width:64px;height:34px;display:flex;align-items:center;justify-content:flex-start;color:#143E35;text-decoration:none;flex:0 0 auto}
-        .uds-native-mobile-logo svg{display:block;width:60px;height:28px}
+        .uds-native-mobile-logo{width:auto;min-width:0;gap:6px;height:34px;display:flex;align-items:center;justify-content:flex-start;color:#143E35;text-decoration:none;flex:0 0 auto}
+        .uds-native-mobile-logo svg{display:block;width:36px;height:26px;flex:0 0 auto}
+        .uds-native-mobile-wordmark{font:700 clamp(11px,3vw,14px)/1 "Cormorant Garamond",Georgia,serif;letter-spacing:.035em;white-space:nowrap}
         .uds-native-mobile-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
         .uds-native-mobile-actions button{width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid rgba(20,62,53,.12);border-radius:999px;background:rgba(255,255,255,.68);color:#143E35;box-shadow:none;cursor:pointer}
         .uds-native-language{display:flex;align-items:center;border:1px solid rgba(20,62,53,.15);border-radius:999px;overflow:hidden;background:rgba(255,255,255,.5)}
         .uds-native-mobile-actions .uds-native-language button{width:29px;height:32px;border:0;border-radius:0;background:transparent;font:700 10px/1 system-ui}
         .uds-native-mobile-actions .uds-native-language button[aria-pressed="true"]{background:#143e35;color:#fff}
         .uds-native-mobile-actions svg,.uds-native-search-bar svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+        @media(max-width:360px){
+          .uds-native-mobile-header{padding:0 10px;gap:5px}
+          .uds-native-mobile-logo{gap:4px}
+          .uds-native-mobile-logo svg{width:30px}
+          .uds-native-mobile-actions{gap:4px}
+          .uds-native-mobile-actions button{width:30px;height:32px}
+          .uds-native-mobile-actions .uds-native-language button{width:25px}
+        }
 
         .uds-native-search{position:fixed;inset:0;z-index:2147483640;background:#0b0d0c;color:#f7f7f5;padding:24px 22px;overflow:auto}
         .uds-native-search-bar{display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.18);padding:18px 38px 14px 0;margin-right:30px}

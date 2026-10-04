@@ -267,3 +267,26 @@
 @media(min-width:1024px) {
   #updown-store.uds-ux-v3 .uds-header .uds-lang-switch { display:flex!important;visibility:visible!important;opacity:1!important; }
 }
+
+/* H71: one section title, compact trailing space and clear before result count. */
+#updown-store.uds-ux-v3 #udsNew { padding-bottom:18px!important; min-height:0!important; margin-bottom:24px!important; }
+#updown-store.uds-ux-v3 #udsNew .uds-new-all-wrap { padding-top:14px!important; padding-bottom:0!important; margin-bottom:0!important; }
+#updown-store.uds-ux-v3 .uds-catalog-bar { display:flex!important; flex-direction:column!important; align-items:flex-start!important; gap:8px!important; }
+#updown-store.uds-ux-v3 #udsClearFilters { order:0!important; }
+#updown-store.uds-ux-v3 #udsResultsCount { order:1!important; }
+#updown-store.uds-ux-v3 #udsServices .uds-section-head h2,
+#updown-store.uds-ux-v3 #udsCourses .uds-section-head h2,
+#updown-store.uds-ux-v3 #udsJournal .uds-section-head h2 {
+  margin:0!important; font-size:clamp(26px,3.3vw,40px)!important; line-height:1.15!important; letter-spacing:-.025em!important;
+}
+@media(min-width:1024px){
+  #updown-store.uds-ux-v3 .uds-header .uds-logo-copy { display:flex!important; }
+  #updown-store.uds-ux-v3 .uds-header .uds-logo-copy strong { display:block!important; }
+}
+@media(max-width:1023px){
+  #updown-store.uds-ux-v3 #udsNew { padding-top:24px!important; }
+  #updown-store.uds-ux-v3 #udsNew .uds-section-head { margin-bottom:18px!important; }
+  #updown-store.uds-ux-v3 #udsServices .uds-section-head h2,
+  #updown-store.uds-ux-v3 #udsCourses .uds-section-head h2,
+  #updown-store.uds-ux-v3 #udsJournal .uds-section-head h2 { font-size:27px!important; }
+}

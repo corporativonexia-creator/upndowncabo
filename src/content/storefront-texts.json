@@ -2260,5 +2260,95 @@
     "source_text": "Tees",
     "es": "Tees",
     "en": "Tees"
+  },
+  {
+    "key": "section.categories",
+    "source_text": "Encuentra lo que buscas",
+    "es": "Encuentra lo que buscas",
+    "en": "Find what you need"
+  },
+  {
+    "key": "section.new",
+    "source_text": "Novedades y ofertas",
+    "es": "Novedades y ofertas",
+    "en": "New arrivals & offers"
+  },
+  {
+    "key": "section.catalog",
+    "source_text": "Colección completa",
+    "es": "Colección completa",
+    "en": "Complete collection"
+  },
+  {
+    "key": "section.services",
+    "source_text": "Servicios UP AND DOWN",
+    "es": "Servicios UP AND DOWN",
+    "en": "UP AND DOWN Services"
+  },
+  {
+    "key": "section.courses",
+    "source_text": "Golf en Los Cabos",
+    "es": "Golf en Los Cabos",
+    "en": "Golf in Los Cabos"
+  },
+  {
+    "key": "section.about",
+    "source_text": "Quiénes somos",
+    "es": "Quiénes somos",
+    "en": "About us"
+  },
+  {
+    "key": "about.services",
+    "source_text": "Servicios →",
+    "es": "Servicios →",
+    "en": "Services →"
+  },
+  {
+    "key": "footer.tagline",
+    "source_text": "Golf, equipo y experiencia local en Los Cabos.",
+    "es": "Golf, equipo y experiencia local en Los Cabos.",
+    "en": "Golf, equipment and local expertise in Los Cabos."
+  },
+  {
+    "key": "footer.explore",
+    "source_text": "Explorar",
+    "es": "Explorar",
+    "en": "Explore"
+  },
+  {
+    "key": "footer.contact",
+    "source_text": "Contacto",
+    "es": "Contacto",
+    "en": "Contact"
+  },
+  {
+    "key": "footer.new",
+    "source_text": "Novedades y ofertas",
+    "es": "Novedades y ofertas",
+    "en": "New arrivals & offers"
+  },
+  {
+    "key": "footer.products",
+    "source_text": "Todos los productos",
+    "es": "Todos los productos",
+    "en": "All products"
+  },
+  {
+    "key": "footer.courses",
+    "source_text": "Campos de golf",
+    "es": "Campos de golf",
+    "en": "Golf courses"
+  },
+  {
+    "key": "footer.services",
+    "source_text": "Servicios",
+    "es": "Servicios",
+    "en": "Services"
+  },
+  {
+    "key": "footer.copyright",
+    "source_text": "© 2026 UP AND DOWN · TIENDA DE GOLF EN CABO · COQUE.",
+    "es": "© 2026 UP AND DOWN · TIENDA DE GOLF EN CABO · COQUE.",
+    "en": "© 2026 UP AND DOWN · CABO GOLF SHOP BY COQUE."
   }
 ]

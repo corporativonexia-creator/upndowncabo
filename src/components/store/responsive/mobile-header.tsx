@@ -103,6 +103,7 @@ export function MobileHeader() {
           <svg viewBox="0 0 1919 633" aria-hidden="true" focusable="false">
             <path d="M 1918 573 L 1904 569 L 1809 588 L 1686 599 L 1532 592 L 1346 552 L 1103 476 L 1103 216 L 1351 136 L 1364 126 L 1106 5 L 1084 0 L 1075 5 L 1072 468 L 960 443 L 863 432 L 774 430 L 641 440 L 442 480 L 124 574 L 9 596 L 0 610 L 15 617 L 118 601 L 551 492 L 670 474 L 755 469 L 892 474 L 1004 492 L 1343 594 L 1436 615 L 1548 630 L 1655 632 L 1751 623 L 1913 587 Z" fill="currentColor" />
           </svg>
+          <span className="uds-native-mobile-wordmark" translate="no">UP AND DOWN</span>
         </a>
 
         <nav className="uds-native-mobile-actions" aria-label={language === "en" ? "Quick actions" : "Acciones rápidas"}>

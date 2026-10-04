@@ -98,7 +98,7 @@ export function HeroVideo() {
         }
         #updown-store.uds-ux-v3 .uds-hero h1{
           font-family:"Cormorant Garamond",Georgia,serif!important;font-weight:600!important;
-          font-size:clamp(40px,5vw,72px)!important;line-height:1.06!important;letter-spacing:.015em!important;
+          font-size:clamp(38px,4.8vw,64px)!important;font-style:italic!important;line-height:1.06!important;letter-spacing:0!important;
         }
         #updown-store.uds-ux-v3 .uds-hero h1 span{
           font-family:"Cormorant Garamond",Georgia,serif!important;font-size:clamp(28px,3vw,42px)!important;
@@ -130,7 +130,7 @@ export function HeroVideo() {
             margin:0!important;padding:10px 18px 14px!important;background:transparent!important;
           }
           .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero h1{
-            margin:0 0 8px!important;font-size:clamp(25px,6.4vw,38px)!important;line-height:1.04!important;letter-spacing:0!important;
+            margin:0 0 8px!important;font-size:clamp(24px,6.2vw,36px)!important;font-style:italic!important;line-height:1.1!important;letter-spacing:0!important;
           }
           .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero h1 span{
             margin:5px 0 0!important;font-size:clamp(19px,4.8vw,28px)!important;line-height:1.1!important;font-style:italic!important;
