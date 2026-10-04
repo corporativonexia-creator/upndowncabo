@@ -1501,21 +1501,14 @@
     return row?.[currentLanguage]||row?.es||key;
   }
   const CATEGORY_EN={
-    "driver":"Drivers","drivers":"Drivers","hierro":"Irons","hierros":"Irons","iron":"Irons","irons":"Irons","madera":"Fairway Woods","maderas":"Fairway Woods","wood":"Fairway Woods","woods":"Fairway Woods","hibrido":"Hybrids","hibridos":"Hybrids","hybrid":"Hybrids","hybrids":"Hybrids","wedge":"Wedges","wedges":"Wedges","putter":"Putters","putters":"Putters","pelota":"Golf Balls","pelotas":"Golf Balls","golf balls":"Golf Balls","bola":"Golf Balls","bolas":"Golf Balls","guante":"Gloves","guantes":"Gloves","glove":"Gloves","gloves":"Gloves","bolsa":"Golf Bags","bolsas":"Golf Bags","bag":"Golf Bags","bags":"Golf Bags","accesorio":"Accessories","accesorios":"Accessories","accessories":"Accessories","ropa":"Apparel","apparel":"Apparel","calzado":"Golf Shoes","zapatos":"Golf Shoes","shoes":"Golf Shoes","tees":"Tees","tee":"Tees"
+    "driver":"Drivers","drivers":"Drivers","hierro":"Irons","hierros":"Irons","iron":"Irons","irons":"Irons","madera":"Fairway Woods","maderas":"Fairway Woods","wood":"Fairway Woods","woods":"Fairway Woods","hibrido":"Hybrids","hibridos":"Hybrids","hybrid":"Hybrids","hybrids":"Hybrids","wedge":"Wedges","wedges":"Wedges","putter":"Putters","putters":"Putters","pelota":"Golf Balls","pelotas":"Golf Balls","golf balls":"Golf Balls","bola":"Golf Balls","bolas":"Golf Balls","guante":"Gloves","guantes":"Gloves","glove":"Gloves","gloves":"Gloves","bolsa":"Golf Bags","bolsas":"Golf Bags","bag":"Golf Bags","bags":"Golf Bags","accesorio":"Accessories","accesorios":"Accessories","accessories":"Accessories","ropa":"Apparel","apparel":"Apparel","calzado":"Golf Shoes","zapatos":"Golf Shoes","shoes":"Golf Shoes","tees":"Tees","tee":"Tees","carrito":"Golf Carts","carritos":"Golf Carts","golf carts":"Golf Carts","equipos completos":"Complete Sets","complete sets":"Complete Sets"
   };
+  // Golf category names are shared terminology in both storefront languages.
   function categoryLabel(category){
-    if(!category)return currentLanguage==="en"?"Golf":"Golf";
-    if(currentLanguage!=="en"){
-      const key=normalizeSpecKey(category.slug||category.name||"");
-      if(/driver/.test(key))return "Palos de salida";
-      if(/wedge/.test(key))return "Cuñas";
-      if(/putter/.test(key))return "Palos de precisión";
-      if(/tee/.test(key))return "Soportes para pelota";
-      return category.name||category.slug||"Golf";
-    }
+    if(!category)return "Golf";
     const candidates=[category.slug,category.name].filter(Boolean).map(v=>normalizeSpecKey(v));
-    for(const key of candidates){if(CATEGORY_EN[key])return CATEGORY_EN[key];for(const [needle,label] of Object.entries(CATEGORY_EN)){if(key===needle||key.includes(needle))return label}}
-    return category.name||"Golf";
+    for(const key of candidates){if(CATEGORY_EN[key])return CATEGORY_EN[key]}
+    return category.name||category.slug||"Golf";
   }
   function localizeStaticDom(lang){
     const root=document.getElementById("updown-store");if(!root)return;
