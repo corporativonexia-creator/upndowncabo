@@ -44,6 +44,7 @@ export function HeroVideo() {
       video.removeEventListener("canplay", tryPlay);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", tryPlay);
+      window.removeEventListener("pointerdown", tryPlay);
     };
   }, [hero]);
 
@@ -74,37 +75,34 @@ export function HeroVideo() {
           background:#0c211c;
         }
 
-        /* One premium overlay across the whole hero. The legacy ::after block
-           was masking the lower half of the video on mobile. */
-        #updown-store .uds-hero::after{
-          display:none!important;
-          content:none!important;
+        /* Override legacy image-band dimensions so the tint has no hard edge. */
+        #updown-store.uds-ux-v3 .uds-hero::after{display:none!important;content:none!important;}
+        #updown-store.uds-ux-v3 .uds-hero::before{
+          content:""!important;position:absolute!important;inset:0!important;
+          width:100%!important;height:100%!important;min-height:0!important;max-height:none!important;
+          display:block!important;z-index:1!important;opacity:1!important;
+          background:linear-gradient(180deg,transparent 35%,rgba(12,33,28,.28) 100%)!important;
+          transform:none!important;filter:none!important;animation:none!important;pointer-events:none!important;
         }
-        #updown-store .uds-hero::before{
-          content:""!important;
-          position:absolute!important;
-          inset:0!important;
-          display:block!important;
-          z-index:1!important;
-          background:
-            linear-gradient(180deg,
-              rgba(5,19,15,.02) 0%,
-              rgba(5,19,15,.04) 30%,
-              rgba(5,19,15,.18) 55%,
-              rgba(5,19,15,.62) 78%,
-              rgba(5,19,15,.88) 100%),
-            linear-gradient(90deg,
-              rgba(5,19,15,.34) 0%,
-              rgba(5,19,15,.08) 56%,
-              rgba(5,19,15,.02) 100%)!important;
-          transform:none!important;
-          animation:none!important;
-          pointer-events:none!important;
+        #updown-store.uds-ux-v3 .uds-hero-inner{
+          position:relative!important;z-index:2!important;background:transparent!important;
+          box-shadow:none!important;backdrop-filter:none!important;
         }
-
-        #updown-store .uds-hero-inner{
-          position:relative!important;
-          z-index:2!important;
+        #updown-store.uds-ux-v3 .uds-hero-inner::before,
+        #updown-store.uds-ux-v3 .uds-hero-inner::after{content:none!important;display:none!important;}
+        #updown-store.uds-ux-v3 .uds-hero h1,
+        #updown-store.uds-ux-v3 .uds-hero h1 span,
+        #updown-store.uds-ux-v3 .uds-hero-copy{
+          background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;
+          color:#fffaf0!important;text-shadow:0 2px 10px rgba(12,33,28,.55)!important;
+        }
+        #updown-store.uds-ux-v3 .uds-hero h1{
+          font-family:"Cormorant Garamond",Georgia,serif!important;font-weight:600!important;
+          font-size:clamp(40px,5vw,72px)!important;line-height:1.06!important;letter-spacing:.015em!important;
+        }
+        #updown-store.uds-ux-v3 .uds-hero h1 span{
+          font-family:"Cormorant Garamond",Georgia,serif!important;font-size:clamp(28px,3vw,42px)!important;
+          font-weight:500!important;font-style:italic!important;line-height:1.15!important;letter-spacing:0!important;
         }
         #updown-store .uds-scroll-note{z-index:3!important}
 
@@ -122,23 +120,24 @@ export function HeroVideo() {
           }
           #updown-store.uds-ux-v3 .uds-hero::before{
             display:block!important;content:""!important;inset:0!important;z-index:1!important;
-            background:linear-gradient(180deg,rgba(5,19,15,0) 20%,rgba(5,19,15,.08) 40%,rgba(5,19,15,.78) 100%)!important;
+            width:100%!important;height:100%!important;filter:none!important;
+            background:linear-gradient(180deg,transparent 45%,rgba(12,33,28,.24) 100%)!important;
           }
           #updown-store.uds-ux-v3 .uds-hero::after{display:none!important;content:none!important;}
           .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero-inner{
             position:absolute!important;inset:auto 0 0!important;z-index:2!important;
             width:100%!important;max-width:none!important;box-sizing:border-box!important;
-            margin:0!important;padding:12px 16px 14px!important;background:transparent!important;
+            margin:0!important;padding:10px 18px 14px!important;background:transparent!important;
           }
-          #updown-store.uds-ux-v3 .uds-hero h1{
-            margin:0 0 7px!important;font-size:clamp(19px,4.8vw,30px)!important;line-height:1.15!important;
+          .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero h1{
+            margin:0 0 8px!important;font-size:clamp(25px,6.4vw,38px)!important;line-height:1.04!important;letter-spacing:0!important;
           }
-          #updown-store.uds-ux-v3 .uds-hero h1 span{
-            margin:6px 0 0!important;font-size:clamp(12px,3.3vw,18px)!important;line-height:1.25!important;
+          .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero h1 span{
+            margin:5px 0 0!important;font-size:clamp(19px,4.8vw,28px)!important;line-height:1.1!important;font-style:italic!important;
           }
-          #updown-store.uds-ux-v3 .uds-hero-copy{
+          .uds-device-ux--mobile #updown-store.uds-ux-v3 .uds-hero-copy{
             width:100%!important;max-width:none!important;margin:0!important;
-            font-size:clamp(9px,2.4vw,12px)!important;line-height:1.5!important;color:rgba(255,255,255,.9)!important;
+            font-size:clamp(11px,2.8vw,13px)!important;font-weight:500!important;line-height:1.45!important;letter-spacing:.015em!important;color:#fffaf0!important;
           }
           #updown-store.uds-ux-v3 .uds-hero-actions,
           #updown-store.uds-ux-v3 .uds-scroll-note{display:none!important;}
