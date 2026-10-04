@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { HeroVideo } from "./hero-video";
 
 /** Desktop presentation shell. Shared storefront controls/data live above this layer. */
 export function DesktopStorefront({ children }: { children: ReactNode }) {
@@ -23,6 +24,7 @@ export function DesktopStorefront({ children }: { children: ReactNode }) {
         }
       `}</style>
       {children}
+      <HeroVideo />
     </div>
   );
 }
