@@ -144,6 +144,7 @@ export function MobileHeader() {
             <button type="button" onClick={() => navigate("udsCategories")}>Categorías <span>›</span></button>
             <button type="button" onClick={() => navigate("udsServices")}>Servicios <span>›</span></button>
             <button type="button" onClick={() => navigate("udsCourses")}>Golf en Los Cabos <span>›</span></button>
+            <button type="button" onClick={() => navigate("udsJournal")}>Noticias <span>›</span></button>
             <button type="button" onClick={() => navigate("udsAbout")}>Quiénes somos</button>
             <button type="button" onClick={() => { setMenuOpen(false); clickLegacyControl("udsAdvisorContact"); }}>Hablar con un asesor</button>
           </div>
