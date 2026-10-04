@@ -35,6 +35,7 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
         }
 
         .uds-native-mobile-header{
+          pointer-events:auto;
           position:fixed;top:0;left:0;right:0;z-index:2147483000;height:var(--uds-mobile-header-height);box-sizing:border-box;margin:0;padding:0 12px;
           display:flex;align-items:center;justify-content:space-between;gap:6px;
           background:rgba(248,246,242,.82);color:#143E35;border-bottom:1px solid rgba(20,62,53,.12);
@@ -43,8 +44,8 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
         .uds-native-mobile-logo{width:auto;min-width:0;gap:6px;height:34px;display:flex;align-items:center;justify-content:flex-start;color:#143E35;text-decoration:none;flex:0 0 auto}
         .uds-native-mobile-logo svg{display:block;width:36px;height:26px;flex:0 0 auto}
         .uds-native-mobile-wordmark{font:700 clamp(11px,3vw,14px)/1 "Cormorant Garamond",Georgia,serif;letter-spacing:.035em;white-space:nowrap}
-        .uds-native-mobile-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
-        .uds-native-mobile-actions button{width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid rgba(20,62,53,.12);border-radius:999px;background:rgba(255,255,255,.68);color:#143E35;box-shadow:none;cursor:pointer}
+        .uds-native-mobile-actions{pointer-events:auto;display:flex;align-items:center;gap:6px;margin-left:auto}
+        .uds-native-mobile-actions button{position:relative;z-index:2;touch-action:manipulation;width:34px;height:34px;padding:0;display:grid;place-items:center;border:1px solid rgba(20,62,53,.12);border-radius:999px;background:rgba(255,255,255,.68);color:#143E35;box-shadow:none;cursor:pointer}
         .uds-native-language{display:flex;align-items:center;border:1px solid rgba(20,62,53,.15);border-radius:999px;overflow:hidden;background:rgba(255,255,255,.5)}
         .uds-native-mobile-actions .uds-native-language button{width:29px;height:32px;border:0;border-radius:0;background:transparent;font:700 10px/1 system-ui}
         .uds-native-mobile-actions .uds-native-language button[aria-pressed="true"]{background:#143e35;color:#fff}
@@ -149,3 +150,8 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
   );
 }
 
+
+<style data-updown-menu-touch-fix>
+.uds-native-mobile-header,.uds-native-mobile-actions,.uds-native-mobile-actions .uds-native-menu-trigger{pointer-events:auto!important}
+.uds-native-mobile-actions .uds-native-menu-trigger{position:relative!important;z-index:4!important;touch-action:manipulation!important;-webkit-tap-highlight-color:rgba(20,62,53,.12)}
+</style>

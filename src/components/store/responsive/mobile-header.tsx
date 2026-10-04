@@ -106,7 +106,7 @@ export function MobileHeader() {
           <button type="button" aria-label={t("mobile.cart")} onClick={() => clickLegacyControl("udsFloatingCart", "udsCartButton", "udsDockCart")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
           </button>
-          <button type="button" aria-label={t("mobile.menu")} onClick={() => { setMenuOpen(true); }}>
+          <button type="button" className="uds-native-menu-trigger" aria-label={t("mobile.menu")} aria-expanded={menuOpen} onPointerUp={() => setMenuOpen(true)} onClick={() => setMenuOpen(true)}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
         </nav>
