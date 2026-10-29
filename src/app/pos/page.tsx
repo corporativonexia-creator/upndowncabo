@@ -109,7 +109,7 @@ type CashMovement = {
 
 const DEVICE_KEY = "updown-pos-device-token-v1";
 const INACTIVITY_MS = 30 * 60 * 1000;
-const ACCESS_REVALIDATE_MS = 60 * 1000;
+const ACCESS_REVALIDATE_MS = 10 * 1000;
 
 function money(value: number) {
   return new Intl.NumberFormat("es-MX", {
@@ -1041,6 +1041,12 @@ export default function PosPage() {
   }
 
   async function loadAccess(token: string) {
+    const { data: activeSession, error: sessionCheckError } = await supabase.rpc(
+      "pos_is_session_active",
+    );
+    if (sessionCheckError) throw sessionCheckError;
+    if (!activeSession) throw new Error("POS_SESSION_REVOKED");
+
     const { data, error } = await supabase.rpc("pos_get_my_access", {
       p_device_token: token,
     });
