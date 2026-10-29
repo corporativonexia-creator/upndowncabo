@@ -241,6 +241,16 @@
     const {data,error}=await db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false});
     if(error){el("udList").innerHTML=`<div class="u-empty">${error.message}</div>`;return}
     products=data||[];
+    // A parent can summarize many SKUs; never imply its aggregate stock is one variant.
+    const ids=products.map(item=>item.id);
+    const countByParent=new Map();
+    if(ids.length){
+      const {data:variants,error:variantError}=await db.from("product_variants")
+        .select("product_id,id").in("product_id",ids);
+      if(!variantError)(variants||[]).forEach(item=>
+        countByParent.set(item.product_id,(countByParent.get(item.product_id)||0)+1));
+    }
+    products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
     renderProducts();
   }
 
@@ -1452,8 +1462,21 @@
       };
       const attrs=v.attributes&&typeof v.attributes==="object"?v.attributes:{};
       const title=input("Variante (nombre)",v.title,"title");title.required=true;
-      input("Talla",attrs.talla||"","talla");
+      const choice=(label,name,value,options)=>{
+        const wrap=document.createElement("label");
+        wrap.style.cssText="display:flex;flex-direction:column;gap:4px;font-size:11px";
+        wrap.textContent=label;
+        const control=document.createElement("select");control.name=name;
+        control.style.cssText="width:100%;min-width:0;padding:9px;border:1px solid #ccd9d0;border-radius:8px;background:#fff";
+        const optionsAll=value&&!options.includes(value)?[value,...options]:options;
+        for(const item of ["",...optionsAll]){
+          const option=document.createElement("option");option.value=item;option.textContent=item||"Seleccionar…";control.appendChild(option);
+        }
+        control.value=value||"";wrap.appendChild(control);fields.appendChild(wrap);
+      };
+      choice("Talla","talla",attrs.talla||"",["S","M","L","XL","Unitalla",...Array.from({length:17},(_,i)=>String(22+i*0.5))]);
       input("Color",attrs.color||"","color");
+      choice("Género","genero",attrs.genero||"",["Niño","Niña","Hombre","Mujer","Unisex"]);
       const barcode=input("Código de barras",v.barcode||"","barcode");
       barcode.maxLength=80;
       const price=input("Precio particular (opcional)",v.price??"","price");price.type="number";price.min="0";price.step=".01";
@@ -1475,7 +1498,7 @@
         if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0)){feedback.textContent="Precio inválido.";return;}
         if(salePrice!==null&&(!Number.isFinite(salePrice)||salePrice<0)){feedback.textContent="Oferta inválida.";return;}
         if(unitPrice!==null&&salePrice!==null&&salePrice>unitPrice){feedback.textContent="La oferta supera al precio.";return;}
-        const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim()};
+        const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim(),genero:String(values.get("genero")||"").trim()};
         submit.disabled=true;feedback.textContent="Guardando…";
         try{
           const {error:saveError}=await db.rpc("admin_inventory_save_variant",{
@@ -1509,7 +1532,7 @@
         <img src="${product.cover_image_url||""}" alt="">
         <div>
           <h3>${product.name}</h3>
-          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · Stock ${product.stock} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
+          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · ${product.__variant_count>1?`${product.__variant_count} variantes · Ver existencias por variante`:`Stock ${product.stock}`} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
           <div class="u-meta u-price">${money(product.sale_price??product.price,product.currency||"MXN")}</div>
           ${(()=>{
             const specs=product.specifications||{};

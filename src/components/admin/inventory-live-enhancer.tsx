@@ -9,23 +9,21 @@ export default function InventoryLiveEnhancer() {
     let stopped = false;
 
     async function syncDisplayedStock() {
+      // Inventory table rows represent variants, not parent products.
+      // Parent barcode can equal a variant barcode, so never use parent stock here.
       const { data, error } = await db
-        .from("products")
-        .select("id,name,sku,barcode,stock");
+        .from("product_variants")
+        .select("sku,barcode,stock");
       if (error || stopped) return;
 
-      const bySku = new Map((data || []).map((p) => [String(p.sku || "").trim().toLowerCase(), Number(p.stock || 0)]));
-      const byBarcode = new Map((data || []).filter((p) => p.barcode).map((p) => [String(p.barcode).trim(), Number(p.stock || 0)]));
-
-      document.querySelectorAll<HTMLTableRowElement>(".inv-tablebox tbody tr").forEach((tr) => {
+      const bySku = new Map((data || []).map(v => [String(v.sku || "").trim().toLowerCase(), Number(v.stock || 0)]));
+      document.querySelectorAll<HTMLTableRowElement>(".inv-tablebox tbody tr").forEach(tr => {
         const cells = tr.querySelectorAll<HTMLTableCellElement>("td");
         if (cells.length < 5) return;
         const sku = String(cells[2]?.textContent || "").trim().toLowerCase();
-        const barcode = String(cells[3]?.textContent || "").trim();
-        const current = bySku.get(sku) ?? byBarcode.get(barcode);
-        if (current === undefined) return;
-        const stockCell = cells[4];
-        if (stockCell) stockCell.textContent = String(current);
+        const stock = bySku.get(sku);
+        if (stock === undefined) return;
+        if (cells[4] && cells[4].textContent !== String(stock)) cells[4].textContent = String(stock);
       });
     }
 
@@ -71,8 +69,8 @@ export default function InventoryLiveEnhancer() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     const channel = db
-      .channel("admin-inventory-live-products")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => syncDisplayedStock())
+      .channel("admin-inventory-live-variants")
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_variants" }, () => syncDisplayedStock())
       .subscribe();
 
     return () => {
