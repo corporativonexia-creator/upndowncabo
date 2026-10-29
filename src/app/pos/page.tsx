@@ -345,6 +345,7 @@ export default function PosPage() {
           "id,name,sku,barcode,brand,model,price,sale_price,stock,cover_image_url,status",
         )
         .eq("status", "active")
+        .eq("pos_visible", true)
         .order("name", { ascending: true })
         .limit(500);
 
