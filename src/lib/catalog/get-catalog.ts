@@ -38,6 +38,7 @@ export async function getPublicCatalog() {
         product_images(id,image_url,alt_text,sort_order,is_primary)
       `)
       .eq("status", "active")
+      .eq("online_visible", true)
       .order("featured", { ascending: false })
       .order("created_at", { ascending: false }),
   ]);
