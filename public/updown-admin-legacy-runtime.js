@@ -1646,6 +1646,26 @@
   }
   ensureSalesChannelField();
 
+  function ensureBarcodeField(){
+    if(el("udBarcode"))return;
+    const sku=el("udSku");
+    if(!sku)return;
+    const field=document.createElement("div");
+    field.className="u-field";
+    const label=document.createElement("label");
+    label.htmlFor="udBarcode";label.textContent="Código de barras";
+    const input=document.createElement("input");
+    input.id="udBarcode";input.name="barcode";input.maxLength=80;
+    input.autocomplete="off";
+    input.placeholder="Código de barras del producto";
+    const help=document.createElement("small");
+    help.className="u-muted";
+    help.textContent="Se conserva al editar. Los códigos propios de cada variante se gestionan en Ver / editar variantes.";
+    field.append(label,input,help);
+    sku.closest(".u-field")?.insertAdjacentElement("afterend",field);
+  }
+  ensureBarcodeField();
+
   function editProduct(id){
     const p=products.find(item=>item.id===id);
     if(!p) return;
@@ -1653,6 +1673,7 @@
     el("udExistingImage").value=p.cover_image_url||"";
     el("udName").value=p.name||"";
     el("udSku").value=p.sku||"";
+    el("udBarcode").value=p.barcode||"";
     el("udCategory").value=p.category_id||"";
     el("udCondition").value=p.item_condition||"new";
     el("udBrand").value=p.brand||"";
@@ -1683,6 +1704,7 @@
     el("udProductForm").reset();
     el("udProductId").value="";
     el("udExistingImage").value="";
+    el("udBarcode").value="";
     el("udStock").value=0;
     el("udStatus").value="active";
     if(el("udCurrency"))el("udCurrency").value="MXN";
@@ -1752,6 +1774,8 @@
       const payload={
         category_id:el("udCategory").value,
         sku:el("udSku").value.trim(),
+        // Empty input on edit must never erase the stored barcode.
+        barcode:el("udBarcode").value.trim()||(id?products.find(item=>item.id===id)?.barcode:null)||null,
         name,slug,
         brand:el("udBrand").value.trim()||null,
         model:el("udModel").value.trim()||null,
