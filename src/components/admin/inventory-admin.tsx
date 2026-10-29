@@ -38,7 +38,7 @@ export default function InventoryAdmin(){
         const variant=byVariant.get(r.variant_id);
         const product=byProduct.get(r.product_id);
         const raw=variant?.sale_price ?? variant?.price ?? product?.sale_price ?? product?.price ?? null;
-        return {...r,category_name:byCategory.get(product?.category_id)||"Sin categoría",effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
+        return {...r,category_name:(product?.category_id?byCategory.get(product.category_id):null)||"Sin categoría",effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
       });
       setRows(inventoryRows);
       if(ve||pe||ce)setMsg("No se pudieron consultar precios o categorías. Actualiza el inventario.");
@@ -71,8 +71,9 @@ export default function InventoryAdmin(){
     if(c!==cat){cat=c;gen="";talla="";body+='<h2>'+esc(c.toUpperCase())+'</h2>';}
     if(g!==gen){gen=g;talla="";body+='<h3>'+esc(g.toUpperCase())+'</h3>';}
     if(t!==talla){talla=t;body+='<h4>TALLA '+esc(t.toUpperCase())+'</h4>';}
-    const qty=Number(r.stock)||0,price=r.effective_price;
-    const valid=price!==null&&price!==undefined&&Number.isFinite(price);
+    const qty=Number(r.stock)||0,rawPrice=r.effective_price;
+    const valid=rawPrice!==null&&rawPrice!==undefined&&Number.isFinite(rawPrice);
+    const price=valid?Number(rawPrice):0;
     const currency=r.currency==="USD"?"USD":"MXN";
     if(valid)totals[currency]+=qty*price;else unknown++;
     const desc=[r.product_name,color(r),r.variant_title!==t?r.variant_title:""].filter(Boolean).join(" · ");
