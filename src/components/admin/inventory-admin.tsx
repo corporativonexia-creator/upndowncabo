@@ -61,7 +61,6 @@ export default function InventoryAdmin(){
   };
   const color=(r:Row)=>r.attributes?.color?.trim()||r.attributes?.colour?.trim()||r.attributes?.tono?.trim()||"";
   const gender=(r:Row)=>r.attributes?.genero?.trim()||r.attributes?.gender?.trim()||"";
-  if(format==="ticket"){return;}
   const details=filtered.map(r=>{
    const data=[r.variant_title,color(r),gender(r)].filter(Boolean).join(" · ");
    if(format==="ticket")return '<section class="item"><strong>'+esc(r.product_name)+'</strong><div>'+esc(data||"Única")+'</div><div>SKU: '+esc(r.sku)+'</div><div>CB: '+esc(r.barcode||"—")+'</div><div class="figures"><span>'+esc(price(r))+'</span><b>EXIST.: '+Number(r.stock||0)+'</b></div></section>';
