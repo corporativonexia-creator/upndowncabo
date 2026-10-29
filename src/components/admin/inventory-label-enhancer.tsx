@@ -40,12 +40,12 @@ export default function InventoryLabelEnhancer(){
    const attrs=(variantData?.attributes||{}) as Record<string,unknown>;
    const variantTitle=String(variantData?.title||variant||"").trim();
    const parts=variantTitle.split(/\s*[\/|·]\s*/).filter(Boolean);
-   const size=String(attrs.talla||attrs.size||parts[0]||variantTitle).trim();
+   const size=String(attrs.talla||attrs.size||"").trim();
    const color=String(attrs.color||attrs.colour||parts.slice(1).join(" / ")||"").trim();
-   // Preserve font sizes and label geometry: only replace the line contents.
-   const upperLine=showVariant?(size||variantTitle):productName;
+   // Without an explicitly selected size, only the price occupies the upper row.
+   // Description always occupies the row below the price, with color when present.
    const lowerLine=[productName,color].filter(Boolean).join(" · ");
-   const labels=Array.from({length:qty},()=>`<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(upperLine)}</div><div class="price">${esc(money(price,currency))}</div></div>${showVariant?`<div class="variant">${esc(lowerLine)}</div>`:""}<div class="barcode">${barcodeSvg}</div></section>`).join("");
+   const labels=Array.from({length:qty},()=>`<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(size)}</div><div class="price">${esc(money(price,currency))}</div></div><div class="variant">${esc(lowerLine)}</div><div class="barcode">${barcodeSvg}</div></section>`).join("");
    const win=window.open("","_blank","width=700,height=700");if(!win){alert("Permite ventanas emergentes para imprimir etiquetas.");return}
    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas</title><style>@page{size:50mm 30mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}.label{width:50mm;height:30mm;padding:1.1mm 2mm .6mm;overflow:hidden;page-break-after:always;break-after:page;text-align:center;color:#000}.label:last-child{page-break-after:auto}.brand{font-family:Arial,sans-serif;font-size:8.2pt;font-weight:900;letter-spacing:1.2mm;line-height:1.05;white-space:nowrap;margin:0 auto 1mm}.product-line{display:flex;align-items:baseline;justify-content:center;gap:1.5mm;max-width:46mm;margin:0 auto}.name{font-size:7.4pt;font-weight:800;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:29mm}.price{font-size:10pt;font-weight:900;line-height:1;white-space:nowrap}.variant{font-size:5.6pt;font-weight:600;line-height:1;margin-top:.35mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.barcode{height:17mm;margin:.45mm auto 0;display:flex;align-items:center;justify-content:center}.barcode svg{width:44mm;height:17mm;display:block}@media screen{body{background:#eee;padding:10px}.label{background:#fff;margin:0 auto 10px;box-shadow:0 2px 10px #999}}@media print{body{background:#fff}.label{margin:0;box-shadow:none}}</style></head><body>${labels}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);win.document.close();
   };
