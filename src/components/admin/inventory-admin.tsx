@@ -3,7 +3,7 @@ import {FormEvent,useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {createClient} from "@/lib/supabase/client";
 
-type Row={product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string}|null};
+type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string}|null};
 type Movement={id:string;created_at:string;movement_type:string;quantity_change:number;stock_before:number;stock_after:number;note:string|null;product_name:string|null;variant_title:string|null;sku:string|null;barcode:string|null;order_id:string|null;pos_sale_id:string|null};
 const movementLabel:Record<string,string>={restock:"Entrada / recepción",adjustment:"Ajuste",damage:"Daño / merma",supplier_return:"Devolución a proveedor",sale:"Venta POS",pos_sale:"Venta POS",return:"Devolución cliente"};
 
@@ -21,25 +21,27 @@ export default function InventoryAdmin(){
  const load=async()=>{
   setLoading(true);
   try {
-    const [{data,error},{data:ld,error:le},{data:variants,error:ve},{data:products,error:pe}]=await Promise.all([
+    const [{data,error},{data:ld,error:le},{data:variants,error:ve},{data:products,error:pe},{data:categories,error:ce}]=await Promise.all([
       db.rpc("admin_inventory_catalog"),
       db.rpc("admin_inventory_movement_log",{p_limit:300}),
       db.from("product_variants").select("id,product_id,price,sale_price"),
-      db.from("products").select("id,price,sale_price,currency")
+      db.from("products").select("id,category_id,price,sale_price,currency"),
+      db.from("categories").select("id,name")
     ]);
     if(error){setMsg(error.message);} else {
       // Price priority: variant offer > variant price > parent offer > parent price.
       // An explicit zero is kept as zero; missing values are not guessed.
       const byVariant=new Map((variants||[]).map(v=>[v.id,v]));
       const byProduct=new Map((products||[]).map(p=>[p.id,p]));
+      const byCategory=new Map((categories||[]).map(c=>[c.id,c.name]));
       const inventoryRows=((data?.rows||[]) as Row[]).map(r=>{
         const variant=byVariant.get(r.variant_id);
         const product=byProduct.get(r.product_id);
         const raw=variant?.sale_price ?? variant?.price ?? product?.sale_price ?? product?.price ?? null;
-        return {...r,effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
+        return {...r,category_name:byCategory.get(product?.category_id)||"Sin categoría",effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
       });
       setRows(inventoryRows);
-      if(ve||pe)setMsg("No se pudieron consultar todos los precios. Actualiza el inventario.");
+      if(ve||pe||ce)setMsg("No se pudieron consultar precios o categorías. Actualiza el inventario.");
       else setMsg("");
     }
     if(le)setMsg(le.message);else setMovements((ld?.rows||[]) as Movement[]);
