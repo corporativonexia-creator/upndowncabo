@@ -3,7 +3,7 @@ import {FormEvent,useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {createClient} from "@/lib/supabase/client";
 
-type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string;talla?:string;size?:string}|null};
+type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string}|null};
 type Movement={id:string;created_at:string;movement_type:string;quantity_change:number;stock_before:number;stock_after:number;note:string|null;product_name:string|null;variant_title:string|null;sku:string|null;barcode:string|null;order_id:string|null;pos_sale_id:string|null};
 const movementLabel:Record<string,string>={restock:"Entrada / recepción",adjustment:"Ajuste",damage:"Daño / merma",supplier_return:"Devolución a proveedor",sale:"Venta POS",pos_sale:"Venta POS",return:"Devolución cliente"};
 
