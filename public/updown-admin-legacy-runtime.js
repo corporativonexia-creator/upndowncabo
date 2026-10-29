@@ -241,6 +241,16 @@
     const {data,error}=await db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false});
     if(error){el("udList").innerHTML=`<div class="u-empty">${error.message}</div>`;return}
     products=data||[];
+    // A parent can summarize many SKUs; never imply its aggregate stock is one variant.
+    const ids=products.map(item=>item.id);
+    const countByParent=new Map();
+    if(ids.length){
+      const {data:variants,error:variantError}=await db.from("product_variants")
+        .select("product_id,id").in("product_id",ids);
+      if(!variantError)(variants||[]).forEach(item=>
+        countByParent.set(item.product_id,(countByParent.get(item.product_id)||0)+1));
+    }
+    products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
     renderProducts();
   }
 
@@ -1522,7 +1532,7 @@
         <img src="${product.cover_image_url||""}" alt="">
         <div>
           <h3>${product.name}</h3>
-          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · Stock ${product.stock} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
+          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · ${product.__variant_count>1?`${product.__variant_count} variantes · Ver existencias por variante`:`Stock ${product.stock}`} · ${product.status="draft"?"Borrador · Pendiente de completar":product.status}</div>
           <div class="u-meta u-price">${money(product.sale_price??product.price,product.currency||"MXN")}</div>
           ${(()=>{
             const specs=product.specifications||{};
