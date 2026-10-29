@@ -10,7 +10,7 @@ type Category = { id: string; name: string; variant_schema: string[] };
 type Match = { product_id: string; product_name: string; variant_id: string | null; variant_title: string; sku: string; barcode: string; stock: number; price: number; status: string };
 type Photo = { id: string; file: File; url: string; uploaded?: string };
 type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string> };
-type Capture = { request: string; name: string; category: string; price: number; barcode: string; quantity: number; photos: Photo[]; variants: Variant[] };
+type Capture = { request: string; name: string; category: string; price: number; barcode: string; quantity: number; onlineVisible: boolean; photos: Photo[]; variants: Variant[] };
 const labels: Record<string, string> = { talla: "Talla", color: "Color", genero: "Género", mano: "Mano", loft: "Loft", flex: "Flex", longitud: "Longitud" };
 const money = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
 const freshVariant = (): Variant => ({ id: crypto.randomUUID(), title: "", barcode: "", quantity: "0", attributes: {} });
@@ -81,7 +81,7 @@ export default function QuickProductEntry() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [ready, setReady] = useState(false);
   const [name, setName] = useState(""); const [category, setCategory] = useState("");
-  const [price, setPrice] = useState(""); const [barcode, setBarcode] = useState(""); const [quantity, setQuantity] = useState("0");
+  const [price, setPrice] = useState(""); const [onlineVisible, setOnlineVisible] = useState(true); const [barcode, setBarcode] = useState(""); const [quantity, setQuantity] = useState("0");
   const [photos, setPhotos] = useState<Photo[]>([]); const photosRef = useRef<Photo[]>([]);
   const [hasVariants, setHasVariants] = useState(false); const [variants, setVariants] = useState<Variant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]); const [match, setMatch] = useState<Match | null>(null);
@@ -175,7 +175,7 @@ export default function QuickProductEntry() {
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) throw new Error("La cantidad debe ser un número entero positivo o cero.");
         if (hasVariants && !variants.length) throw new Error("Agrega al menos una variante.");
         if (variants.some(v => !Number.isInteger(Number(v.quantity)) || Number(v.quantity) < 0)) throw new Error("Revisa las cantidades de las variantes.");
-        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), barcode: barcode.trim(), quantity: Number(quantity), photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v })) : [] };
+        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), barcode: barcode.trim(), quantity: Number(quantity), onlineVisible, photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v })) : [] };
         setPending(true);
       }
       const capture = captureRef.current;
@@ -197,6 +197,12 @@ export default function QuickProductEntry() {
         if (error.code && !error.code.startsWith("PGRST") && error.code !== "") { captureRef.current = null; setPending(false); }
         throw error;
       }
+      // Retry-safe: the create RPC returns the same product_id for repeated request IDs.
+      // Keep the capture pending if the visibility update fails so it can be retried.
+      const { error: visibilityError } = await db.from("products")
+        .update({ online_visible: capture.onlineVisible })
+        .eq("id", data.product_id);
+      if (visibilityError) throw visibilityError;
       setSuccess(`✓ ${data.name} registrado como borrador · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
       setCount(n => n + 1); clearProduct(); void refreshCounts();
     } catch (e) { setError(friendly(e)); }
@@ -239,6 +245,7 @@ export default function QuickProductEntry() {
       <fieldset disabled={locked}>
         <label>Nombre del producto<input ref={nameInput} value={name} onChange={e => setName(e.target.value)} required minLength={2} maxLength={180} placeholder="Ej. Polo Nike Dri-FIT" /></label>
         <div className={styles.grid}><label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} required><option value="">Seleccionar…</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Precio de venta · MXN<input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} min="0.01" max="99999999" step="0.01" required placeholder="0.00" /></label></div>
+        <label>Canal de venta<select value={onlineVisible ? "online" : "physical"} onChange={e => setOnlineVisible(e.target.value === "online")}><option value="online">Tienda online y física</option><option value="physical">Solo tienda física (POS)</option></select></label>
         <div className={styles.photoHead}><label>Fotos <small>{photos.length} / 10 · opcionales en borrador</small></label></div>
         <div className={styles.tools}><label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" onChange={addPhotos} /></label><label className={styles.fileButton}>＋ Elegir de galería<input type="file" accept="image/*,.heic,.heif" multiple onChange={addPhotos} /></label></div>
         {processing && <p role="status">Preparando fotos…</p>}
