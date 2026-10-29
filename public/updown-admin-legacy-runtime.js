@@ -1452,8 +1452,21 @@
       };
       const attrs=v.attributes&&typeof v.attributes==="object"?v.attributes:{};
       const title=input("Variante (nombre)",v.title,"title");title.required=true;
-      input("Talla",attrs.talla||"","talla");
+      const choice=(label,name,value,options)=>{
+        const wrap=document.createElement("label");
+        wrap.style.cssText="display:flex;flex-direction:column;gap:4px;font-size:11px";
+        wrap.textContent=label;
+        const control=document.createElement("select");control.name=name;
+        control.style.cssText="width:100%;min-width:0;padding:9px;border:1px solid #ccd9d0;border-radius:8px;background:#fff";
+        const optionsAll=value&&!options.includes(value)?[value,...options]:options;
+        for(const item of ["",...optionsAll]){
+          const option=document.createElement("option");option.value=item;option.textContent=item||"Seleccionar…";control.appendChild(option);
+        }
+        control.value=value||"";wrap.appendChild(control);fields.appendChild(wrap);
+      };
+      choice("Talla","talla",attrs.talla||"",["S","M","L","XL","Unitalla",...Array.from({length:17},(_,i)=>String(22+i*0.5))]);
       input("Color",attrs.color||"","color");
+      choice("Género","genero",attrs.genero||"",["Niño","Niña","Hombre","Mujer","Unisex"]);
       const barcode=input("Código de barras",v.barcode||"","barcode");
       barcode.maxLength=80;
       const price=input("Precio particular (opcional)",v.price??"","price");price.type="number";price.min="0";price.step=".01";
@@ -1475,7 +1488,7 @@
         if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0)){feedback.textContent="Precio inválido.";return;}
         if(salePrice!==null&&(!Number.isFinite(salePrice)||salePrice<0)){feedback.textContent="Oferta inválida.";return;}
         if(unitPrice!==null&&salePrice!==null&&salePrice>unitPrice){feedback.textContent="La oferta supera al precio.";return;}
-        const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim()};
+        const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim(),genero:String(values.get("genero")||"").trim()};
         submit.disabled=true;feedback.textContent="Guardando…";
         try{
           const {error:saveError}=await db.rpc("admin_inventory_save_variant",{
