@@ -1461,6 +1461,26 @@
     });
   }
 
+  // The online visibility flag is independent from the active/draft status.
+  // Physical-only products remain eligible for the POS and inventory.
+  function ensureSalesChannelField(){
+    if(el("udOnlineVisible")) return;
+    const status=el("udStatus");
+    if(!status) return;
+    const field=document.createElement("label");
+    field.className="u-field";
+    field.style.cssText="display:flex;flex-direction:column;gap:7px;min-width:190px";
+    field.textContent="Canal de venta";
+    const select=document.createElement("select");
+    select.id="udOnlineVisible";
+    select.name="online_visible";
+    select.innerHTML='<option value="true">Tienda online y física</option><option value="false">Solo tienda física (POS)</option>';
+    select.value="true";
+    field.appendChild(select);
+    status.closest(".u-field")?.insertAdjacentElement("afterend",field);
+  }
+  ensureSalesChannelField();
+
   function editProduct(id){
     const p=products.find(item=>item.id===id);
     if(!p) return;
@@ -1476,6 +1496,7 @@
     el("udSalePrice").value=p.sale_price??"";
     el("udStock").value=p.stock??0;
     el("udStatus").value=p.status||"active";
+    if(el("udOnlineVisible")) el("udOnlineVisible").value=p.online_visible===false?"false":"true";
     el("udShort").value=p.short_description||"";
     el("udDescription").value=p.description||"";
     el("udShortEn").value=p.short_description_en||p.specifications?.short_description_en||p.specifications?.english_short_description||"";
@@ -1498,6 +1519,7 @@
     el("udExistingImage").value="";
     el("udStock").value=0;
     el("udStatus").value="active";
+    if(el("udOnlineVisible")) el("udOnlineVisible").value="true";
     el("udCondition").value="new";
     currentProductSpecifications={};
     fillGolfSpecifications({});
@@ -1581,6 +1603,7 @@
         cover_image_url:imageUrl,
         featured:el("udFeatured").checked,
         status:el("udStatus").value,
+        online_visible:el("udOnlineVisible")?.value!=="false",
         seo_title:`${name} | UP AND DOWN`,
         seo_description:el("udShort").value.trim()||null
       };
@@ -1624,7 +1647,10 @@
     const product=products.find(item=>item.id===id);
     if(!product||!confirm(`¿Eliminar "${product.name}"?`)) return;
     const {error}=await db.from("products").delete().eq("id",id);
-    if(error){showToast(error.message,true);return}
+    if(error){
+      const message=error.code==="23503"?"No se puede eliminar: el producto tiene movimientos o ventas vinculadas. Conserva su historial y márcalo como borrador.":error.message;
+      showToast(message,true);return;
+    }
     showToast("Producto eliminado.");
     resetForm();
     await loadProducts();
