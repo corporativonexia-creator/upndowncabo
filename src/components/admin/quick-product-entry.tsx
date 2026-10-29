@@ -9,7 +9,7 @@ import styles from "./quick-product-entry.module.css";
 type Category = { id: string; name: string; variant_schema: string[] };
 type Match = { product_id: string; product_name: string; variant_id: string | null; variant_title: string; sku: string; barcode: string; stock: number; price: number; status: string };
 type Photo = { id: string; file: File; url: string; uploaded?: string };
-type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string> };
+type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string>; photo?: Photo | null };
 type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[] };
 const labels: Record<string, string> = { talla: "Talla", color: "Color", genero: "Género", mano: "Mano", loft: "Loft", flex: "Flex", longitud: "Longitud" };
 const money = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
@@ -95,6 +95,7 @@ export default function QuickProductEntry() {
   const [price, setPrice] = useState(""); const [currency, setCurrency] = useState<"MXN" | "USD">("MXN"); const [salesChannel, setSalesChannel] = useState<"both" | "physical" | "online">("both"); const [barcode, setBarcode] = useState(""); const [quantity, setQuantity] = useState("0");
   const [photos, setPhotos] = useState<Photo[]>([]); const photosRef = useRef<Photo[]>([]);
   const [hasVariants, setHasVariants] = useState(false); const [variants, setVariants] = useState<Variant[]>([]);
+  const variantsRef = useRef<Variant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]); const [match, setMatch] = useState<Match | null>(null);
   const [receiving, setReceiving] = useState("1"); const [reason, setReason] = useState("Entrada desde alta rápida móvil");
   const [busy, setBusy] = useState(false); const [processing, setProcessing] = useState(false); const [checking, setChecking] = useState(false);
@@ -126,7 +127,8 @@ export default function QuickProductEntry() {
     return () => { alive = false; };
   }, [db, refreshCounts]);
   useEffect(() => { photosRef.current = photos; }, [photos]);
-  useEffect(() => () => photosRef.current.forEach(p => URL.revokeObjectURL(p.url)), []);
+  useEffect(() => { variantsRef.current = variants; }, [variants]);
+  useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || captureRef.current || receiveRef.current) { e.preventDefault(); e.returnValue = ""; } };
     window.addEventListener("beforeunload", handler);
@@ -173,8 +175,33 @@ export default function QuickProductEntry() {
       if (files.length > available) setError("Se pueden agregar hasta 10 fotos por producto.");
     } finally { processingRef.current = false; setProcessing(false); }
   }
+  async function setVariantPhoto(id: string, event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0];
+    event.target.value = "";
+    if (!selected || locked) return;
+    processingRef.current = true; setProcessing(true); setError("");
+    try {
+      const file = await preparePhoto(selected);
+      const photo: Photo = { id: crypto.randomUUID(), file, url: URL.createObjectURL(file) };
+      setVariants(previous => previous.map(variant => {
+        if (variant.id !== id) return variant;
+        if (variant.photo) URL.revokeObjectURL(variant.photo.url);
+        return { ...variant, photo };
+      }));
+    } catch (e) { setError(friendly(e)); }
+    finally { processingRef.current = false; setProcessing(false); }
+  }
+  function removeVariantPhoto(id: string) {
+    setVariants(previous => previous.map(variant => {
+      if (variant.id !== id) return variant;
+      if (variant.photo) URL.revokeObjectURL(variant.photo.url);
+      return { ...variant, photo: null };
+    }));
+  }
   function clearProduct() {
     photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); setPhotos([]); photosRef.current = [];
+    variantsRef.current.forEach(v => { if (v.photo) URL.revokeObjectURL(v.photo.url); });
+    variantsRef.current = [];
     setName(""); setBarcode(""); setQuantity("0"); setVariants([]); setHasVariants(false);
     setMatches([]); setMatch(null); setPending(false); captureRef.current = null;
     // Keep category and price for consecutive captures from the same batch.
@@ -189,7 +216,7 @@ export default function QuickProductEntry() {
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) throw new Error("La cantidad debe ser un número entero positivo o cero.");
         if (hasVariants && !variants.length) throw new Error("Agrega al menos una variante.");
         if (variants.some(v => !Number.isInteger(Number(v.quantity)) || Number(v.quantity) < 0)) throw new Error("Revisa las cantidades de las variantes.");
-        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v })) : [] };
+        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v, attributes: { ...v.attributes }, photo: v.photo ? { ...v.photo } : null })) : [] };
         setPending(true);
       }
       const capture = captureRef.current;
@@ -200,10 +227,23 @@ export default function QuickProductEntry() {
         if (error) throw error;
         photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
       }
+      // Each variant photo lives in its own storage object and metadata.
+      // Reuse uploaded URLs when retrying the same request to avoid duplicates.
+      for (const variant of capture.variants) {
+        if (!variant.photo) continue;
+        if (!variant.photo.uploaded) {
+          const path = `products/quick/${capture.request}/variants/${variant.id}.jpg`;
+          const { error: uploadError } = await db.storage.from("product-media").upload(
+            path, variant.photo.file, { contentType: "image/jpeg", upsert: true }
+          );
+          if (uploadError) throw uploadError;
+          variant.photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+        }
+      }
       const { data, error } = await db.rpc("admin_quick_product_create", {
         p_request_id: capture.request, p_name: capture.name, p_category_id: capture.category, p_price: capture.price,
         p_barcode: capture.barcode || null, p_quantity: capture.quantity,
-        p_images: capture.photos.map(p => p.uploaded!), p_variants: capture.variants.map(v => ({ title: v.title.trim(), barcode: v.barcode || null, quantity: Number(v.quantity), attributes: v.attributes }))
+        p_images: capture.photos.map(p => p.uploaded!), p_variants: capture.variants.map(v => ({ title: v.title.trim(), barcode: v.barcode || null, quantity: Number(v.quantity), attributes: { ...v.attributes, ...(v.photo?.uploaded ? { image_url: v.photo.uploaded } : {}) } }))
       });
       if (error) {
         // SQL errors roll back the whole transaction. Network failures retain the
@@ -244,7 +284,7 @@ export default function QuickProductEntry() {
     setHasVariants(true);
     setVariants(previous => {
       // Do not erase manually entered inventory, barcodes or other attributes.
-      const existing = previous.filter(v => v.title.trim() || v.barcode || Number(v.quantity) > 0 || Object.values(v.attributes).some(Boolean));
+      const existing = previous.filter(v => v.title.trim() || v.barcode || Number(v.quantity) > 0 || Object.values(v.attributes).some(Boolean) || v.photo);
       const used = new Set(existing.map(v => (v.attributes.talla || v.title).trim().toLowerCase()));
       const additions = sizes.filter(size => !used.has(size.toLowerCase())).slice(0, 50 - existing.length)
         .map(size => ({ ...freshVariant(), title: size, attributes: { talla: size } }));
@@ -275,13 +315,23 @@ export default function QuickProductEntry() {
         <div className={styles.grid}><label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} required><option value="">Seleccionar…</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Precio de venta · {currency}<input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} min="0.01" max="99999999" step="0.01" required placeholder="0.00" /></label></div>
         <label>Moneda del precio<select value={currency} onChange={e => setCurrency(e.target.value as "MXN" | "USD")}><option value="MXN">MXN · Pesos mexicanos</option><option value="USD">USD · Dólares estadounidenses</option></select></label>
         <label>Canal de venta<select value={salesChannel} onChange={e => setSalesChannel(e.target.value as "both" | "physical" | "online")}><option value="both">Tienda física y online</option><option value="physical">Solo tienda física (POS)</option><option value="online">Solo tienda online</option></select></label>
-        <div className={styles.photoHead}><label>Fotos <small>{photos.length} / 10 · opcionales en borrador</small></label></div>
+        <div className={styles.photoHead}><label>Fotografías del producto padre <small>{photos.length} / 10 · opcionales</small></label></div>
         <div className={styles.tools}><label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" onChange={addPhotos} /></label><label className={styles.fileButton}>＋ Elegir de galería<input type="file" accept="image/*,.heic,.heif" multiple onChange={addPhotos} /></label></div>
         {processing && <p role="status">Preparando fotos…</p>}
         {!!photos.length && <div className={styles.photos}>{photos.map((photo, index) => <div key={photo.id}><Image src={photo.url} width={120} height={120} unoptimized alt={`Foto ${index + 1} de ${name || "producto"}`} /><button type="button" aria-label={`Quitar foto ${index + 1}`} onClick={() => { URL.revokeObjectURL(photo.url); setPhotos(old => old.filter(p => p.id !== photo.id)); }}>✕</button>{index === 0 && <span>Principal</span>}</div>)}</div>}
         {sizeType && <div className={styles.notice}><b>{sizeType === "apparel" ? "Ropa: tallas XS, S, M, L, XL, XXL y Unitalla" : "Calzado: tallas numéricas MX (22 a 30, medios números)"}</b><button type="button" disabled={locked} onClick={addSizeVariants}>＋ Agregar tallas como variantes</button><small>Cada talla tendrá SKU, código de barras y existencias independientes. Elimina las tallas que no manejes.</small></div>}
         <label className={styles.toggle}><input type="checkbox" checked={hasVariants} onChange={e => { setHasVariants(e.target.checked); if (e.target.checked && !variants.length) setVariants([freshVariant()]); }} />Tiene variantes (talla, color u otras)</label>
-        {!hasVariants ? <label>Cantidad inicial<input type="number" inputMode="numeric" min="0" step="1" required value={quantity} onChange={e => setQuantity(e.target.value)} /><small>Se registra como el primer movimiento de inventario.</small></label> : <div className={styles.variants}><p>Cada variante tendrá su propio SKU, código y existencia.</p>{variants.map((v, index) => <section key={v.id}><header><b>Variante {index + 1}</b><button type="button" onClick={() => setVariants(rows => rows.filter(row => row.id !== v.id))} aria-label={`Quitar variante ${index + 1}`}>Quitar</button></header><label>Nombre de variante<input required maxLength={100} placeholder="Ej. M / Blanco" value={v.title} onChange={e => updateVariant(v.id, { title: e.target.value })} /></label>{!!variantFields.length && <div className={styles.grid}>{variantFields.map(field => <label key={field}>{labels[field] || field}{field === "talla" && sizeType ? <select value={v.attributes[field] || ""} onChange={e => { const talla = e.target.value; updateVariant(v.id, { title: talla || v.title, attributes: { ...v.attributes, talla } }); }}><option value="">Seleccionar talla</option>{(sizeType === "apparel" ? [...apparelSizes] : shoeSizes).map(size => <option key={size} value={size}>{size}</option>)}</select> : field === "genero" ? <select value={v.attributes[field] || ""} onChange={e => updateVariant(v.id, { attributes: { ...v.attributes, [field]: e.target.value } })}><option value="">Seleccionar género</option>{genderOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <input value={v.attributes[field] || ""} onChange={e => updateVariant(v.id, { attributes: { ...v.attributes, [field]: e.target.value } })} />}</label>)}</div>}<label>Código de la variante<input value={v.barcode} maxLength={80} placeholder="Vacío = generar automáticamente" onChange={e => updateVariant(v.id, { barcode: e.target.value })} /></label><div className={styles.tools}><button type="button" onClick={() => setScanner(v.id)}>Escanear</button><button type="button" onClick={() => void generateCode(v.id)}>Generar</button></div><label>Cantidad inicial<input type="number" min="0" step="1" required value={v.quantity} onChange={e => updateVariant(v.id, { quantity: e.target.value })} /></label></section>)}<button type="button" disabled={variants.length >= 50} onClick={() => setVariants(rows => [...rows, freshVariant()])}>＋ Agregar variante</button></div>}
+        {!hasVariants ? <label>Cantidad inicial<input type="number" inputMode="numeric" min="0" step="1" required value={quantity} onChange={e => setQuantity(e.target.value)} /><small>Se registra como el primer movimiento de inventario.</small></label> : <div className={styles.variants}><p>Cada variante tendrá su propio SKU, código y existencia.</p>{variants.map((v, index) => <section key={v.id}><header><b>Variante {index + 1}</b><button type="button" onClick={() => setVariants(rows => { const selected=rows.find(row=>row.id===v.id); if(selected?.photo) URL.revokeObjectURL(selected.photo.url); return rows.filter(row => row.id !== v.id); })} aria-label={`Quitar variante ${index + 1}`}>Quitar</button></header><label>Nombre de variante<input required maxLength={100} placeholder="Ej. M / Blanco" value={v.title} onChange={e => updateVariant(v.id, { title: e.target.value })} /></label>{!!variantFields.length && <div className={styles.grid}>{variantFields.map(field => <label key={field}>{labels[field] || field}{field === "talla" && sizeType ? <select value={v.attributes[field] || ""} onChange={e => { const talla = e.target.value; updateVariant(v.id, { title: talla || v.title, attributes: { ...v.attributes, talla } }); }}><option value="">Seleccionar talla</option>{(sizeType === "apparel" ? [...apparelSizes] : shoeSizes).map(size => <option key={size} value={size}>{size}</option>)}</select> : field === "genero" ? <select value={v.attributes[field] || ""} onChange={e => updateVariant(v.id, { attributes: { ...v.attributes, [field]: e.target.value } })}><option value="">Seleccionar género</option>{genderOptions.map(option => <option key={option} value={option}>{option}</option>)}</select> : <input value={v.attributes[field] || ""} onChange={e => updateVariant(v.id, { attributes: { ...v.attributes, [field]: e.target.value } })} />}</label>)}</div>}<label>Código de la variante<input value={v.barcode} maxLength={80} placeholder="Vacío = generar automáticamente" onChange={e => updateVariant(v.id, { barcode: e.target.value })} /></label><div className={styles.variantPhoto}>
+            <span>Fotografía de esta variante <small>Opcional · máximo 1 · independiente del producto padre</small></span>
+            <div className={styles.tools}>
+              <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={e => void setVariantPhoto(v.id,e)} /></label>
+              <label className={styles.fileButton}>＋ Galería<input type="file" accept="image/*,.heic,.heif" disabled={locked} onChange={e => void setVariantPhoto(v.id,e)} /></label>
+            </div>
+            {v.photo && <div className={styles.variantPhotoPreview}>
+              <Image src={v.photo.url} width={100} height={100} unoptimized alt={`Foto de la variante ${v.title || index + 1}`} />
+              <button type="button" disabled={locked} onClick={() => removeVariantPhoto(v.id)}>Quitar foto</button>
+            </div>}
+          </div><div className={styles.tools}><button type="button" onClick={() => setScanner(v.id)}>Escanear</button><button type="button" onClick={() => void generateCode(v.id)}>Generar</button></div><label>Cantidad inicial<input type="number" min="0" step="1" required value={v.quantity} onChange={e => updateVariant(v.id, { quantity: e.target.value })} /></label></section>)}<button type="button" disabled={variants.length >= 50} onClick={() => setVariants(rows => [...rows, freshVariant()])}>＋ Agregar variante</button></div>}
       </fieldset>
       <div className={styles.saveBar}><span>Estado al guardar: <b>BORRADOR</b></span><button className={styles.primary} type="submit" disabled={busy || processing || checking || !ready}>{busy ? "Guardando…" : pending ? "Reintentar guardado" : "Guardar + siguiente producto"}</button><small>Conservamos categoría y precio para la siguiente captura.</small></div>
     </form>}

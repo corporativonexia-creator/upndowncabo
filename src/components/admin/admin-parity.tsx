@@ -36,7 +36,7 @@ export default function AdminParity() {
     });
 
     (async () => {
-      await load("/updown-admin-legacy-runtime.js?v=sizes-xs-xxl-20261029");
+      await load("/updown-admin-legacy-runtime.js?v=quick-variant-photos-20261029");
       await load("/updown-product-heic-inventory-hotfix.js?v=heic-inventory-v3-20261002");
       await load("/updown-product-smart-entry-v1.js?v=apparel-freeze-fix-20261029");
       await load("/updown-product-condition-v1.js?v=condition-v1-20261003");

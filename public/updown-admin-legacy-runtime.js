@@ -1509,6 +1509,16 @@
       }
       const submit=document.createElement("button");submit.type="submit";submit.className="u-btn u-secondary u-small";submit.textContent=isNew?"Crear variante":"Guardar variante";
       const feedback=document.createElement("span");feedback.className="u-meta";feedback.style.marginLeft="10px";
+      // Variant photos are stored on the variant itself, never as parent gallery photos.
+      if(typeof attrs.image_url==="string"&&/^https:\/\//.test(attrs.image_url)){
+        const photo=document.createElement("div");
+        photo.style.cssText="display:flex;align-items:center;gap:10px;margin:9px 0";
+        const img=document.createElement("img");
+        img.src=attrs.image_url;img.alt="Fotografía de esta variante";
+        img.style.cssText="width:76px;height:76px;object-fit:cover;border-radius:9px";
+        const note=document.createElement("small");note.textContent="Fotografía independiente de la variante";
+        photo.append(img,note);form.appendChild(photo);
+      }
       form.append(details,fields,status,submit,feedback);
       target.appendChild(form);
       form.addEventListener("submit",async e=>{
