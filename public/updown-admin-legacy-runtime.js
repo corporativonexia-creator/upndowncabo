@@ -1532,7 +1532,7 @@
         <img src="${product.cover_image_url||""}" alt="">
         <div>
           <h3>${product.name}</h3>
-          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · ${product.__variant_count>1?`${product.__variant_count} variantes · Ver existencias por variante`:`Stock ${product.stock}`} · ${product.status="draft"?"Borrador · Pendiente de completar":product.status}</div>
+          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · ${product.__variant_count>1?`${product.__variant_count} variantes · Ver existencias por variante`:`Stock ${product.stock}`} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
           <div class="u-meta u-price">${money(product.sale_price??product.price,product.currency||"MXN")}</div>
           ${(()=>{
             const specs=product.specifications||{};
