@@ -154,6 +154,7 @@
       `)
       .in("id",productIds)
       .eq("status","active")
+      .eq("online_visible",true)
       .abortSignal(timeoutSignal());
 
     if(error) throw error;
@@ -1406,7 +1407,7 @@
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
       db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
-      db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
+      db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
     ]);
     if(ce||pe){
       const error=ce||pe;
