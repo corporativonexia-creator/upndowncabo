@@ -201,7 +201,8 @@ export default function QuickProductEntry() {
       // Keep the capture pending if the visibility update fails so it can be retried.
       const { error: visibilityError } = await db.from("products")
         .update({ online_visible: capture.onlineVisible })
-        .eq("id", data.product_id);
+        .eq("id", data.product_id)
+        .select("id").single();
       if (visibilityError) throw visibilityError;
       setSuccess(`✓ ${data.name} registrado como borrador · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
       setCount(n => n + 1); clearProduct(); void refreshCounts();
