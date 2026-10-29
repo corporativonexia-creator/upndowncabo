@@ -18,9 +18,11 @@ comment on column public.products.pos_visible is
   'True: sellable in the physical POS. False: online only. Stock remains shared.';
 
 -- Ensure existing products remain available in at least one sales channel.
-alter table public.products
-  add constraint products_at_least_one_sales_channel
-  check (online_visible or pos_visible);
+do $ begin
+  if not exists (select 1 from pg_constraint where conname = 'products_at_least_one_sales_channel' and conrelid = 'public.products'::regclass) then
+    alter table public.products add constraint products_at_least_one_sales_channel check (online_visible or pos_visible);
+  end if;
+end $;
 
 create index if not exists idx_products_pos_catalog
   on public.products (name)
