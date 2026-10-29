@@ -1442,13 +1442,29 @@
       .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,low_stock_threshold,is_active,is_default")
       .eq("product_id",productId).order("created_at",{ascending:true});
     if(error){host.textContent="No fue posible consultar las variantes: "+error.message;return;}
-    if(!rows?.length){host.textContent="No hay variantes registradas para este producto.";return;}
     host.innerHTML="";
     const head=document.createElement("div");
     head.className="u-meta";
-    head.textContent=rows.length+" variante(s) · Edición de datos; las existencias se modifican desde Inventario.";
+    head.textContent=(rows?.length||0)+" variante(s) · Puedes agregar variantes nuevas. Para variantes existentes, las existencias se ajustan desde Inventario.";
     host.appendChild(head);
-    rows.forEach(v=>{
+    const formHost=document.createElement("div");
+    host.appendChild(formHost);
+    const createButton=document.createElement("button");
+    createButton.type="button";createButton.className="u-btn u-secondary u-small";
+    createButton.textContent="＋ Agregar variante";
+    createButton.style.margin="10px 0";
+    host.appendChild(createButton);
+    createButton.addEventListener("click",()=>{
+      if(formHost.childElementCount)return;
+      const blank={id:null,product_id:productId,title:"",sku:"",barcode:"",attributes:{},price:null,sale_price:null,stock:0,low_stock_threshold:2,is_active:true,is_default:false};
+      renderVariantForm(blank,true,formHost);
+    });
+    if(!rows?.length){
+      const empty=document.createElement("p");empty.className="u-meta";
+      empty.textContent="Este producto aún no tiene variantes. Puedes agregar la primera aquí.";
+      host.appendChild(empty);
+    }
+    function renderVariantForm(v,isNew,target=host){
       const form=document.createElement("form");form.className="u-field";
       form.style.cssText="margin:9px 0;padding:12px;border:1px solid #dce5df;border-radius:12px;background:#fafcfb";
       const fields=document.createElement("div");
@@ -1485,11 +1501,16 @@
       const checked=document.createElement("input");checked.type="checkbox";checked.name="is_active";checked.checked=v.is_active!==false;
       status.append(checked,document.createTextNode("Variante activa"));
       const details=document.createElement("div");details.className="u-meta";
-      details.textContent="SKU: "+(v.sku||"—")+" · Existencia: "+v.stock+" · El inventario no se modifica aquí.";
-      const submit=document.createElement("button");submit.type="submit";submit.className="u-btn u-secondary u-small";submit.textContent="Guardar variante";
+      details.textContent=isNew?"El SKU y código de barras se generan automáticamente si dejas el código vacío.":"SKU: "+(v.sku||"—")+" · Existencia: "+v.stock+" · El inventario no se modifica aquí.";
+      if(isNew){
+        const quantity=input("Cantidad inicial de piezas","0","initial_stock");
+        quantity.type="number";quantity.min="0";quantity.step="1";quantity.required=true;
+        input("Referencia de entrada (factura/recepción)","","stock_reason");
+      }
+      const submit=document.createElement("button");submit.type="submit";submit.className="u-btn u-secondary u-small";submit.textContent=isNew?"Crear variante":"Guardar variante";
       const feedback=document.createElement("span");feedback.className="u-meta";feedback.style.marginLeft="10px";
       form.append(details,fields,status,submit,feedback);
-      host.appendChild(form);
+      target.appendChild(form);
       form.addEventListener("submit",async e=>{
         e.preventDefault();
         const values=new FormData(form);
@@ -1499,22 +1520,49 @@
         if(salePrice!==null&&(!Number.isFinite(salePrice)||salePrice<0)){feedback.textContent="Oferta inválida.";return;}
         if(unitPrice!==null&&salePrice!==null&&salePrice>unitPrice){feedback.textContent="La oferta supera al precio.";return;}
         const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim(),genero:String(values.get("genero")||"").trim()};
+        const variantName=String(values.get("title")||"").trim();
+        const openingStock=isNew?Number(values.get("initial_stock")):0;
+        const stockReason=String(values.get("stock_reason")||"").trim();
+        if(!variantName){feedback.textContent="Escribe el nombre de la variante.";return;}
+        if(isNew&&(!Number.isSafeInteger(openingStock)||openingStock<0)){feedback.textContent="Cantidad inicial inválida.";return;}
+        if(isNew&&openingStock>0&&stockReason.length<3){feedback.textContent="Escribe la referencia de recepción (mínimo 3 caracteres).";return;}
         submit.disabled=true;feedback.textContent="Guardando…";
         try{
-          const {error:saveError}=await db.rpc("admin_inventory_save_variant",{
+          const {data:savedVariant,error:saveError}=await db.rpc("admin_inventory_save_variant",{
             p_product_id:productId,p_variant_id:v.id,
-            p_title:String(values.get("title")||"").trim(),p_sku:v.sku,p_barcode:String(values.get("barcode")||"").trim()||null,
+            p_title:variantName,p_sku:v.sku||null,p_barcode:String(values.get("barcode")||"").trim()||null,
             p_attributes:attributes,p_price:unitPrice,p_sale_price:salePrice,
             p_low_stock_threshold:v.low_stock_threshold??2,p_is_active:checked.checked
           });
           if(saveError)throw saveError;
+          // Once a variant exists, do not recreate it if receiving stock fails.
+          if(isNew){
+            v.id=savedVariant?.variant_id;
+            if(!v.id)throw new Error("Se guardó la variante pero no se recibió su identificador. Actualiza el listado antes de reintentar.");
+            isNew=false;
+            submit.textContent="Guardar variante";
+            if(openingStock>0){
+              const {error:stockError}=await db.rpc("admin_inventory_adjust",{
+                p_variant_id:v.id,p_quantity_change:openingStock,
+                p_reason:stockReason,p_movement_type:"restock"
+              });
+              if(stockError){
+                feedback.textContent="Variante creada con 0 piezas, pero no se pudo registrar la entrada: "+stockError.message+"; registra la entrada desde Inventario.";
+                submit.disabled=false;
+                return;
+              }
+            }
+            await openProductVariants(productId,host);
+            return;
+          }
           feedback.textContent="Variante actualizada.";
-          v.title=String(values.get("title")||"").trim();v.attributes=attributes;
+          v.title=variantName;v.attributes=attributes;
           v.price=unitPrice;v.sale_price=salePrice;v.is_active=checked.checked;
         }catch(err){feedback.textContent="Error: "+(err?.message||err);}
         finally{submit.disabled=false;}
       });
-    });
+    }
+    (rows||[]).forEach(v=>renderVariantForm(v,false));
   }
 
   function renderProducts(){
