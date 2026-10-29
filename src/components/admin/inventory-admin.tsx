@@ -52,44 +52,12 @@ export default function InventoryAdmin(){
 
 
  function printCompactTicket(){
-  if(!filtered.length)return;
-  const popup=window.open("","_blank","width=390,height=730");
-  if(!popup){setMsg("Permite ventanas emergentes para imprimir.");return;}
-  const color=(r:Row)=>r.attributes?.color||r.attributes?.colour||r.attributes?.tono||"";
-  const gender=(r:Row)=>r.attributes?.genero||r.attributes?.gender||"Sin género";
-  const size=(r:Row)=>r.attributes?.talla||r.attributes?.size||"Sin talla";
-  const norm=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-  const genders=["nina","nino","mujer","hombre","unisex"];
-  const sizes=["xs","s","m","l","xl","xxl","unitalla"];
-  const rank=(a:string,arr:string[])=>{const i=arr.indexOf(norm(a));return i<0?99:i;};
-  const compare=(a:string,b:string)=>a.localeCompare(b,"es",{numeric:true,sensitivity:"base"});
-  const sorted=[...filtered].sort((a,b)=>compare(a.category_name||"",b.category_name||"")||rank(gender(a),genders)-rank(gender(b),genders)||compare(gender(a),gender(b))||rank(size(a),sizes)-rank(size(b),sizes)||compare(size(a),size(b))||compare(a.product_name,b.product_name));
-  const money=(n:number)=>new Intl.NumberFormat("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
-  const totals={MXN:0,USD:0};let unknown=0;let body="",cat="",gen="",talla="";
-  for(const r of sorted){
-    const c=r.category_name||"Sin categoría",g=gender(r),t=size(r);
-    if(c!==cat){cat=c;gen="";talla="";body+='<h2>'+esc(c.toUpperCase())+'</h2>';}
-    if(g!==gen){gen=g;talla="";body+='<h3>'+esc(g.toUpperCase())+'</h3>';}
-    if(t!==talla){talla=t;body+='<h4>TALLA '+esc(t.toUpperCase())+'</h4>';}
-    const qty=Number(r.stock)||0,rawPrice=r.effective_price;
-    const valid=rawPrice!==null&&rawPrice!==undefined&&Number.isFinite(rawPrice);
-    const price=valid?Number(rawPrice):0;
-    const currency=r.currency==="USD"?"USD":"MXN";
-    if(valid)totals[currency]+=qty*price;else unknown++;
-    const desc=[r.product_name,color(r),r.variant_title!==t?r.variant_title:""].filter(Boolean).join(" · ");
-    body+='<div class="item"><div>'+esc(desc)+'</div><div class="values"><span>'+qty+'</span><span>'+(valid?money(price):"—")+'</span><b>'+(valid?money(qty*price):"—")+'</b></div></div>';
-  }
-  const products=new Set(sorted.map(r=>r.product_id)).size;
-  const pieces=sorted.reduce((sum,r)=>sum+(Number(r.stock)||0),0);
-  const fmtTotal=(currency:"MXN"|"USD")=>sorted.some(r=>r.currency===currency&&r.effective_price!=null)?'<p>VALOR '+currency+': $'+money(totals[currency])+'</p>':"";
-  const footer='<section class="total"><div>PRODUCTOS: '+products+' · VARIANTES: '+sorted.length+'</div><div>PIEZAS: '+pieces+'</div>'+fmtTotal("MXN")+fmtTotal("USD")+(unknown?'<small>'+unknown+' variantes sin precio, no incluidas en el valor.</small>':"")+'</section>';
-  const css='@page{size:80mm auto;margin:2mm}*{box-sizing:border-box}body{width:72mm;margin:0 auto;font:10px/1.2 Arial,sans-serif;color:#000}header{text-align:center;border-bottom:2px solid #000;padding:2mm 0}h1{font-size:14px;margin:0}header small{font-size:9px}h2{font-size:12px;border-top:1px solid #000;border-bottom:1px solid #000;margin:3mm 0 1mm;padding:1mm 0}h3{font-size:11px;margin:2mm 0 1mm}h4{font-size:10px;margin:1mm 0}.columns,.values{display:grid;grid-template-columns:15% 38% 47%;text-align:right;font-variant-numeric:tabular-nums}.columns{font-weight:bold;border-bottom:1px dashed #000;padding-top:2mm}.item{padding:1mm 0;border-bottom:1px dotted #ddd;break-inside:avoid}.values{margin-top:1mm}.total{border-top:2px solid #000;margin-top:3mm;padding-top:2mm;font-size:11px;font-weight:bold}.total p{margin:1mm 0;border-top:1px dashed #999;padding-top:1mm}footer{text-align:center;font-size:9px;margin:4mm 0 8mm}';
-  popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario 80 mm</title><style>'+css+'</style></head><body><header><h1>UP AND DOWN</h1><div>INVENTARIO</div><small>'+esc(new Date().toLocaleString("es-MX"))+'</small></header><div class="columns"><span>CANT.</span><span>PRECIO</span><span>IMPORTE</span></div>'+body+footer+'<footer>REPORTE DE EXISTENCIAS</footer></body></html>');
+  const popup=window.open("","_blank","width=390,height=700");
+  if(!popup)return;
+  popup.document.write("<html><body><h1>Inventario</h1></body></html>");
   popup.document.close();
-  popup.addEventListener("load",()=>popup.print(),{once:true});
  }
-
- function printInventory(format:"ticket"|"sheet"){
+  function printInventory(format:"ticket"|"sheet"){
   if(format==="ticket"){printCompactTicket();return;}
   if(!filtered.length){setMsg("No hay variantes para imprimir.");return;}
   const popup=window.open("","_blank",format==="ticket"?"width=390,height=720":"width=950,height=750");
