@@ -1424,6 +1424,76 @@
     renderGalleryEditor();
   }
 
+
+  // Read existing variants on demand. Updates never change stock or generate new SKUs.
+  async function openProductVariants(productId, host){
+    host.innerHTML='<div class="u-meta">Cargando tallas y variantes…</div>';
+    const {data:rows,error}=await db.from("product_variants")
+      .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,low_stock_threshold,is_active,is_default")
+      .eq("product_id",productId).order("created_at",{ascending:true});
+    if(error){host.textContent="No fue posible consultar las variantes: "+error.message;return;}
+    if(!rows?.length){host.textContent="No hay variantes registradas para este producto.";return;}
+    host.innerHTML="";
+    const head=document.createElement("div");
+    head.className="u-meta";
+    head.textContent=rows.length+" variante(s) · Edición de datos; las existencias se modifican desde Inventario.";
+    host.appendChild(head);
+    rows.forEach(v=>{
+      const form=document.createElement("form");form.className="u-field";
+      form.style.cssText="margin:9px 0;padding:12px;border:1px solid #dce5df;border-radius:12px;background:#fafcfb";
+      const fields=document.createElement("div");
+      fields.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px";
+      const input=(label,value,name)=>{
+        const wrap=document.createElement("label");wrap.style.cssText="display:flex;flex-direction:column;gap:4px;font-size:11px";
+        wrap.textContent=label;
+        const control=document.createElement("input");
+        control.name=name;control.value=value??"";control.style.cssText="width:100%;min-width:0;padding:9px;border:1px solid #ccd9d0;border-radius:8px;background:#fff";
+        wrap.appendChild(control);fields.appendChild(wrap);return control;
+      };
+      const attrs=v.attributes&&typeof v.attributes==="object"?v.attributes:{};
+      const title=input("Variante (nombre)",v.title,"title");title.required=true;
+      input("Talla",attrs.talla||"","talla");
+      input("Color",attrs.color||"","color");
+      const barcode=input("Código de barras",v.barcode||"","barcode");
+      barcode.maxLength=80;
+      const price=input("Precio particular (opcional)",v.price??"","price");price.type="number";price.min="0";price.step=".01";
+      const offer=input("Oferta particular (opcional)",v.sale_price??"","sale_price");offer.type="number";offer.min="0";offer.step=".01";
+      const status=document.createElement("label");status.style.cssText="display:flex;align-items:center;gap:6px;font-size:11px";
+      const checked=document.createElement("input");checked.type="checkbox";checked.name="is_active";checked.checked=v.is_active!==false;
+      status.append(checked,document.createTextNode("Variante activa"));
+      const details=document.createElement("div");details.className="u-meta";
+      details.textContent="SKU: "+(v.sku||"—")+" · Existencia: "+v.stock+" · El inventario no se modifica aquí.";
+      const submit=document.createElement("button");submit.type="submit";submit.className="u-btn u-secondary u-small";submit.textContent="Guardar variante";
+      const feedback=document.createElement("span");feedback.className="u-meta";feedback.style.marginLeft="10px";
+      form.append(details,fields,status,submit,feedback);
+      host.appendChild(form);
+      form.addEventListener("submit",async e=>{
+        e.preventDefault();
+        const values=new FormData(form);
+        const numberOrNull=k=>values.get(k)===""?null:Number(values.get(k));
+        const unitPrice=numberOrNull("price"),salePrice=numberOrNull("sale_price");
+        if(unitPrice!==null&&(!Number.isFinite(unitPrice)||unitPrice<0)){feedback.textContent="Precio inválido.";return;}
+        if(salePrice!==null&&(!Number.isFinite(salePrice)||salePrice<0)){feedback.textContent="Oferta inválida.";return;}
+        if(unitPrice!==null&&salePrice!==null&&salePrice>unitPrice){feedback.textContent="La oferta supera al precio.";return;}
+        const attributes={...attrs,talla:String(values.get("talla")||"").trim(),color:String(values.get("color")||"").trim()};
+        submit.disabled=true;feedback.textContent="Guardando…";
+        try{
+          const {error:saveError}=await db.rpc("admin_inventory_save_variant",{
+            p_product_id:productId,p_variant_id:v.id,
+            p_title:String(values.get("title")||"").trim(),p_sku:v.sku,p_barcode:String(values.get("barcode")||"").trim()||null,
+            p_attributes:attributes,p_price:unitPrice,p_sale_price:salePrice,
+            p_low_stock_threshold:v.low_stock_threshold??2,p_is_active:checked.checked
+          });
+          if(saveError)throw saveError;
+          feedback.textContent="Variante actualizada.";
+          v.title=String(values.get("title")||"").trim();v.attributes=attributes;
+          v.price=unitPrice;v.sale_price=salePrice;v.is_active=checked.checked;
+        }catch(err){feedback.textContent="Error: "+(err?.message||err);}
+        finally{submit.disabled=false;}
+      });
+    });
+  }
+
   function renderProducts(){
     el("udCount").textContent=`${products.filter(p=>p.status==="active").length} activos · ${products.filter(p=>p.status==="draft").length} borradores por completar · ${products.length} en total`;
     if(!products.length){
@@ -1453,8 +1523,19 @@
         </div>
         <div class="u-item-actions">
           <button class="u-btn u-secondary u-small ud-edit" type="button">Editar</button>
+          <button class="u-btn u-secondary u-small ud-variants" type="button">Ver / editar variantes</button>
           <button class="u-btn u-danger u-small ud-delete" type="button">Eliminar</button>
         </div>`;
+      const variantPanel=document.createElement("section");
+      variantPanel.className="u-variant-panel";variantPanel.hidden=true;
+      variantPanel.style.cssText="grid-column:1/-1;width:100%;padding:9px 0";
+      item.appendChild(variantPanel);
+      const variantButton=item.querySelector(".ud-variants");
+      variantButton.onclick=async()=>{
+        variantPanel.hidden=!variantPanel.hidden;
+        variantButton.textContent=variantPanel.hidden?"Ver / editar variantes":"Ocultar variantes";
+        if(!variantPanel.hidden)await openProductVariants(product.id,variantPanel);
+      };
       item.querySelector(".ud-edit").onclick=()=>editProduct(product.id);
       item.querySelector(".ud-delete").onclick=()=>deleteProduct(product.id);
       el("udList").appendChild(item);
