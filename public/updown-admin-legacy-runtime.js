@@ -1440,7 +1440,7 @@
         <div>
           <h3>${product.name}</h3>
           <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · Stock ${product.stock} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
-          <div class="u-meta u-price">${money(product.sale_price??product.price)}</div>
+          <div class="u-meta u-price">${money(product.sale_price??product.price,product.currency||"MXN")}</div>
           ${(()=>{
             const specs=product.specifications||{};
             const values=[
@@ -1463,6 +1463,19 @@
 
   // The online visibility flag is independent from the active/draft status.
   // Physical-only products remain eligible for the POS and inventory.
+  function ensureCurrencyField(){
+    if(el("udCurrency"))return;
+    const price=el("udPrice");
+    if(!price)return;
+    const field=document.createElement("div");field.className="u-field";
+    const label=document.createElement("label");label.htmlFor="udCurrency";label.textContent="Moneda del precio";
+    const select=document.createElement("select");select.id="udCurrency";
+    select.innerHTML='<option value="MXN">MXN · Pesos mexicanos</option><option value="USD">USD · Dólares estadounidenses</option>';
+    field.append(label,select);
+    (price.closest(".u-field")||price.parentElement)?.insertAdjacentElement("afterend",field);
+  }
+  ensureCurrencyField();
+
   function ensureSalesChannelField(){
     if(el("udOnlineVisible")) return;
     const status=el("udStatus");
@@ -1493,6 +1506,7 @@
     el("udBrand").value=p.brand||"";
     el("udModel").value=p.model||"";
     el("udPrice").value=p.price??"";
+    if(el("udCurrency"))el("udCurrency").value=p.currency==="USD"?"USD":"MXN";
     el("udSalePrice").value=p.sale_price??"";
     el("udStock").value=p.stock??0;
     el("udStatus").value=p.status||"active";
@@ -1519,6 +1533,7 @@
     el("udExistingImage").value="";
     el("udStock").value=0;
     el("udStatus").value="active";
+    if(el("udCurrency"))el("udCurrency").value="MXN";
     if(el("udOnlineVisible")) el("udOnlineVisible").value="both";
     el("udCondition").value="new";
     currentProductSpecifications={};
@@ -1595,7 +1610,7 @@
         short_description_en:el("udShortEn").value.trim()||null,
         description_en:el("udDescriptionEn").value.trim()||null,
         specifications:buildGolfSpecifications(),
-        currency:"MXN",
+        currency:el("udCurrency")?.value==="USD"?"USD":"MXN",
         price,
         sale_price:salePrice,
         stock:Number(el("udStock").value),

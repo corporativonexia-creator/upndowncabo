@@ -11,7 +11,7 @@ const PARITY=["LLLLLL","LLGLGG","LLGGLG","LLGGGL","LGLLGG","LGGLLG","LGGGLL","LG
 function esc(v:string){return String(v||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]||c))}
 function validEan13(value:string){if(!/^\d{13}$/.test(value))return false;const d=value.split("").map(Number);const sum=d.slice(0,12).reduce((a,n,i)=>a+n*(i%2?3:1),0);return (10-sum%10)%10===d[12]}
 function ean13Svg(value:string){const d=value.split("").map(Number),p=PARITY[d[0]];let bits="101";for(let i=1;i<=6;i++)bits+=(p[i-1]==="L"?L:G)[d[i]];bits+="01010";for(let i=7;i<=12;i++)bits+=R[d[i]];bits+="101";const module=.42,left=4,w=bits.length*module+left*2;let bars="";for(let i=0;i<bits.length;i++)if(bits[i]==="1"){const guard=i<3||(i>=45&&i<50)||i>=92;bars+=`<rect x="${left+i*module}" y="1" width="${module+.02}" height="${guard?14.4:12.5}"/>`}return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} 18.5"><rect width="100%" height="100%" fill="white"/><g fill="black">${bars}</g><text x="${w/2}" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="3" letter-spacing=".42">${value}</text></svg>`}
-function money(value:number){return new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:0,maximumFractionDigits:0}).format(value)}
+function money(value:number,currency:string){const code=currency==="USD"?"USD":"MXN";return `${new Intl.NumberFormat("es-MX",{style:"currency",currency:code,minimumFractionDigits:2,maximumFractionDigits:2}).format(value)} ${code}`;}
 
 export default function InventoryLabelEnhancer(){
  useEffect(()=>{
@@ -28,16 +28,16 @@ export default function InventoryLabelEnhancer(){
    const sku=(cells[2]?.textContent||"").trim();
    const barcode=(cells[3]?.textContent||"").trim();
    if(!validEan13(barcode)){alert("Este SKU necesita un código EAN-13 válido antes de imprimir.");return}
-   let price=0;
+   let price=0;let currency="MXN";
    const {data:variantData}=await db.from("product_variants").select("product_id").eq("sku",sku).maybeSingle();
-   if(variantData?.product_id){const {data:p}=await db.from("products").select("price,sale_price").eq("id",variantData.product_id).maybeSingle();if(p)price=Number(p.sale_price||p.price||0)}
-   if(!price){const {data:p}=await db.from("products").select("price,sale_price").eq("sku",sku).maybeSingle();if(p)price=Number(p.sale_price||p.price||0)}
+   if(variantData?.product_id){const {data:p}=await db.from("products").select("price,sale_price,currency").eq("id",variantData.product_id).maybeSingle();if(p){price=Number(p.sale_price??p.price??0);currency=p.currency==="USD"?"USD":"MXN";}}
+   if(!price){const {data:p}=await db.from("products").select("price,sale_price,currency").eq("sku",sku).maybeSingle();if(p){price=Number(p.sale_price??p.price??0);currency=p.currency==="USD"?"USD":"MXN";}}
    if(!price){alert("No pude obtener el precio de este producto. Revisa que tenga precio de venta registrado antes de imprimir.");return}
    const suggested=Math.max(1,Number(cells[4]?.textContent||1)||1);
    const raw=window.prompt("¿Cuántas etiquetas deseas imprimir?",String(suggested));if(raw===null)return;
    const qty=Math.max(1,Math.min(500,Math.floor(Number(raw)||1))),barcodeSvg=ean13Svg(barcode);
    const showVariant=variant&&!/^(principal|única|unica)$/i.test(variant);
-   const labels=Array.from({length:qty},()=>`<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(productName)}</div><div class="price">${esc(money(price))}</div></div>${showVariant?`<div class="variant">${esc(variant)}</div>`:""}<div class="barcode">${barcodeSvg}</div></section>`).join("");
+   const labels=Array.from({length:qty},()=>`<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(productName)}</div><div class="price">${esc(money(price,currency))}</div></div>${showVariant?`<div class="variant">${esc(variant)}</div>`:""}<div class="barcode">${barcodeSvg}</div></section>`).join("");
    const win=window.open("","_blank","width=700,height=700");if(!win){alert("Permite ventanas emergentes para imprimir etiquetas.");return}
    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas</title><style>@page{size:50mm 30mm;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}.label{width:50mm;height:30mm;padding:1.1mm 2mm .6mm;overflow:hidden;page-break-after:always;break-after:page;text-align:center;color:#000}.label:last-child{page-break-after:auto}.brand{font-family:Arial,sans-serif;font-size:8.2pt;font-weight:900;letter-spacing:1.2mm;line-height:1.05;white-space:nowrap;margin:0 auto 1mm}.product-line{display:flex;align-items:baseline;justify-content:center;gap:1.5mm;max-width:46mm;margin:0 auto}.name{font-size:7.4pt;font-weight:800;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:29mm}.price{font-size:10pt;font-weight:900;line-height:1;white-space:nowrap}.variant{font-size:5.6pt;font-weight:600;line-height:1;margin-top:.35mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.barcode{height:17mm;margin:.45mm auto 0;display:flex;align-items:center;justify-content:center}.barcode svg{width:44mm;height:17mm;display:block}@media screen{body{background:#eee;padding:10px}.label{background:#fff;margin:0 auto 10px;box-shadow:0 2px 10px #999}}@media print{body{background:#fff}.label{margin:0;box-shadow:none}}</style></head><body>${labels}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);win.document.close();
   };

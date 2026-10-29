@@ -29,6 +29,7 @@ type Product = {
   model: string | null;
   price: number | string | null;
   sale_price: number | string | null;
+  currency: string;
   stock: number | string | null;
   cover_image_url: string | null;
   status: string;
@@ -342,7 +343,7 @@ export default function PosPage() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id,name,sku,barcode,brand,model,price,sale_price,stock,cover_image_url,status",
+          "id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status",
         )
         .eq("status", "active")
         .eq("pos_visible", true)
@@ -424,6 +425,11 @@ export default function PosPage() {
       return false;
     }
 
+    if(product.currency === "USD"){
+      setMessage("Artículo en USD: el POS solo cobra MXN. No se agregó al carrito para evitar errores de cobro.");
+      setProductQuery("");
+      return false;
+    }
     addToCart(product);
     setProductQuery("");
     setMessage(`✓ ${product.name} agregado por código de barras.`);
@@ -496,6 +502,10 @@ export default function PosPage() {
   }, [products, cart]);
 
   function addToCart(product: Product) {
+    if (product.currency === "USD") {
+      setMessage("Este artículo está registrado en USD. El POS cobra en MXN; configura un precio en pesos antes de venderlo para evitar un cobro incorrecto.");
+      return;
+    }
     const stock = numeric(product.stock);
     if (stock <= 0) return;
 
@@ -537,6 +547,10 @@ export default function PosPage() {
 
   async function checkoutSale() {
     if (!access?.open_shift_id || cart.length === 0) return;
+    if(cart.some(item => item.product.currency === "USD")){
+      setMessage("No se puede cobrar una venta en USD como MXN. Actualiza la moneda o el precio de estos artículos antes de continuar.");
+      return;
+    }
 
     const total = cart.reduce(
       (sum, item) => sum + productPrice(item.product) * item.quantity,
@@ -1630,7 +1644,7 @@ export default function PosPage() {
                               <div className="pos-product-row">
                                 <div>
                                   <div className="pos-product-price">
-                                    {money(productPrice(product))}
+                                    {product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
                                   </div>
                                   <div className={`pos-stock ${stock <= 0 ? "zero" : ""}`}>
                                     {stock > 0 ? `Stock: ${stock}` : "Agotado"}
