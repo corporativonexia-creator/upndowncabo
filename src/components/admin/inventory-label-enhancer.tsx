@@ -39,7 +39,7 @@ export default function InventoryLabelEnhancer(){
    const showVariant=variant&&!/^(principal|única|unica)$/i.test(variant);
    const attrs=(variantData?.attributes||{}) as Record<string,unknown>;
    const variantTitle=String(variantData?.title||variant||"").trim();
-   const parts=variantTitle.split(/\\s*[\\/|·]\\s*/).filter(Boolean);
+   const parts=variantTitle.split(/\s*[\/|·]\s*/).filter(Boolean);
    const size=String(attrs.talla||attrs.size||parts[0]||variantTitle).trim();
    const color=String(attrs.color||attrs.colour||parts.slice(1).join(" / ")||"").trim();
    // Preserve font sizes and label geometry: only replace the line contents.
