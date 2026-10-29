@@ -23,7 +23,7 @@ export default function InventoryLiveEnhancer() {
         const sku = String(cells[2]?.textContent || "").trim().toLowerCase();
         const stock = bySku.get(sku);
         if (stock === undefined) return;
-        if (cells[4]) cells[4].textContent = String(stock);
+        if (cells[4] && cells[4].textContent !== String(stock)) cells[4].textContent = String(stock);
       });
     }
 
@@ -69,8 +69,8 @@ export default function InventoryLiveEnhancer() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     const channel = db
-      .channel("admin-inventory-live-products")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => syncDisplayedStock())
+      .channel("admin-inventory-live-variants")
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_variants" }, () => syncDisplayedStock())
       .subscribe();
 
     return () => {
