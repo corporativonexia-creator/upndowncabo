@@ -1786,7 +1786,7 @@
         sku:el("udSku").value.trim(),
         // Empty input on edit must never erase the stored barcode.
         barcode:el("udBarcode").value.trim()||(id?products.find(item=>item.id===id)?.barcode:null)||null,
-        name,slug,
+        name,
         brand:el("udBrand").value.trim()||null,
         model:el("udModel").value.trim()||null,
         item_condition:el("udCondition").value,
@@ -1811,10 +1811,14 @@
 
       let saved;
       if(id){
+        // Never regenerate the permalink on edit: an existing slug may include a
+        // unique suffix, and changing it to the plain product name can collide.
         const {data,error}=await db.from("products").update(payload).eq("id",id).select().single();
         if(error) throw error;
         saved=data;
       }else{
+        // New products need unique URLs, even when their names are identical.
+        payload.slug=`${slug||"producto"}-${crypto.randomUUID().slice(0,8)}`;
         const {data,error}=await db.from("products").insert(payload).select().single();
         if(error) throw error;
         saved=data;
