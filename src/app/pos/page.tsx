@@ -425,6 +425,11 @@ export default function PosPage() {
       return false;
     }
 
+    if(product.currency === "USD"){
+      setMessage("Artículo en USD: el POS solo cobra MXN. No se agregó al carrito para evitar errores de cobro.");
+      setProductQuery("");
+      return false;
+    }
     addToCart(product);
     setProductQuery("");
     setMessage(`✓ ${product.name} agregado por código de barras.`);
@@ -1639,7 +1644,7 @@ export default function PosPage() {
                               <div className="pos-product-row">
                                 <div>
                                   <div className="pos-product-price">
-                                    {money(productPrice(product))}
+                                    {product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
                                   </div>
                                   <div className={`pos-stock ${stock <= 0 ? "zero" : ""}`}>
                                     {stock > 0 ? `Stock: ${stock}` : "Agotado"}
