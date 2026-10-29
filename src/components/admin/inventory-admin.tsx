@@ -3,7 +3,7 @@ import {FormEvent,useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {createClient} from "@/lib/supabase/client";
 
-type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string}|null};
+type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string;talla?:string;size?:string}|null};
 type Movement={id:string;created_at:string;movement_type:string;quantity_change:number;stock_before:number;stock_after:number;note:string|null;product_name:string|null;variant_title:string|null;sku:string|null;barcode:string|null;order_id:string|null;pos_sale_id:string|null};
 const movementLabel:Record<string,string>={restock:"Entrada / recepción",adjustment:"Ajuste",damage:"Daño / merma",supplier_return:"Devolución a proveedor",sale:"Venta POS",pos_sale:"Venta POS",return:"Devolución cliente"};
 
@@ -61,6 +61,38 @@ export default function InventoryAdmin(){
   };
   const color=(r:Row)=>r.attributes?.color?.trim()||r.attributes?.colour?.trim()||r.attributes?.tono?.trim()||"";
   const gender=(r:Row)=>r.attributes?.genero?.trim()||r.attributes?.gender?.trim()||"";
+  if(String(format)==="ticket"){
+    const size=(r:Row)=>r.attributes?.talla||r.attributes?.size||"Sin talla";
+    const normalize=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+    const genderOrder=["nina","nino","mujer","hombre","unisex"],sizeOrder=["xs","s","m","l","xl","xxl","unitalla"];
+    const rank=(value:string,order:string[])=>{const n=order.indexOf(normalize(value));return n<0?99:n;};
+    const cmp=(a:string,b:string)=>a.localeCompare(b,"es",{numeric:true,sensitivity:"base"});
+    const ordered=[...filtered].sort((a,b)=>cmp(a.category_name||"",b.category_name||"")||rank(gender(a),genderOrder)-rank(gender(b),genderOrder)||cmp(gender(a),gender(b))||rank(size(a),sizeOrder)-rank(size(b),sizeOrder)||cmp(size(a),size(b))||cmp(a.product_name,b.product_name));
+    const number=(n:number)=>new Intl.NumberFormat("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+    const totals={MXN:0,USD:0};let missing=0,content="",category="",currentGender="",currentSize="";
+    for(const r of ordered){
+      const nextCategory=r.category_name||"Sin categoría",nextGender=gender(r)||"Sin género",nextSize=size(r);
+      if(nextCategory!==category){category=nextCategory;currentGender="";currentSize="";content+='<h2>'+esc(category.toUpperCase())+'</h2>';}
+      if(nextGender!==currentGender){currentGender=nextGender;currentSize="";content+='<h3>'+esc(currentGender.toUpperCase())+'</h3>';}
+      if(nextSize!==currentSize){currentSize=nextSize;content+='<h4>TALLA '+esc(currentSize.toUpperCase())+'</h4>';}
+      const count=Number(r.stock)||0;
+      const exists=r.effective_price!==null&&r.effective_price!==undefined&&Number.isFinite(r.effective_price);
+      const unit=exists?Number(r.effective_price):0;
+      const currency=r.currency==="USD"?"USD":"MXN";
+      if(exists)totals[currency]+=count*unit;else missing++;
+      const description=[r.product_name,color(r),normalize(r.variant_title)!==normalize(nextSize)?r.variant_title:""].filter(Boolean).join(" · ");
+      content+='<section class="item"><div>'+esc(description)+'</div><div class="columns"><span>'+count+'</span><span>'+(exists?number(unit):"—")+'</span><b>'+(exists?number(count*unit):"—")+'</b></div></section>';
+    }
+    const products=new Set(ordered.map(r=>r.product_id)).size;
+    const pieces=ordered.reduce((sum,r)=>sum+(Number(r.stock)||0),0);
+    const total=(currency:"MXN"|"USD")=>ordered.some(r=>r.currency===currency&&r.effective_price!=null)?'<div class="grand"><span>TOTAL '+currency+'</span><b>$'+number(totals[currency])+'</b></div>':"";
+    const summary='<div class="summary">PRODUCTOS: '+products+'<div>VARIANTES: '+ordered.length+' · PIEZAS: '+pieces+'</div>'+total("MXN")+total("USD")+(missing?'<div>'+missing+' variantes sin precio</div>':"")+'</div>';
+    const style='@page{size:80mm auto;margin:2mm}*{box-sizing:border-box}body{width:72mm;margin:0 auto;font:10px/1.2 Arial,sans-serif;color:#000}header{text-align:center;border-bottom:2px solid #000;padding:2mm 0}header h1{font-size:14px;margin:0}header small{font-size:9px}h2{font-size:12px;border-top:1px solid;border-bottom:1px solid;margin:3mm 0 1mm;padding:1mm 0}h3{font-size:11px;margin:2mm 0 1mm}h4{font-size:10px;margin:1mm 0}.columns,.head{display:grid;grid-template-columns:15% 38% 47%;text-align:right;font-variant-numeric:tabular-nums}.head{font-weight:bold;border-bottom:1px dashed #444;padding-top:2mm}.item{padding:1mm 0;border-bottom:1px dotted #ccc;break-inside:avoid;overflow-wrap:anywhere}.columns{margin-top:1mm}.summary{border-top:2px solid;margin-top:3mm;padding-top:2mm;font-size:11px;font-weight:bold}.grand{display:flex;justify-content:space-between;gap:2mm;border-top:1px dashed;margin-top:2mm;padding-top:1mm}.grand b{font-size:12px}footer{text-align:center;font-size:9px;margin:4mm 0 8mm}';
+    popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario · Ticket 80 mm</title><style>'+style+'</style></head><body><header><h1>UP AND DOWN</h1>INVENTARIO<br><small>'+esc(new Date().toLocaleString("es-MX"))+'</small></header><div class="head"><span>CANT.</span><span>P. UNIT.</span><span>IMPORTE</span></div>'+content+summary+'<footer>REPORTE DE EXISTENCIAS</footer></body></html>');
+    popup.document.close();
+    popup.addEventListener("load",()=>popup.print(),{once:true});
+    return;
+  }
   const details=filtered.map(r=>{
    const data=[r.variant_title,color(r),gender(r)].filter(Boolean).join(" · ");
    if(format==="ticket")return '<section class="item"><strong>'+esc(r.product_name)+'</strong><div>'+esc(data||"Única")+'</div><div>SKU: '+esc(r.sku)+'</div><div>CB: '+esc(r.barcode||"—")+'</div><div class="figures"><span>'+esc(price(r))+'</span><b>EXIST.: '+Number(r.stock||0)+'</b></div></section>';
