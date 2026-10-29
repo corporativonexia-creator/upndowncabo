@@ -3,7 +3,7 @@ import {FormEvent,useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {createClient} from "@/lib/supabase/client";
 
-type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string;talla?:string;size?:string}|null};
+type Row={category_name?:string;product_id:string;product_name:string;variant_id:string;variant_title:string;sku:string;barcode:string|null;stock:number;low_stock_threshold:number;is_default:boolean;effective_price?:number|null;currency?:string;attributes?:{color?:string;colour?:string;tono?:string;genero?:string;gender?:string}|null};
 type Movement={id:string;created_at:string;movement_type:string;quantity_change:number;stock_before:number;stock_after:number;note:string|null;product_name:string|null;variant_title:string|null;sku:string|null;barcode:string|null;order_id:string|null;pos_sale_id:string|null};
 const movementLabel:Record<string,string>={restock:"Entrada / recepción",adjustment:"Ajuste",damage:"Daño / merma",supplier_return:"Devolución a proveedor",sale:"Venta POS",pos_sale:"Venta POS",return:"Devolución cliente"};
 
@@ -38,7 +38,7 @@ export default function InventoryAdmin(){
         const variant=byVariant.get(r.variant_id);
         const product=byProduct.get(r.product_id);
         const raw=variant?.sale_price ?? variant?.price ?? product?.sale_price ?? product?.price ?? null;
-        return {...r,category_name:(product?.category_id?byCategory.get(product.category_id):null)||"Sin categoría",effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
+        return {...r,category_name:byCategory.get(product?.category_id)||"Sin categoría",effective_price:raw===null?null:Number(raw),currency:product?.currency==="USD"?"USD":"MXN"};
       });
       setRows(inventoryRows);
       if(ve||pe||ce)setMsg("No se pudieron consultar precios o categorías. Actualiza el inventario.");
@@ -50,15 +50,7 @@ export default function InventoryAdmin(){
  const q=search.toLowerCase(),filtered=rows.filter(r=>`${r.product_name} ${r.variant_title} ${r.sku} ${r.barcode||""}`.toLowerCase().includes(q)),filteredMovements=movements.filter(m=>`${m.product_name||""} ${m.variant_title||""} ${m.sku||""} ${m.barcode||""} ${m.note||""} ${m.movement_type}`.toLowerCase().includes(q));
  const total=rows.reduce((a,r)=>a+Number(r.stock||0),0),low=rows.filter(r=>Number(r.stock)<=Number(r.low_stock_threshold)).length,available=rows.filter(r=>Number(r.stock)>Number(r.low_stock_threshold)).length;
 
-
- function printCompactTicket(){
-  const popup=window.open("","_blank","width=390,height=700");
-  if(!popup)return;
-  popup.document.write("<html><body><h1>Inventario</h1></body></html>");
-  popup.document.close();
- }
-  function printInventory(format:"ticket"|"sheet"){
-  if(format==="ticket"){printCompactTicket();return;}
+ function printInventory(format:"ticket"|"sheet"){
   if(!filtered.length){setMsg("No hay variantes para imprimir.");return;}
   const popup=window.open("","_blank",format==="ticket"?"width=390,height=720":"width=950,height=750");
   if(!popup){setMsg("Permite ventanas emergentes para imprimir.");return;}
