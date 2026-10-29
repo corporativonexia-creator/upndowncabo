@@ -1474,8 +1474,8 @@
     const select=document.createElement("select");
     select.id="udOnlineVisible";
     select.name="online_visible";
-    select.innerHTML='<option value="true">Tienda online y física</option><option value="false">Solo tienda física (POS)</option>';
-    select.value="true";
+    select.innerHTML='<option value="both">Tienda física y online</option><option value="physical">Solo tienda física (POS)</option><option value="online">Solo tienda online</option>';
+    select.value="both";
     field.appendChild(select);
     status.closest(".u-field")?.insertAdjacentElement("afterend",field);
   }
@@ -1496,7 +1496,7 @@
     el("udSalePrice").value=p.sale_price??"";
     el("udStock").value=p.stock??0;
     el("udStatus").value=p.status||"active";
-    if(el("udOnlineVisible")) el("udOnlineVisible").value=p.online_visible===false?"false":"true";
+    if(el("udOnlineVisible")) el("udOnlineVisible").value=p.online_visible===false?"physical":p.pos_visible===false?"online":"both";
     el("udShort").value=p.short_description||"";
     el("udDescription").value=p.description||"";
     el("udShortEn").value=p.short_description_en||p.specifications?.short_description_en||p.specifications?.english_short_description||"";
@@ -1519,7 +1519,7 @@
     el("udExistingImage").value="";
     el("udStock").value=0;
     el("udStatus").value="active";
-    if(el("udOnlineVisible")) el("udOnlineVisible").value="true";
+    if(el("udOnlineVisible")) el("udOnlineVisible").value="both";
     el("udCondition").value="new";
     currentProductSpecifications={};
     fillGolfSpecifications({});
@@ -1603,7 +1603,8 @@
         cover_image_url:imageUrl,
         featured:el("udFeatured").checked,
         status:el("udStatus").value,
-        online_visible:el("udOnlineVisible")?.value!=="false",
+        online_visible:el("udOnlineVisible")?.value!=="physical",
+        pos_visible:el("udOnlineVisible")?.value!=="online",
         seo_title:`${name} | UP AND DOWN`,
         seo_description:el("udShort").value.trim()||null
       };
