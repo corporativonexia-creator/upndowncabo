@@ -61,39 +61,7 @@ export default function InventoryAdmin(){
   };
   const color=(r:Row)=>r.attributes?.color?.trim()||r.attributes?.colour?.trim()||r.attributes?.tono?.trim()||"";
   const gender=(r:Row)=>r.attributes?.genero?.trim()||r.attributes?.gender?.trim()||"";
-  if(format==="ticket"){
-    const size=(r:Row)=>r.attributes?.talla||r.attributes?.size||"Sin talla";
-    const key=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-    const genders=["nina","nino","mujer","hombre","unisex"];
-    const sizes=["xs","s","m","l","xl","xxl","unitalla"];
-    const rank=(name:string,order:string[])=>{const i=order.indexOf(key(name));return i<0?99:i;};
-    const cmp=(a:string,b:string)=>a.localeCompare(b,"es",{numeric:true,sensitivity:"base"});
-    const ordered=[...filtered].sort((a,b)=>cmp(a.category_name||"",b.category_name||"")||rank(gender(a),genders)-rank(gender(b),genders)||cmp(gender(a),gender(b))||rank(size(a),sizes)-rank(size(b),sizes)||cmp(size(a),size(b))||cmp(a.product_name,b.product_name));
-    const f2=(n:number)=>new Intl.NumberFormat("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
-    const values={MXN:0,USD:0};let unknown=0,html="",category="",sex="",talla="";
-    for(const r of ordered){
-      const c=r.category_name||"Sin categoría",g=gender(r)||"Sin género",t=size(r);
-      if(c!==category){category=c;sex="";talla="";html+='<h2>'+esc(c.toUpperCase())+'</h2>';}
-      if(g!==sex){sex=g;talla="";html+='<h3>'+esc(g.toUpperCase())+'</h3>';}
-      if(t!==talla){talla=t;html+='<h4>TALLA '+esc(t.toUpperCase())+'</h4>';}
-      const count=Number(r.stock)||0;
-      const valid=r.effective_price!==undefined&&r.effective_price!==null&&Number.isFinite(r.effective_price);
-      const unit=valid?Number(r.effective_price):0;
-      const curr=r.currency==="USD"?"USD":"MXN";
-      if(valid)values[curr]+=count*unit;else unknown++;
-      const label=[r.product_name,color(r),key(r.variant_title)!==key(t)?r.variant_title:""].filter(Boolean).join(" · ");
-      html+='<section class="line"><div>'+esc(label)+'</div><div class="cols"><span>'+count+'</span><span>'+(valid?f2(unit):"—")+'</span><b>'+(valid?f2(count*unit):"—")+'</b></div></section>';
-    }
-    const pieces=ordered.reduce((n,r)=>n+(Number(r.stock)||0),0);
-    const productCount=new Set(ordered.map(r=>r.product_id)).size;
-    const total=(currency:"MXN"|"USD")=>ordered.some(r=>r.currency===currency&&r.effective_price!=null)?'<p>VALOR '+currency+': $'+f2(values[currency])+'</p>':"";
-    const sum='<div class="totals">PRODUCTOS: '+productCount+'<div>VARIANTES: '+ordered.length+' · PIEZAS: '+pieces+'</div>'+total("MXN")+total("USD")+(unknown?'<small>'+unknown+' variantes sin precio</small>':"")+'</div>';
-    const style='@page{size:80mm auto;margin:2mm}*{box-sizing:border-box}body{width:72mm;margin:0 auto;font:10px/1.2 Arial,sans-serif;color:#000}header{text-align:center;border-bottom:2px solid black;padding:2mm 0}h1{font-size:14px;margin:0}h2{font-size:12px;border-top:1px solid;border-bottom:1px solid;margin:3mm 0 1mm}h3{font-size:11px;margin:2mm 0 1mm}h4{font-size:10px;margin:1mm 0}.cols,.head{display:grid;grid-template-columns:15% 38% 47%;text-align:right;font-variant-numeric:tabular-nums}.head{font-weight:bold;border-bottom:1px dashed}.line{padding:1mm 0;border-bottom:1px dotted #ccc;break-inside:avoid}.totals{border-top:2px solid;margin-top:3mm;padding-top:2mm;font-size:11px;font-weight:bold}.totals p{margin:1mm 0}footer{text-align:center;font-size:9px;margin:4mm 0 8mm}';
-    popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario 80 mm</title><style>'+style+'</style></head><body><header><h1>UP AND DOWN</h1>INVENTARIO<br>'+esc(new Date().toLocaleString("es-MX"))+'</header><div class="head"><span>CANT.</span><span>PRECIO</span><span>IMPORTE</span></div>'+html+sum+'<footer>REPORTE DE EXISTENCIAS</footer></body></html>');
-    popup.document.close();
-    popup.addEventListener("load",()=>popup.print(),{once:true});
-    return;
-  }
+  if(format==="ticket"){return;}
   const details=filtered.map(r=>{
    const data=[r.variant_title,color(r),gender(r)].filter(Boolean).join(" · ");
    if(format==="ticket")return '<section class="item"><strong>'+esc(r.product_name)+'</strong><div>'+esc(data||"Única")+'</div><div>SKU: '+esc(r.sku)+'</div><div>CB: '+esc(r.barcode||"—")+'</div><div class="figures"><span>'+esc(price(r))+'</span><b>EXIST.: '+Number(r.stock||0)+'</b></div></section>';
