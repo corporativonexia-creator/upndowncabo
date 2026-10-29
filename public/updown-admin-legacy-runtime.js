@@ -1410,7 +1410,7 @@
     ensureGalleryPrimary();
     const grid=el("udGalleryGrid"),active=activeGalleryItems();
     el("udGalleryCount").textContent=`${active.length} / 10`;
-    if(!active.length){grid.innerHTML='<div class="u-gallery-empty">Agrega al menos una imagen para mostrar el producto correctamente.</div>';return}
+    if(!active.length){grid.innerHTML='<div class="u-gallery-empty">Sin fotografías. Puedes guardar el producto y añadir imágenes después.</div>';return}
     grid.innerHTML=active.map(item=>`<article class="u-gallery-item ${item.is_primary?"is-primary":""}" data-gallery-key="${escapeHtml(item.key)}"><img src="${escapeHtml(item.url)}" alt="Vista previa">${item.is_primary?'<span class="u-gallery-badge">Principal</span>':""}<div class="u-gallery-actions"><button class="make-primary" type="button">${item.is_primary?"Principal":"Hacer principal"}</button><button class="remove" type="button">×</button></div></article>`).join("");
     grid.querySelectorAll("[data-gallery-key]").forEach(card=>{
       const item=productGalleryState.find(entry=>entry.key===card.dataset.galleryKey);if(!item)return;
@@ -1684,7 +1684,6 @@
     const saleRaw=el("udSalePrice").value.trim();
     const salePrice=saleRaw===""?null:Number(saleRaw);
 
-    if(!activeGalleryItems().length){setMessage(el("udFormMessage"),"Agrega al menos una imagen del producto.",true);return}
     if(salePrice!==null&&salePrice>price){setMessage(el("udFormMessage"),"El precio de oferta no puede superar el precio normal.",true);return}
 
     el("udSave").disabled=true;
@@ -1700,7 +1699,7 @@
       const galleryForSave=activeGallery.map(item=>({...item,final_url:item.source==="new"?item.uploaded_url:item.url})).filter(item=>item.final_url);
       ensureGalleryPrimary();
       const primaryItem=galleryForSave.find(item=>item.is_primary)||galleryForSave[0];
-      const imageUrl=primaryItem?.final_url||previousImage;
+      const imageUrl=primaryItem?.final_url||previousImage||null;
 
       const payload={
         category_id:el("udCategory").value,
@@ -1739,18 +1738,22 @@
         saved=data;
       }
 
-      const {error:deleteError}=await db.from("product_images").delete().eq("product_id",saved.id);
-      if(deleteError) throw deleteError;
-
-      const galleryRows=galleryForSave.slice(0,10).map((item,index)=>({
-        product_id:saved.id,
-        image_url:item.final_url,
-        alt_text:`${name} · imagen ${index+1}`,
-        sort_order:index+1,
-        is_primary:item===primaryItem
-      }));
-      const {error:galleryError}=await db.from("product_images").insert(galleryRows);
-      if(galleryError) throw galleryError;
+      // No photograph is required to save or edit a product.
+      // If editing without any active images, preserve existing gallery records.
+      // Do not insert an empty row set into Supabase.
+      if(galleryForSave.length){
+        const {error:deleteError}=await db.from("product_images").delete().eq("product_id",saved.id);
+        if(deleteError) throw deleteError;
+        const galleryRows=galleryForSave.slice(0,10).map((item,index)=>({
+          product_id:saved.id,
+          image_url:item.final_url,
+          alt_text:`${name} · imagen ${index+1}`,
+          sort_order:index+1,
+          is_primary:item===primaryItem
+        }));
+        const {error:galleryError}=await db.from("product_images").insert(galleryRows);
+        if(galleryError) throw galleryError;
+      }
 
       showToast(id?"Producto actualizado.":"Producto creado.");
       resetForm();
