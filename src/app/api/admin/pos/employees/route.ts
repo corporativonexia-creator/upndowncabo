@@ -131,6 +131,20 @@ export async function POST(request: NextRequest) {
 
     if (employeeError || !employee) throw new Error("Empleado no encontrado.");
 
+    if (action === "force_signout") {
+      const { data: revoked, error: revokeError } = await service.rpc(
+        "admin_pos_force_signout_service",
+        { p_admin_user_id: adminUser.id, p_employee_id: employee.id },
+      );
+      if (revokeError) throw revokeError;
+      return NextResponse.json({
+        ok: true,
+        sessions_revoked: Number(revoked ?? 0),
+        shift_unchanged: true,
+        employee_status: employee.status,
+      });
+    }
+
     if (action === "reset_password") {
       const password = String(body.password || "");
       if (password.length < 8)

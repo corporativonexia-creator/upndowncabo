@@ -1470,6 +1470,7 @@
         <div class="udv2-pos-actions">
           ${emp.status==="active"?`<button data-pos-action="suspend" type="button">Suspender</button>`:""}
           ${emp.status==="suspended"?`<button data-pos-action="reactivate" type="button">Reactivar</button>`:""}
+          ${emp.status!=="terminated"?`<button data-pos-action="force_signout" type="button">Cerrar sesión forzosamente</button>`:""}
           ${emp.status!=="terminated"?`<button data-pos-action="reset_password" type="button">Restablecer contraseña</button>`:""}
           ${emp.status!=="terminated"?`<button data-pos-action="terminate" class="danger" type="button">Dar de baja</button>`:""}
         </div>
@@ -1495,13 +1496,14 @@
             return;
           }
 
+          if(action==="force_signout"&&!confirm(`¿Cerrar todas las sesiones POS de ${emp.full_name}? Su turno de caja permanecerá abierto y podrá volver a ingresar con sus credenciales.`))return;
           if(action==="terminate"&&!confirm(`Dar de baja a ${emp.full_name}? Su historial se conservará.`))return;
           if(action==="suspend"&&!confirm(`Suspender el acceso de ${emp.full_name}?`))return;
 
           button.disabled=true;
           try{
             await posAdminApi({action,employee_id:id,password});
-            toast(action==="suspend"?"Empleado suspendido.":action==="reactivate"?"Empleado reactivado.":action==="terminate"?"Empleado dado de baja.":"Contraseña actualizada.");
+            toast(action==="force_signout"?"Sesiones revocadas. El turno de caja permanece sin cambios.":action==="suspend"?"Empleado suspendido.":action==="reactivate"?"Empleado reactivado.":action==="terminate"?"Empleado dado de baja.":"Contraseña actualizada.");
             await loadPosAdmin();
           }catch(error){
             toast(error.message,true);
