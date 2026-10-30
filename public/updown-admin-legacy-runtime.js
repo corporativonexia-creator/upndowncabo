@@ -214,7 +214,9 @@
   }
 
   async function loadProducts(){
-    const {data,error}=await db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false});
+    el("udList").innerHTML='<div class="u-empty">Cargando productos…</div>';
+    try {
+    const {data,error}=await Promise.race([db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false}),new Promise((_,reject)=>setTimeout(()=>reject(new Error("La consulta de productos excedió 15 segundos. Revisa la conexión o vuelve a iniciar sesión.")),15000))]);
     if(error){el("udList").innerHTML=`<div class="u-empty">${error.message}</div>`;return}
     products=data||[];
     // A parent can summarize many SKUs; never imply its aggregate stock is one variant.
@@ -228,6 +230,11 @@
     }
     products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
     renderProducts();
+    } catch (error) {
+      console.error("Error cargando productos",error);
+      el("udList").innerHTML=`<div class="u-empty">No se pudo cargar el catálogo: ${escapeHtml(error.message||String(error))} <button type="button" id="udRetryProducts">Reintentar</button></div>`;
+      el("udRetryProducts")?.addEventListener("click",loadProducts);
+    }
   }
 
   async function loadOrders(){
