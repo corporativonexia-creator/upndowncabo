@@ -1493,15 +1493,32 @@
       choice("Talla","talla",attrs.talla||"",["XS","S","M","L","XL","XXL","Unitalla",...Array.from({length:17},(_,i)=>String(22+i*0.5))]);
       input("Color",attrs.color||"","color");
       choice("Género","genero",attrs.genero||"",["Niño","Niña","Hombre","Mujer","Unisex"]);
-      const barcode=input("Código de barras",v.barcode||"","barcode");
+      const barcode=input(isNew?"EAN-13 automático":"Código de barras",v.barcode||"","barcode");
       barcode.maxLength=80;
+      if(isNew){
+        barcode.readOnly=true;
+        barcode.placeholder="Generando EAN-13…";
+        barcode.style.background="#f4f6f5";
+        const generate=async()=>{
+          const {data,error}=await db.rpc("next_internal_barcode");
+          if(error)throw error;
+          if(!/^\\d{13}$/.test(String(data||"")))throw new Error("El generador no devolvió un EAN-13 válido.");
+          barcode.value=String(data);
+          barcode.dataset.generated="1";
+        };
+        generate().catch(error=>{
+          barcode.placeholder="No se pudo generar el código";
+          barcode.dataset.generated="error";
+          console.error("Error generando EAN-13 de variante",error);
+        });
+      }
       const price=input("Precio particular (opcional)",v.price??"","price");price.type="number";price.min="0";price.step=".01";
       const offer=input("Oferta particular (opcional)",v.sale_price??"","sale_price");offer.type="number";offer.min="0";offer.step=".01";
       const status=document.createElement("label");status.style.cssText="display:flex;align-items:center;gap:6px;font-size:11px";
       const checked=document.createElement("input");checked.type="checkbox";checked.name="is_active";checked.checked=v.is_active!==false;
       status.append(checked,document.createTextNode("Variante activa"));
       const details=document.createElement("div");details.className="u-meta";
-      details.textContent=isNew?"El SKU y código de barras se generan automáticamente si dejas el código vacío.":"SKU: "+(v.sku||"—")+" · Existencia: "+v.stock+" · El inventario no se modifica aquí.";
+      details.textContent=isNew?"El SKU se genera al guardar. El EAN-13 se asigna automáticamente y no requiere captura manual.":"SKU: "+(v.sku||"—")+" · Existencia: "+v.stock+" · El inventario no se modifica aquí.";
       if(isNew){
         const quantity=input("Cantidad inicial de piezas","0","initial_stock");
         quantity.type="number";quantity.min="0";quantity.step="1";quantity.required=true;
@@ -1536,7 +1553,7 @@
         if(!variantName){feedback.textContent="Escribe el nombre de la variante.";return;}
         if(isNew&&(!Number.isSafeInteger(openingStock)||openingStock<0)){feedback.textContent="Cantidad inicial inválida.";return;}
         if(isNew&&openingStock>0&&stockReason.length<3){feedback.textContent="Escribe la referencia de recepción (mínimo 3 caracteres).";return;}
-        submit.disabled=true;feedback.textContent="Guardando…";
+        if(isNew&&barcode.dataset.generated!=="1"){feedback.textContent="Aún no se ha generado el EAN-13. Cierra y vuelve a abrir el formulario para reintentar.";return;}\n        submit.disabled=true;feedback.textContent="Guardando…";
         try{
           const {data:savedVariant,error:saveError}=await db.rpc("admin_inventory_save_variant",{
             p_product_id:productId,p_variant_id:v.id,
