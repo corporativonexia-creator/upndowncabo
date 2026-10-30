@@ -70,45 +70,26 @@
     await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
   }
 
+  // /admin is protected by requireRole on the server. Do not present a
+  // second, legacy sign-in screen after the user has already authenticated.
   async function initialize(){
-    const {data:{session}}=await db.auth.getSession();
-    if(!session) return;
+    el("udLoginScreen").classList.add("u-hidden");
+    const {data:{session},error}=await db.auth.getSession();
+    if(error||!session){
+      el("udLoginScreen").classList.remove("u-hidden");
+      el("udLoginForm").classList.add("u-hidden");
+      setMessage(el("udLoginMessage"),"La sesión del administrador no está disponible en el navegador. Abre /login para volver a autenticarte.",true);
+      return;
+    }
     try{
       await verifyAdmin(session.user);
       await showDashboard(session.user.email||"Administrador");
     }catch(error){
-      await db.auth.signOut();
-      setMessage(el("udLoginMessage"),error.message,true);
+      el("udLoginScreen").classList.remove("u-hidden");
+      el("udLoginForm").classList.add("u-hidden");
+      setMessage(el("udLoginMessage"),"No fue posible cargar el panel: "+error.message,true);
     }
   }
-
-  el("udLoginForm").addEventListener("submit",async event=>{
-    event.preventDefault();
-    setMessage(el("udLoginMessage"));
-    const button=event.currentTarget.querySelector('button[type="submit"]');
-    button.disabled=true;
-    button.textContent="Ingresando…";
-
-    const {data,error}=await db.auth.signInWithPassword({
-      email:el("udEmail").value.trim(),
-      password:el("udPassword").value
-    });
-
-    if(error){
-      setMessage(el("udLoginMessage"),error.message,true);
-    }else{
-      try{
-        await verifyAdmin(data.user);
-        await showDashboard(data.user.email||"Administrador");
-      }catch(adminError){
-        await db.auth.signOut();
-        setMessage(el("udLoginMessage"),adminError.message,true);
-      }
-    }
-
-    button.disabled=false;
-    button.textContent="Iniciar sesión";
-  });
 
   el("udLogout").addEventListener("click",async()=>{
     await db.auth.signOut();
