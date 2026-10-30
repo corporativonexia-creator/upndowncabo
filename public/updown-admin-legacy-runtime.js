@@ -219,17 +219,26 @@
     const {data,error}=await Promise.race([db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false}),new Promise((_,reject)=>setTimeout(()=>reject(new Error("La consulta de productos excedió 15 segundos. Revisa la conexión o vuelve a iniciar sesión.")),15000))]);
     if(error){el("udList").innerHTML=`<div class="u-empty">${error.message}</div>`;return}
     products=data||[];
-    // A parent can summarize many SKUs; never imply its aggregate stock is one variant.
-    const ids=products.map(item=>item.id);
-    const countByParent=new Map();
-    if(ids.length){
-      const {data:variants,error:variantError}=await db.from("product_variants")
-        .select("product_id,id").in("product_id",ids);
-      if(!variantError)(variants||[]).forEach(item=>
-        countByParent.set(item.product_id,(countByParent.get(item.product_id)||0)+1));
-    }
-    products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
+    // Render the catalog as soon as the primary product query succeeds.
+    // Variant counts are supplementary and must never block the catalog.
+    products.forEach(item=>item.__variant_count=0);
     renderProducts();
+    const ids=products.map(item=>item.id);
+    if(ids.length){
+      try{
+        const {data:variants,error:variantError}=await Promise.race([
+          db.from("product_variants").select("product_id,id").in("product_id",ids),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tiempo de espera agotado al consultar variantes.")),6000))
+        ]);
+        if(variantError)throw variantError;
+        const countByParent=new Map();
+        (variants||[]).forEach(item=>countByParent.set(item.product_id,(countByParent.get(item.product_id)||0)+1));
+        products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
+        renderProducts();
+      }catch(variantError){
+        console.warn("No se pudo consultar el resumen de variantes; catálogo disponible",variantError);
+      }
+    }
     } catch (error) {
       console.error("Error cargando productos",error);
       el("udList").innerHTML=`<div class="u-empty">No se pudo cargar el catálogo: ${escapeHtml(error.message||String(error))} <button type="button" id="udRetryProducts">Reintentar</button></div>`;
