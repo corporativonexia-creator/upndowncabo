@@ -70,24 +70,19 @@
     await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
   }
 
-  // /admin is protected by requireRole on the server. Do not present a
-  // second, legacy sign-in screen after the user has already authenticated.
+  // Server-side requireRole("admin") has already verified the user before
+  // rendering this page. Never gate the dashboard on a second browser-side
+  // session lookup, which can race with SSR cookie hydration.
   async function initialize(){
     el("udLoginScreen").classList.add("u-hidden");
-    const {data:{session},error}=await db.auth.getSession();
-    if(error||!session){
-      el("udLoginScreen").classList.remove("u-hidden");
-      el("udLoginForm").classList.add("u-hidden");
-      setMessage(el("udLoginMessage"),"La sesión del administrador no está disponible en el navegador. Abre /login para volver a autenticarte.",true);
-      return;
-    }
+    el("udDashboard").classList.remove("u-hidden");
+    el("udLogout").classList.remove("u-hidden");
+    el("udSessionLabel").textContent="Sesión de administrador";
     try{
-      await verifyAdmin(session.user);
-      await showDashboard(session.user.email||"Administrador");
+      await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
     }catch(error){
-      el("udLoginScreen").classList.remove("u-hidden");
-      el("udLoginForm").classList.add("u-hidden");
-      setMessage(el("udLoginMessage"),"No fue posible cargar el panel: "+error.message,true);
+      console.error("Error cargando panel administrativo",error);
+      showToast("No se pudieron cargar algunos datos. Actualiza la página.",true);
     }
   }
 
