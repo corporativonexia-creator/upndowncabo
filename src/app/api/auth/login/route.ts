@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  let response = NextResponse.json({ ok: false }, { headers: { "Cache-Control": "no-store" } });
+  let response: NextResponse = NextResponse.json({ ok: false }, { headers: { "Cache-Control": "no-store" } });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
