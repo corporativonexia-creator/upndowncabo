@@ -1,5 +1,7 @@
 
 (function(){
+  const runtimeRoot=document.getElementById("updown-admin");
+  if(window.__UPDOWN_ADMIN_RUNTIME_ROOT__===runtimeRoot)return;
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
@@ -213,36 +215,76 @@
     updateGolfSpecsVisibility();
   }
 
+  let catalogRequest=0;
+  function catalogStage(stage){
+    el("udList").dataset.catalogState=stage;
+    // Opt-in, non-sensitive diagnostics: no tokens or product/customer details.
+    if(window.__UPDOWN_CATALOG_DEBUG__)console.debug("[catalog]",stage);
+  }
+
+  async function boundedQuery(query,milliseconds,message){
+    let timer;
+    try{
+      return await Promise.race([query,new Promise((_,reject)=>{
+        timer=setTimeout(()=>reject(new Error(message)),milliseconds);
+      })]);
+    }finally{clearTimeout(timer);}
+  }
+
   async function loadProducts(){
+    const request=++catalogRequest;
+    catalogStage("loading");
     el("udList").innerHTML='<div class="u-empty">Cargando productos…</div>';
-    try {
-    const {data,error}=await Promise.race([db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false}),new Promise((_,reject)=>setTimeout(()=>reject(new Error("La consulta de productos excedió 15 segundos. Revisa la conexión o vuelve a iniciar sesión.")),15000))]);
-    if(error){el("udList").innerHTML=`<div class="u-empty">${error.message}</div>`;return}
-    products=data||[];
-    // Render the catalog as soon as the primary product query succeeds.
-    // Variant counts are supplementary and must never block the catalog.
-    products.forEach(item=>item.__variant_count=0);
-    renderProducts();
-    const ids=products.map(item=>item.id);
-    if(ids.length){
-      try{
-        const {data:variants,error:variantError}=await Promise.race([
-          db.from("product_variants").select("product_id,id").in("product_id",ids),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tiempo de espera agotado al consultar variantes.")),6000))
-        ]);
-        if(variantError)throw variantError;
-        const countByParent=new Map();
-        (variants||[]).forEach(item=>countByParent.set(item.product_id,(countByParent.get(item.product_id)||0)+1));
-        products.forEach(item=>item.__variant_count=countByParent.get(item.id)||0);
-        renderProducts();
-      }catch(variantError){
-        console.warn("No se pudo consultar el resumen de variantes; catálogo disponible",variantError);
-      }
-    }
-    } catch (error) {
+    try{
+      const {data,error}=await boundedQuery(
+        db.from("products").select("*,categories(name),product_images(id,image_url,alt_text,sort_order,is_primary)").order("created_at",{ascending:false}),
+        15000,"La consulta de productos excedió 15 segundos. Revisa la conexión y reintenta.");
+      if(request!==catalogRequest)return;
+      if(error)throw error;
+      products=data||[];
+      catalogStage("rendering");
+      renderProducts();
+      catalogStage("ready");
+      // One optional query supplies both counts and variant search metadata.
+      // Never replace cards after it settles: users may already be editing a variant.
+      void loadVariantSummary(request,products.map(item=>item.id));
+    }catch(error){
+      if(request!==catalogRequest)return;
+      catalogStage("error");
       console.error("Error cargando productos",error);
-      el("udList").innerHTML=`<div class="u-empty">No se pudo cargar el catálogo: ${escapeHtml(error.message||String(error))} <button type="button" id="udRetryProducts">Reintentar</button></div>`;
-      el("udRetryProducts")?.addEventListener("click",loadProducts);
+      el("udList").innerHTML=`<div class="u-empty" role="alert">No se pudo cargar el catálogo: ${escapeHtml(error.message||String(error))} <button type="button" id="udRetryProducts">Reintentar</button></div>`;
+      el("udRetryProducts").addEventListener("click",loadProducts);
+    }
+  }
+
+  async function loadVariantSummary(request,ids){
+    if(!ids.length)return;
+    try{
+      const {data,error}=await boundedQuery(
+        db.from("product_variants").select("product_id,id,title,sku,barcode,attributes").in("product_id",ids),
+        6000,"No se pudo cargar el resumen de variantes.");
+      if(request!==catalogRequest)return;
+      if(error)throw error;
+      const byParent=new Map();
+      (data||[]).forEach(row=>{
+        if(!byParent.has(row.product_id))byParent.set(row.product_id,[]);
+        byParent.get(row.product_id).push(row);
+      });
+      el("udList").querySelectorAll(".u-item[data-product-id]").forEach(card=>{
+        const variants=byParent.get(card.dataset.productId)||[];
+        card.dataset.variantSearch=variants.map(row=>[row.title,row.sku,row.barcode,JSON.stringify(row.attributes||{})].filter(Boolean).join(" ")).join(" ");
+        const summary=card.querySelector(".ud-variant-summary");
+        if(summary&&variants.length>1)summary.textContent=`${variants.length} variantes · Ver existencias por variante`;
+      });
+      window.__UPDOWN_REFILTER_CATALOG__?.();
+    }catch(error){
+      if(request!==catalogRequest)return;
+      console.warn("Resumen de variantes",error);
+      const notice=document.createElement("div");notice.className="u-empty";notice.setAttribute("role","status");
+      notice.textContent="Catálogo disponible. No se pudo cargar la búsqueda por variantes. ";
+      const retry=document.createElement("button");retry.type="button";retry.textContent="Reintentar variantes";
+      retry.onclick=()=>{notice.remove();void loadVariantSummary(request,ids);};
+      notice.appendChild(retry);el("udList").prepend(notice);
     }
   }
 
@@ -1429,11 +1471,20 @@
 
   // Read existing variants on demand. Updates never change stock or generate new SKUs.
   async function openProductVariants(productId, host){
+    try{await renderProductVariants(productId,host);}
+    catch(error){
+      host.textContent="No fue posible consultar las variantes: "+(error.message||String(error))+" ";
+      const retry=document.createElement("button");retry.type="button";retry.textContent="Reintentar consulta";
+      retry.onclick=()=>openProductVariants(productId,host);host.appendChild(retry);
+    }
+  }
+
+  async function renderProductVariants(productId, host){
     host.innerHTML='<div class="u-meta">Cargando tallas y variantes…</div>';
     const {data:rows,error}=await db.from("product_variants")
       .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,low_stock_threshold,is_active,is_default")
       .eq("product_id",productId).order("created_at",{ascending:true});
-    if(error){host.textContent="No fue posible consultar las variantes: "+error.message;return;}
+    if(error)throw error;
     host.innerHTML="";
     const head=document.createElement("div");
     head.className="u-meta";
@@ -1494,7 +1545,7 @@
         const generate=async()=>{
           const {data,error}=await db.rpc("next_internal_barcode");
           if(error)throw error;
-          if(!/^\\d{13}$/.test(String(data||"")))throw new Error("El generador no devolvió un EAN-13 válido.");
+          if(!/^\d{13}$/.test(String(data||"")))throw new Error("El generador no devolvió un EAN-13 válido.");
           barcode.value=String(data);
           barcode.dataset.generated="1";
         };
@@ -1545,15 +1596,17 @@
         if(!variantName){feedback.textContent="Escribe el nombre de la variante.";return;}
         if(isNew&&(!Number.isSafeInteger(openingStock)||openingStock<0)){feedback.textContent="Cantidad inicial inválida.";return;}
         if(isNew&&openingStock>0&&stockReason.length<3){feedback.textContent="Escribe la referencia de recepción (mínimo 3 caracteres).";return;}
-        if(isNew&&barcode.dataset.generated!=="1"){feedback.textContent="Aún no se ha generado el EAN-13. Cierra y vuelve a abrir el formulario para reintentar.";return;}\n        submit.disabled=true;feedback.textContent="Guardando…";
+        if(isNew&&barcode.dataset.generated!=="1"){feedback.textContent="Aún no se ha generado el EAN-13. Cierra y vuelve a abrir el formulario para reintentar.";return;}
+        submit.disabled=true;feedback.textContent="Guardando…";
         try{
           const {data:savedVariant,error:saveError}=await db.rpc("admin_inventory_save_variant",{
             p_product_id:productId,p_variant_id:v.id,
-            p_title:variantName,p_sku:v.sku||null,p_barcode:String(values.get("barcode")||"").trim()||null,
+            p_title:variantName,p_sku:v.sku||null,p_barcode:String(values.get("barcode")||"").trim()||v.barcode||null,
             p_attributes:attributes,p_price:unitPrice,p_sale_price:salePrice,
             p_low_stock_threshold:v.low_stock_threshold??2,p_is_active:checked.checked
           });
           if(saveError)throw saveError;
+          void loadVariantSummary(catalogRequest,products.map(item=>item.id));
           // Once a variant exists, do not recreate it if receiving stock fails.
           if(isNew){
             v.id=savedVariant?.variant_id;
@@ -1576,6 +1629,7 @@
           }
           feedback.textContent="Variante actualizada.";
           v.title=variantName;v.attributes=attributes;
+          v.barcode=String(values.get("barcode")||"").trim()||v.barcode;
           v.price=unitPrice;v.sale_price=salePrice;v.is_active=checked.checked;
         }catch(err){feedback.textContent="Error: "+(err?.message||err);}
         finally{submit.disabled=false;}
@@ -1595,11 +1649,16 @@
     products.forEach(product=>{
       const item=document.createElement("article");
       item.className="u-item";
+      Object.assign(item.dataset,{
+        productId:product.id,category:product.categories?.name||"Sin categoría",
+        name:product.name||"",sku:product.sku||"",barcode:product.barcode||"",
+        brand:product.brand||"",model:product.model||""
+      });
       item.innerHTML=`
         <img src="${product.cover_image_url||""}" alt="">
         <div>
-          <h3>${product.name}</h3>
-          <div class="u-meta">${product.categories?.name||"Sin categoría"} · SKU ${product.sku} · ${product.__variant_count>1?`${product.__variant_count} variantes · Ver existencias por variante`:`Stock ${product.stock}`} · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
+          <h3>${escapeHtml(product.name)}</h3>
+          <div class="u-meta">${escapeHtml(product.categories?.name||"Sin categoría")} · SKU ${escapeHtml(product.sku)} · <span class="ud-variant-summary">Stock ${product.stock}</span> · ${product.status==="draft"?"Borrador · Pendiente de completar":product.status}</div>
           <div class="u-meta u-price">${money(product.sale_price??product.price,product.currency||"MXN")}</div>
           ${(()=>{
             const specs=product.specifications||{};
@@ -1883,4 +1942,5 @@
   fillGolfSpecifications({});
   updateGolfSpecsVisibility();
   initialize();
+  window.__UPDOWN_ADMIN_RUNTIME_ROOT__=runtimeRoot;
 })();
