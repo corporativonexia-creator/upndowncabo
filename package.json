@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:admin-scripts": "node tools/check-admin-scripts.cjs",
+    "prebuild": "npm run check:admin-scripts",
+    "test:admin": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -20,6 +23,7 @@
     "stripe": "^18.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
