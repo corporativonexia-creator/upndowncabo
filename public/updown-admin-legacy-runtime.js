@@ -1580,6 +1580,32 @@
         photo.append(img,note);form.appendChild(photo);
       }
       form.append(details,fields,status,submit,feedback);
+      if(!isNew){
+        const remove=document.createElement("button");
+        remove.type="button";remove.className="u-btn u-danger u-small ud-delete-variant";
+        remove.textContent="Eliminar variante";
+        remove.onclick=async()=>{
+          if(Number(v.stock)!==0){feedback.textContent="La variante tiene existencias. Registra su salida desde Inventario antes de eliminarla.";return;}
+          if(rows.length<=1){feedback.textContent="Es la única variante del producto. Conserva al menos una variante o elimina el producto completo desde el catálogo.";return;}
+          if(!confirm(`¿Eliminar la variante "${v.title}" (SKU ${v.sku})? Esta acción no se puede deshacer.`))return;
+          remove.disabled=true;submit.disabled=true;
+          try{
+            const {data:deleted,error}=await db.from("product_variants").delete()
+              .eq("id",v.id).eq("product_id",productId).eq("stock",0).select("id");
+            if(error)throw error;
+            if(!deleted?.length)throw new Error("No se eliminó la variante. Sus existencias o permisos pudieron cambiar; vuelve a consultar las variantes.");
+            showToast("Variante eliminada.");
+            await loadProducts();
+          }catch(error){
+            feedback.textContent=error.code==="23503"
+              ?"No se puede eliminar: tiene ventas o movimientos de inventario vinculados. Puedes desmarcar Variante activa y guardar para retirarla sin borrar su historial."
+              :"No se pudo eliminar: "+(error.message||String(error));
+            remove.disabled=false;submit.disabled=false;
+          }
+        };
+        form.appendChild(remove);
+      }
+
       target.appendChild(form);
       form.addEventListener("submit",async e=>{
         e.preventDefault();

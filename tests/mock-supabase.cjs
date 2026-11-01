@@ -23,7 +23,7 @@ http.createServer(async(req,res)=>{
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization});
   if(url.pathname==='/auth/v1/token'){
     if(body.password!=='fixture-password')return send({message:'Invalid login credentials',error_code:'invalid_credentials'},400);
@@ -40,6 +40,14 @@ http.createServer(async(req,res)=>{
     return send(products);
   }
   if(url.pathname==='/rest/v1/product_variants'){
+    if(req.method==='DELETE'){
+      if(options.linkedVariant)return send({code:'23503',message:'Linked inventory movement'},409);
+      const id=url.searchParams.get('id')?.slice(3);
+      const found=variants.find(v=>v.id===id&&v.stock===0);
+      if(found)variants=variants.filter(v=>v.id!==id);
+      return send(found?[{id}]:[]);
+    }
+
     const id=url.searchParams.get('product_id');
     if(id?.startsWith('in.')&&options.summaryDelay)await new Promise(r=>setTimeout(r,options.summaryDelay));
     if(id?.startsWith('in.')&&options.summaryError)return send({message:'Fixture variants failure'},503);
