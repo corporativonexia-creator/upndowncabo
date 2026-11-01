@@ -1533,7 +1533,7 @@
         }
         control.value=value||"";wrap.appendChild(control);fields.appendChild(wrap);
       };
-      choice("Talla","talla",attrs.talla||"",["XS","S","M","L","XL","XXL","Unitalla",...Array.from({length:17},(_,i)=>String(22+i*0.5))]);
+      choice("Talla","talla",attrs.talla||"",["XS","S","M","L","XL","XXL","Unitalla",...Array.from({length:51},(_,i)=>String(i)),...Array.from({length:17},(_,i)=>String(22+i*0.5))]);
       input("Color",attrs.color||"","color");
       choice("Género","genero",attrs.genero||"",["Niño","Niña","Hombre","Mujer","Unisex"]);
       const barcode=input(isNew?"EAN-13 automático":"Código de barras",v.barcode||"","barcode");
