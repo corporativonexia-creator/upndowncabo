@@ -116,3 +116,28 @@ test('mobile catalog can filter and open the product editor',async({page})=>{
   await page.locator('#udCatalogSearch').fill('Driver');await card(page,'p3').locator('.ud-edit').click();
   await expect(page.locator('#udName')).toHaveValue('Driver');await expect(page.locator('#udOnlineVisible')).toHaveValue('online');
 });
+
+
+test('variant deletion confirms, preserves cancellation and removes only empty unlinked variant',async({page,request})=>{
+  await configure(request,{zeroStock:true});await login(page);await ready(page);
+  await card(page,'p1').locator('.ud-variants').click();
+  page.once('dialog',d=>d.dismiss());
+  await card(page,'p1').locator('.ud-delete-variant').first().click();
+  await expect(card(page,'p1').locator('form')).toHaveCount(2);
+  page.once('dialog',d=>d.accept());
+  await card(page,'p1').locator('.ud-delete-variant').first().click();
+  await expect(page.locator('#udToast')).toContainText('Variante eliminada');
+  await card(page,'p1').locator('.ud-variants').click();
+  await expect(card(page,'p1').locator('form')).toHaveCount(1);
+});
+
+test('stock and linked history prevent variant deletion',async({page,request})=>{
+  await login(page);await ready(page);await card(page,'p1').locator('.ud-variants').click();
+  await card(page,'p1').locator('.ud-delete-variant').first().click();
+  await expect(card(page,'p1')).toContainText('tiene existencias');
+  await configure(request,{zeroStock:true,linkedVariant:true});
+  await card(page,'p1').locator('.ud-variants').click();await card(page,'p1').locator('.ud-variants').click();
+  page.once('dialog',d=>d.accept());await card(page,'p1').locator('.ud-delete-variant').first().click();
+  await expect(card(page,'p1')).toContainText('movimientos de inventario vinculados');
+  await expect(card(page,'p1').locator('form')).toHaveCount(2);
+});
