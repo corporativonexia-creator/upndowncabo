@@ -141,3 +141,27 @@ test('stock and linked history prevent variant deletion',async({page,request})=>
   await expect(card(page,'p1')).toContainText('movimientos de inventario vinculados');
   await expect(card(page,'p1').locator('form')).toHaveCount(2);
 });
+
+
+for (const scenario of [{category:'c1',size:'XS',other:'XXL'},{category:'c3',size:'25.5',other:'27'}]) {
+  test(`quick entry adds only requested variants: ${scenario.category}`,async({page})=>{
+    await login(page);await page.goto('/admin/productos/alta-rapida');
+    await page.getByLabel('Categoría',{exact:true}).selectOption(scenario.category);
+    const names=page.getByLabel('Nombre de variante',{exact:true});
+    await expect(names).toHaveCount(0);
+    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await expect(names).toHaveCount(1);
+    await page.getByLabel('Talla',{exact:true}).selectOption(scenario.size);
+    await expect(names.first()).toHaveValue(scenario.size);
+    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await expect(names).toHaveCount(2);
+    await page.getByLabel('Talla',{exact:true}).nth(1).selectOption(scenario.other);
+    await expect(names.first()).toHaveValue(scenario.size);
+    await expect(names.nth(1)).toHaveValue(scenario.other);
+    await page.getByRole('button',{name:'Quitar variante 2',exact:true}).click();
+    await expect(names).toHaveCount(1);
+    await page.getByLabel('Tiene variantes (talla, color u otras)').uncheck();
+    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await expect(names).toHaveCount(1);await expect(names.first()).toHaveValue(scenario.size);
+  });
+}

@@ -28,7 +28,7 @@ function installSizeGuidance(){
   const display=visible?"block":"none";
   if(helper.style.display!==display)helper.style.display=display;
   if(visible){
-    const message=(shoes?"Calzado: tallas numéricas MX (22 a 30).":"Ropa: tallas S, M, L y XL.")+' Para registrar existencias independientes por talla, usa <a href="/admin/productos/alta-rapida" style="color:#143e35;text-decoration:underline">Alta rápida móvil</a> y el botón Agregar tallas.';
+    const message=(shoes?"Calzado: tallas numéricas MX (22 a 30).":"Ropa: tallas S, M, L y XL.")+' Para registrar existencias independientes por talla, usa <a href="/admin/productos/alta-rapida" style="color:#143e35;text-decoration:underline">Alta rápida móvil</a> y el botón Agregar variante. Elige una talla por variante.';
     // Updating innerHTML unconditionally retriggers the global MutationObserver,
     // causing an infinite synchronous microtask loop that freezes the admin page.
     if(helper.innerHTML!==message)helper.innerHTML=message;

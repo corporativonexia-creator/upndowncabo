@@ -32,7 +32,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/auth/v1/user')return send(user);
   if(url.pathname==='/auth/v1/logout')return send({});
   if(url.pathname==='/rest/v1/profiles')return send({id:user.id,role:'admin',is_active:true,full_name:'Fixture Admin'});
-  if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1},{id:'c2',name:'Palos',sort_order:2}]);
+  if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1},{id:'c2',name:'Palos',sort_order:2},{id:'c3',name:'Calzado',sort_order:3}]);
   if(url.pathname==='/rest/v1/products'){
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
