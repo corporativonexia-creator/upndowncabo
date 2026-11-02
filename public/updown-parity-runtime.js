@@ -1,5 +1,5 @@
 (function(){
-  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H84-VARIANTS";
+  window.__UPDOWN_PARITY_VERSION__="2B.1-UX5.0-H85-ELECTRONICS";
 
   const SUPABASE_URL=window.__UPDOWN_SUPABASE_URL__;
   const SUPABASE_KEY=window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__;
@@ -1657,6 +1657,7 @@
   function categoryLabel(category){
     if(!category)return "Golf";
     const candidates=[category.slug,category.name].filter(Boolean).map(v=>normalizeSpecKey(v));
+    if(candidates.includes("electronicos"))return currentLanguage==="en"?"Electronics":"Electrónicos";
     for(const key of candidates){if(CATEGORY_EN[key])return CATEGORY_EN[key]}
     return category.name||category.slug||"Golf";
   }
