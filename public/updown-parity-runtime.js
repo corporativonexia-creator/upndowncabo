@@ -51,8 +51,10 @@
       for(const variant of variants){
         const attrs=variant.attributes&&typeof variant.attributes==="object"?variant.attributes:{};
         const label=String(variant.title||variant.sku||"").trim();
-        const displayName=label&&!/^(principal|única|unica)$/i.test(label)?parent.name+" · "+label:parent.name+" · "+(variant.sku||"Variante");
+        const isGeneric=/^(principal|única|unica)$/i.test(label);
+        const displayName=!isGeneric&&label?parent.name+" · "+label:(variants.length===1?parent.name:parent.name+" · "+(variant.sku||"Variante "+variant.id.slice(0,6)));
         const image=String(attrs.image_url||attrs.photo_url||"").trim();
+        const {image_url:variantImage,photo_url:variantPhoto,...publicAttributes}=attrs;
         const variantPrice=variant.price??parent.price;
         const variantOffer=variant.sale_price??(variant.price==null?parent.sale_price:null);
         listings.push({
@@ -68,7 +70,7 @@
           stock:Number(variant.stock??0),
           cover_image_url:image||parent.cover_image_url,
           product_images:image?[{image_url:image,is_primary:true,sort_order:-1},...(parent.product_images||[])]:parent.product_images,
-          specifications:{...(parent.specifications||{}),...attrs},
+          specifications:{...(parent.specifications||{}),...publicAttributes},
           variant_attributes:attrs
         });
       }
@@ -1176,7 +1178,7 @@
     el("udsModal").classList.toggle("is-sold-out",isSoldOut);
     el("udsModalAdd").disabled=isSoldOut;
     el("udsModalAdd").title=product.variant_id?(currentLanguage==="en"?"Ask about this variant":"Consultar esta variante"):"";
-    el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito"));
+    el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(product.variant_id?(currentLanguage==="en"?"Ask about this variant":"Consultar esta variante"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito")));
     el("udsModalAdd").innerHTML=`<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>`;
     el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask":"Preguntar";
     el("udsModalTrade").textContent=currentLanguage==="en"?"Trade in":"Intercambiar";
