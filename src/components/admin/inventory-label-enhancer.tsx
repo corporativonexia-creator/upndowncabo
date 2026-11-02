@@ -28,11 +28,22 @@ export default function InventoryLabelEnhancer(){
    const sku=(cells[2]?.textContent||"").trim();
    const barcode=(cells[3]?.textContent||"").trim();
    if(!validEan13(barcode)){alert("Este SKU necesita un código EAN-13 válido antes de imprimir.");return}
-   let price=0;let currency="MXN";
-   const {data:variantData}=await db.from("product_variants").select("product_id,title,attributes").eq("sku",sku).maybeSingle();
-   if(variantData?.product_id){const {data:p}=await db.from("products").select("price,sale_price,currency").eq("id",variantData.product_id).maybeSingle();if(p){price=Number(p.sale_price??p.price??0);currency=p.currency==="USD"?"USD":"MXN";}}
-   if(!price){const {data:p}=await db.from("products").select("price,sale_price,currency").eq("sku",sku).maybeSingle();if(p){price=Number(p.sale_price??p.price??0);currency=p.currency==="USD"?"USD":"MXN";}}
-   if(!price){alert("No pude obtener el precio de este producto. Revisa que tenga precio de venta registrado antes de imprimir.");return}
+   let price:number|null=null;let currency="MXN";
+   const {data:variantData,error:variantError}=await db.from("product_variants").select("product_id,title,attributes,price,sale_price").eq("sku",sku).maybeSingle();
+   if(variantError){alert("No se pudo consultar el precio de la variante. Intenta nuevamente.");return}
+   if(variantData?.product_id){
+    const {data:p,error:productError}=await db.from("products").select("price,sale_price,currency").eq("id",variantData.product_id).maybeSingle();
+    if(productError||!p){alert("No se pudo consultar el producto de esta variante.");return}
+    // The variant's price takes precedence over any parent-level price.
+    const raw=variantData.sale_price??variantData.price??p.sale_price??p.price;
+    price=raw==null?null:Number(raw);
+    currency=p.currency==="USD"?"USD":"MXN";
+   }else{
+    const {data:p,error:productError}=await db.from("products").select("price,sale_price,currency").eq("sku",sku).maybeSingle();
+    if(productError){alert("No se pudo consultar el precio del producto.");return}
+    if(p){const raw=p.sale_price??p.price;price=raw==null?null:Number(raw);currency=p.currency==="USD"?"USD":"MXN";}
+   }
+   if(price===null||!Number.isFinite(price)||price<0){alert("No pude obtener un precio válido para esta etiqueta. Revisa el precio del producto o de su variante.");return}
    const suggested=Math.max(1,Number(cells[4]?.textContent||1)||1);
    const raw=window.prompt("¿Cuántas etiquetas deseas imprimir?",String(suggested));if(raw===null)return;
    const qty=Math.max(1,Math.min(500,Math.floor(Number(raw)||1))),barcodeSvg=ean13Svg(barcode);
