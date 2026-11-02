@@ -139,7 +139,7 @@ export default function StorefrontParity() {
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     const script = document.createElement("script");
-    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.2-variants-20261101"; script.async = false; script.dataset.updownParity = "true";
+    script.src = "/updown-parity-runtime.js?v=2B.1-UX5.3-electronics-20261102"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
