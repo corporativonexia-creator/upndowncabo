@@ -9,5 +9,5 @@ export const metadata: Metadata = { title: "UP AND DOWN | Premium preview", robo
 export default async function PremiumPreviewPage({searchParams}: {searchParams: Promise<{categoria?: string}>}) {
   await requireRole("admin", "/premium-preview");
   const [catalog, params] = await Promise.all([getPublicCatalog(), searchParams]);
-  return <PremiumStorefront categories={catalog.categories} products={catalog.products} initialCategory={params.categoria || ""} />;
+  return <PremiumStorefront key={params.categoria || "all"} categories={catalog.categories} products={catalog.products} initialCategory={params.categoria || ""} />;
 }
