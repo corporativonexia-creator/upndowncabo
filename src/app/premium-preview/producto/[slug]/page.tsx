@@ -10,8 +10,9 @@ export const metadata: Metadata = { title: "Detalle de producto | UP AND DOWN", 
 export default async function PremiumProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   await requireRole("admin", "/premium-preview/producto/" + encodeURIComponent(slug));
-  const { products } = await getPublicCatalog();
-  const product = products.find((item) => item.slug === slug || item.id === slug);
+  const { categories, products } = await getPublicCatalog();
+  const product = products.find(item => item.slug === slug || item.id === slug);
   if (!product) notFound();
-  return <PremiumProductDetail product={product} />;
+  const related = products.filter(item => item.id !== product.id && item.category_id === product.category_id).slice(0,4);
+  return <PremiumProductDetail product={product} categories={categories} related={related} />;
 }

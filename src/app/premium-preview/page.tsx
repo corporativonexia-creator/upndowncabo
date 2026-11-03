@@ -6,8 +6,8 @@ import { PremiumStorefront } from "@/components/store/premium/premium-storefront
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "UP AND DOWN | Premium preview", robots: { index: false, follow: false } };
 
-export default async function PremiumPreviewPage() {
+export default async function PremiumPreviewPage({searchParams}: {searchParams: Promise<{categoria?: string}>}) {
   await requireRole("admin", "/premium-preview");
-  const catalog = await getPublicCatalog();
-  return <PremiumStorefront categories={catalog.categories} products={catalog.products} />;
+  const [catalog, params] = await Promise.all([getPublicCatalog(), searchParams]);
+  return <PremiumStorefront categories={catalog.categories} products={catalog.products} initialCategory={params.categoria || ""} />;
 }
