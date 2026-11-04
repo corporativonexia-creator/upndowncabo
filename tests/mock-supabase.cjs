@@ -23,7 +23,7 @@ http.createServer(async(req,res)=>{
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization});
   if(url.pathname==='/auth/v1/token'){
     if(body.password!=='fixture-password')return send({message:'Invalid login credentials',error_code:'invalid_credentials'},400);
@@ -33,11 +33,19 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/auth/v1/logout')return send({});
   if(url.pathname==='/rest/v1/profiles')return send({id:user.id,role:'admin',is_active:true,full_name:'Fixture Admin'});
   if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1},{id:'c2',name:'Palos',sort_order:2},{id:'c3',name:'Calzado',sort_order:3}]);
+  if(url.pathname==='/rest/v1/rpc/pos_is_session_active')return send(true);
+  if(url.pathname==='/rest/v1/rpc/pos_get_my_access')return send({employee_id:'employee-qa',employee_number:'QA01',full_name:'QA Cashier',employee_role:'pos_admin',employee_status:'active',terminal_id:'terminal-qa',terminal_name:'QA Terminal',terminal_authorized:true,open_shift_id:'shift-qa',opening_cash:500});
+  if(url.pathname==='/rest/v1/rpc/pos_get_current_shift_sales')return send({sales:[],cash_movements:[],cash_in:0,cash_out:0,cash_refunds:0,expected_cash:500});
+  if(url.pathname==='/rest/v1/rpc/pos_create_sale'){
+    const i=body.p_items[0],v=variants.find(v=>v.id===i.variant_id);
+    if(v)v.stock-=i.quantity;
+    return send({ok:true,sale_id:'sale-qa',sale_number:1,total:body.p_payments[0].amount});
+  }
   if(url.pathname==='/rest/v1/products'){
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
     if(req.method==='PATCH'){const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
-    return send(products);
+    return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
   }
   if(url.pathname==='/rest/v1/product_variants'){
     if(req.method==='DELETE'){

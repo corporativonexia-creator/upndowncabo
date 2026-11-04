@@ -61,8 +61,10 @@ async function preparePhoto(file: File): Promise<File> {
 function BarcodeCamera({ onCode, onClose }: { onCode: (code: string) => void; onClose: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState("");
-  const closeRef = useRef(onClose); closeRef.current = onClose;
-  const codeRef = useRef(onCode); codeRef.current = onCode;
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; }, [onClose]);
+  const codeRef = useRef(onCode);
+  useEffect(() => { codeRef.current = onCode; }, [onCode]);
   useEffect(() => {
     let cancelled = false;
     let stop: (() => void) | undefined;
@@ -123,6 +125,7 @@ export default function QuickProductEntry() {
       if (!alive) return;
       if (error) setError(friendly(error)); else { setCategories(data || []); setReady(true); }
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- External counts update after network completion.
     void refreshCounts();
     return () => { alive = false; };
   }, [db, refreshCounts]);
@@ -225,6 +228,7 @@ export default function QuickProductEntry() {
         const path = `products/quick/${capture.request}/${photo.id}.jpg`;
         const { error } = await db.storage.from("product-media").upload(path, photo.file, { contentType: "image/jpeg", upsert: true });
         if (error) throw error;
+        // eslint-disable-next-line react-hooks/immutability -- Private retry snapshot cloned from state; not a React state mutation.
         photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
       }
       // Each variant photo lives in its own storage object and metadata.

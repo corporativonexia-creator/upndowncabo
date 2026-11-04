@@ -1,4 +1,8 @@
--- POS variant support; apply only after review and staging tests.
+-- Variant-aware POS. Existing sales and function signatures remain unchanged.
+-- Apply atomically after isolated tests; see docs/pos-variant-release.md.
+CREATE UNIQUE INDEX IF NOT EXISTS pos_sales_employee_request_id_idx
+ON public.pos_sales (employee_id, (metadata ->> 'pos_request_id'))
+WHERE metadata ->> 'pos_request_id' IS NOT NULL;
 CREATE OR REPLACE FUNCTION public.pos_create_sale(p_device_token text, p_items jsonb, p_payments jsonb, p_discount_amount numeric DEFAULT 0, p_notes text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -35,6 +39,10 @@ declare
 
   v_max_discount numeric(12,2);
   v_item_count integer := 0;
+  v_request_id uuid;
+  v_request_payload jsonb;
+  v_existing public.pos_sales%rowtype;
+  v_name text;
 begin
   -- Empleado autenticado.
   select e.*
@@ -89,12 +97,36 @@ begin
     raise exception 'PAYMENT_REQUIRED';
   end if;
 
+  -- The shift lock serializes retries from this terminal. A unique index also
+  -- prevents reuse from another shift. Legacy clients may omit the request ID.
+  begin
+    v_request_id := nullif(p_payments #>> '{0,metadata,pos_request_id}', '')::uuid;
+  exception when invalid_text_representation then
+    raise exception 'INVALID_REQUEST_ID';
+  end;
+  v_request_payload := jsonb_build_object('items',p_items,'payments',p_payments,
+    'discount',p_discount_amount,'notes',p_notes);
+  if v_request_id is not null then
+    select * into v_existing from public.pos_sales
+    where employee_id=v_employee.id and metadata ->> 'pos_request_id'=v_request_id::text;
+    if found then
+      if v_existing.shift_id <> v_shift.id or v_existing.metadata -> 'request_payload' is distinct from v_request_payload then
+        raise exception 'REQUEST_ID_CONFLICT';
+      end if;
+      if v_existing.status <> 'completed' then raise exception 'REQUEST_ALREADY_REVERSED'; end if;
+      return jsonb_build_object('ok',true,'sale_id',v_existing.id,
+        'sale_number',v_existing.sale_number,'currency',v_existing.currency,
+        'subtotal',v_existing.subtotal,'discount_amount',v_existing.discount_amount,
+        'total',v_existing.total,'item_count',v_existing.metadata -> 'item_count','replayed',true);
+    end if;
+  end if;
+
   -- ------------------------------------------------------------------------
   -- A single product/variant must occur only once per request.
   -- Prevent repeated lines from bypassing stock checks in the first pass.
   if exists (
     select 1 from jsonb_array_elements(p_items) as item
-    group by item ->> 'product_id', item ->> 'variant_id'
+    group by (item ->> 'product_id')::uuid, nullif(item ->> 'variant_id','')::uuid
     having count(*) > 1
   ) then
     raise exception 'DUPLICATE_SALE_ITEM';
@@ -105,6 +137,7 @@ begin
   for v_item in
     select value
     from jsonb_array_elements(p_items)
+    order by (value ->> 'product_id')::uuid, nullif(value ->> 'variant_id','')::uuid
   loop
     begin
       v_product_id := nullif(v_item ->> 'product_id','')::uuid;
@@ -123,10 +156,17 @@ begin
     from public.products p
     where p.id = v_product_id
       and p.status = 'active'
+      and p.pos_visible = true
     for update;
 
     if not found then
       raise exception 'PRODUCT_NOT_AVAILABLE:%', v_product_id;
+    end if;
+
+    if v_product.currency <> 'MXN' then raise exception 'POS_CURRENCY_NOT_SUPPORTED'; end if;
+    -- A stale client must never sell aggregate parent stock as a separate SKU.
+    if v_variant_id is null and exists(select 1 from public.product_variants where product_id=v_product_id) then
+      raise exception 'VARIANT_REQUIRED:%',v_product_id;
     end if;
 
     if v_variant_id is not null then
@@ -144,7 +184,7 @@ begin
     v_unit_price :=
       round(case when v_variant_id is null then coalesce(v_product.sale_price,v_product.price,0) else coalesce(v_variant.sale_price,v_variant.price,v_product.sale_price,v_product.price,0) end,2);
 
-    if v_unit_price < 0 then
+    if v_unit_price < 0 or v_unit_price::text in ('NaN','Infinity','-Infinity') then
       raise exception 'INVALID_PRODUCT_PRICE:%', v_product.id;
     end if;
 
@@ -155,7 +195,7 @@ begin
 
   v_subtotal := round(v_subtotal,2);
 
-  if v_discount < 0 then
+  if v_discount < 0 or v_discount::text in ('NaN','Infinity','-Infinity') then
     raise exception 'INVALID_DISCOUNT';
   end if;
 
@@ -203,7 +243,7 @@ begin
       raise exception 'INVALID_PAYMENT_METHOD:%', v_method;
     end if;
 
-    if v_amount is null or v_amount <= 0 then
+    if v_amount is null or v_amount <= 0 or v_amount::text in ('NaN','Infinity','-Infinity') then
       raise exception 'INVALID_PAYMENT_AMOUNT';
     end if;
 
@@ -250,7 +290,9 @@ begin
       'employee_number', v_employee.employee_number,
       'employee_role', v_employee.role,
       'terminal_name', v_terminal.name,
-      'item_count', v_item_count
+      'item_count', v_item_count,
+      'pos_request_id', v_request_id,
+      'request_payload', case when v_request_id is not null then v_request_payload end
     )
   )
   returning id, sale_number
@@ -265,6 +307,7 @@ begin
   for v_item in
     select value
     from jsonb_array_elements(p_items)
+    order by (value ->> 'product_id')::uuid, nullif(value ->> 'variant_id','')::uuid
   loop
     v_product_id := (v_item ->> 'product_id')::uuid;
     v_quantity := (v_item ->> 'quantity')::integer;
@@ -284,6 +327,20 @@ begin
 
     v_line_subtotal := round(v_unit_price * v_quantity,2);
 
+    v_name := v_product.name;
+    if v_variant_id is not null then
+      select v_product.name || ' · ' || coalesce(string_agg(label, ' · ' order by ord),v_variant.sku)
+      into v_name
+      from (
+        select label, min(ord) as ord from (
+          select nullif(btrim(v_variant.title),'') as label, 0 as ord
+          union all
+          select btrim(value #>> '{}'), 1 from jsonb_each(v_variant.attributes)
+          where key not in ('image_url','photo_url') and jsonb_typeof(value) in ('string','number')
+        ) labels where label is not null and label <> '' group by label
+      ) unique_labels;
+    end if;
+
     insert into public.pos_sale_items(
       sale_id,
       product_id,
@@ -302,7 +359,7 @@ begin
       v_product.id,
       v_variant_id,
       case when v_variant_id is null then v_product.sku else v_variant.sku end,
-      case when v_variant_id is null then v_product.name else v_product.name || ' · ' || coalesce(nullif(v_variant.title,''),v_variant.sku,'Variante') end,
+      v_name,
       v_unit_price,
       v_quantity,
       v_line_subtotal,
@@ -310,12 +367,14 @@ begin
       v_line_subtotal,
       jsonb_build_object(
         'variant_id',v_variant_id,
-        'name', v_product.name,
-        'sku', v_product.sku,
+        'name', v_name,
+        'sku', case when v_variant_id is null then v_product.sku else v_variant.sku end,
+        'barcode', case when v_variant_id is null then v_product.barcode else v_variant.barcode end,
+        'attributes', case when v_variant_id is not null then v_variant.attributes else '{}'::jsonb end,
         'brand', v_product.brand,
         'model', v_product.model,
         'condition', v_product.item_condition,
-        'cover_image_url', v_product.cover_image_url,
+        'cover_image_url', case when v_variant_id is null then v_product.cover_image_url else coalesce(nullif(v_variant.attributes ->> 'image_url',''),nullif(v_variant.attributes ->> 'photo_url',''),v_product.cover_image_url) end,
         'currency', coalesce(v_product.currency,'MXN'),
         'catalog_price', v_product.price,
         'catalog_sale_price', v_product.sale_price,
@@ -367,7 +426,7 @@ begin
       jsonb_build_object(
         'product_id', v_product.id,
         'variant_id',v_variant_id,
-        'sku', v_product.sku,
+        'sku', case when v_variant_id is null then v_product.sku else v_variant.sku end,
         'quantity', v_quantity,
         'stock_before', case when v_variant_id is null then v_product.stock else v_variant.stock end,
         'stock_after', (case when v_variant_id is null then v_product.stock else v_variant.stock end)-v_quantity
@@ -539,6 +598,7 @@ begin
     select psi.product_id, psi.variant_id, psi.quantity, psi.sku
     from public.pos_sale_items psi
     where psi.sale_id = v_sale.id
+    order by psi.product_id, psi.variant_id, psi.id
   loop
     select p.*
     into v_product
@@ -748,6 +808,7 @@ begin
     select psi.product_id, psi.variant_id, psi.quantity, psi.sku
     from public.pos_sale_items psi
     where psi.sale_id = v_sale.id
+    order by psi.product_id, psi.variant_id, psi.id
   loop
     select p.*
     into v_product
@@ -910,3 +971,11 @@ begin
 end;
 $function$;
 
+
+-- Preserve the authenticated-only RPC surface and the existing employee checks.
+REVOKE ALL ON FUNCTION public.pos_create_sale(text,jsonb,jsonb,numeric,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.pos_void_sale(text,uuid,text) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.pos_refund_sale(text,uuid,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.pos_create_sale(text,jsonb,jsonb,numeric,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.pos_void_sale(text,uuid,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.pos_refund_sale(text,uuid,text,text) TO authenticated;

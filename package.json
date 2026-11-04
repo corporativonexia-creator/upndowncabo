@@ -9,7 +9,9 @@
     "lint": "eslint",
     "check:admin-scripts": "node tools/check-admin-scripts.cjs",
     "prebuild": "npm run check:admin-scripts",
-    "test:admin": "playwright test"
+    "test:admin": "playwright test",
+    "test:pos": "node --test tests/pos/variants.cjs",
+    "test:pos:browser": "playwright test --config playwright.pos.config.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -23,12 +25,14 @@
     "stripe": "^18.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@playwright/test": "1.58.2",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "16.3.3",
+    "pg": "8.16.3",
     "typescript": "^5.9.0"
   }
 }

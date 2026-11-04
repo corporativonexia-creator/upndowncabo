@@ -10,6 +10,7 @@ export function HeroVideo() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Attach the portal to the legacy DOM after mount.
     setHero(document.querySelector("#updown-store .uds-hero"));
   }, []);
 
