@@ -599,10 +599,6 @@ export default function PosPage() {
       }
     }
 
-    if (cart.some((item) => item.product.variant_id)) {
-      setMessage("Las variantes ya están visibles, pero el cobro está temporalmente bloqueado hasta actualizar el motor de inventario del POS.");
-      return;
-    }
     setBusy(true);
     setMessage("");
 
