@@ -34,8 +34,10 @@ function ServiceEditor({ service, onSaved, onCancel }: { service: Service; onSav
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronize the browser object URL and release it on cleanup.
     if (!file) { setPreview(null); return; }
-    const url = URL.createObjectURL(file); setPreview(url);
+    const url = URL.createObjectURL(file);
+    setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -113,7 +115,9 @@ export default function ServicesAdmin() {
   const [rows, setRows] = useState<Service[]>([]); const [loading, setLoading] = useState(true);
   const [error, setError] = useState(""); const [reload, setReload] = useState(0); const [adding, setAdding] = useState(false);
   useEffect(() => {
-    const controller = new AbortController(); setLoading(true); setError("");
+    const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset feedback when starting an external fetch.
+    setLoading(true); setError("");
     createClient().from("storefront_services").select("*").order("sort_order").order("key").abortSignal(controller.signal).then(({ data, error: queryError }) => {
       if (controller.signal.aborted) return;
       if (queryError) setError("No pudimos cargar los servicios. Revisa tu sesión y vuelve a intentar."); else setRows((data || []) as Service[]);

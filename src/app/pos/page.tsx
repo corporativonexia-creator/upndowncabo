@@ -4,6 +4,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
+import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
 
 type Access = {
   employee_id: string;
@@ -19,21 +20,6 @@ type Access = {
   opening_cash: number | null;
 };
 
-
-type Product = {
-  id: string;
-  name: string;
-  sku: string | null;
-  barcode: string | null;
-  brand: string | null;
-  model: string | null;
-  price: number | string | null;
-  sale_price: number | string | null;
-  currency: string;
-  stock: number | string | null;
-  cover_image_url: string | null;
-  status: string;
-};
 
 type CartItem = {
   product: Product;
@@ -336,22 +322,28 @@ export default function PosPage() {
   const accessRef = useRef<Access | null>(null);
   const deviceTokenRef = useRef("");
   const revalidatingRef = useRef(false);
+  const checkoutLock = useRef(false);
+  const checkoutRequest = useRef<{ fingerprint: string; id: string } | null>(null);
 
   async function loadProducts() {
     setProductsLoading(true);
     try {
-      const { data, error } = await supabase
+      const parents = await readAllPages<Product>((from, to) => supabase
         .from("products")
-        .select(
-          "id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status",
-        )
-        .eq("status", "active")
-        .eq("pos_visible", true)
-        .order("name", { ascending: true })
-        .limit(500);
-
-      if (error) throw error;
-      setProducts((data || []) as Product[]);
+        .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible")
+        .eq("status", "active").eq("pos_visible", true)
+        .order("id").range(from, to));
+      const variants: PosVariant[] = [];
+      // Bound the parent filter and paginate below Supabase's response limit.
+      for (let offset = 0; offset < parents.length; offset += 100) {
+        const ids = parents.slice(offset, offset + 100).map(parent => parent.id);
+        const page = await readAllPages<PosVariant>((from, to) => supabase
+          .from("product_variants")
+          .select("id,product_id,sku,barcode,title,attributes,price,sale_price,stock,is_active")
+          .in("product_id", ids).order("id").range(from, to));
+        variants.push(...page);
+      }
+      setProducts(buildPosCatalog(parents, variants).sort((a, b) => a.name.localeCompare(b.name, "es")));
     } catch (error) {
       setMessage(`PRODUCTS_ERROR: ${readableError(error)}`);
     } finally {
@@ -398,9 +390,12 @@ export default function PosPage() {
     const code = rawValue.trim();
     if (!code) return false;
 
-    const product = products.find(
-      (item) => item.barcode?.trim() === code,
-    );
+    const matches = barcodeMatches(products, code);
+    if (matches.length > 1) {
+      setMessage(`Código ${code} duplicado. Selecciona el SKU correcto y revisa el inventario.`);
+      return false;
+    }
+    const product = matches[0];
 
     if (!product) {
       setMessage(`Código ${code} no registrado en inventario.`);
@@ -546,7 +541,7 @@ export default function PosPage() {
   }
 
   async function checkoutSale() {
-    if (!access?.open_shift_id || cart.length === 0) return;
+    if (checkoutLock.current || !access?.open_shift_id || cart.length === 0) return;
     if(cart.some(item => item.product.currency === "USD")){
       setMessage("No se puede cobrar una venta en USD como MXN. Actualiza la moneda o el precio de estos artículos antes de continuar.");
       return;
@@ -567,23 +562,25 @@ export default function PosPage() {
       }
     }
 
+    checkoutLock.current = true;
     setBusy(true);
     setMessage("");
 
     try {
+      const items = cart.map(item => ({
+        product_id: item.product.parent_id || item.product.id,
+        ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
+        quantity: item.quantity,
+      }));
+      const payment = { method: paymentMethod, amount: Number(total.toFixed(2)), reference: paymentReference.trim() || null };
+      const fingerprint = JSON.stringify([access.open_shift_id, items, payment]);
+      if (checkoutRequest.current?.fingerprint !== fingerprint) {
+        checkoutRequest.current = { fingerprint, id: crypto.randomUUID() };
+      }
       const { data, error } = await supabase.rpc("pos_create_sale", {
         p_device_token: deviceToken,
-        p_items: cart.map((item) => ({
-          product_id: item.product.id,
-          quantity: item.quantity,
-        })),
-        p_payments: [
-          {
-            method: paymentMethod,
-            amount: Number(total.toFixed(2)),
-            reference: paymentReference.trim() || null,
-          },
-        ],
+        p_items: items,
+        p_payments: [{ ...payment, metadata: { pos_request_id: checkoutRequest.current.id } }],
         p_discount_amount: 0,
         p_notes: null,
       });
@@ -600,6 +597,7 @@ export default function PosPage() {
           ? Math.max(0, parseMoneyText(cashReceived) - total)
           : 0;
 
+      checkoutRequest.current = null;
       setCart([]);
       setCashReceived("");
       setPaymentReference("");
@@ -681,6 +679,7 @@ export default function PosPage() {
       setMessage(`SALE_ERROR: ${readableError(error)}`);
       await loadProducts();
     } finally {
+      checkoutLock.current = false;
       setBusy(false);
     }
   }
@@ -1109,6 +1108,7 @@ export default function PosPage() {
     }
 
     deviceTokenRef.current = token;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate the terminal token from browser storage.
     setDeviceToken(token);
 
     (async () => {
@@ -1193,6 +1193,7 @@ export default function PosPage() {
 
   useEffect(() => {
     if (!access?.open_shift_id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Revoke the cart when its server shift closes.
       setCart([]);
       setShiftSales([]);
       return;

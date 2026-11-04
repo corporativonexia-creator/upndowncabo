@@ -22,6 +22,7 @@ function CategoryImageCard({ category, onSaved }: { category: Category; onSaved:
   const name = labels[category.slug] || category.name;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Synchronize the browser object URL and release it on cleanup.
     if (!file) { setPreview(null); return; }
     const url = URL.createObjectURL(file);
     setPreview(url);
@@ -90,6 +91,7 @@ export default function CategoryImagesAdmin() {
 
   useEffect(() => {
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset feedback when starting an external fetch.
     setLoading(true); setError("");
     createClient().from("categories").select("id,name,slug,image_url,is_active").order("sort_order").abortSignal(controller.signal).then(({ data, error: queryError }) => {
       if (controller.signal.aborted) return;

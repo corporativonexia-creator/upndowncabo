@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -92,7 +93,7 @@ function AccessCard({
           >
             Cambiar de cuenta
           </a>
-          <a
+          <Link
             href="/"
             style={{
               padding: "11px 16px",
@@ -105,7 +106,7 @@ function AccessCard({
             }}
           >
             Volver a la tienda
-          </a>
+          </Link>
         </div>
       </section>
     </main>

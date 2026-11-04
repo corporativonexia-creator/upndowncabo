@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -377,7 +378,7 @@ export default function SellerDashboardClient({
             <strong>UP AND DOWN</strong>
             <span>Portal del vendedor</span>
           </div>
-          <a className="h63-btn" href="/">Tienda</a>
+          <Link className="h63-btn" href="/">Tienda</Link>
         </header>
 
         <section className="h63-head">
@@ -597,7 +598,7 @@ export default function SellerDashboardClient({
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
           <a className="h63-btn" href="/login?next=/vendedor">Cambiar de cuenta</a>
-          <a className="h63-btn" href="/">Volver a la tienda</a>
+          <Link className="h63-btn" href="/">Volver a la tienda</Link>
         </div>
       </div>
     </main>

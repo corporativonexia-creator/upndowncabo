@@ -1,3 +1,4 @@
+import Link from "next/link";
 export default function UnauthorizedPage() {
   return (
     <main className="h61-unauth-shell">
@@ -71,9 +72,9 @@ export default function UnauthorizedPage() {
           <a className="h61-btn primary" href="/login">
             Cambiar de cuenta
           </a>
-          <a className="h61-btn secondary" href="/">
+          <Link className="h61-btn secondary" href="/">
             Volver a la tienda
-          </a>
+          </Link>
         </div>
       </section>
     </main>

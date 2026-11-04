@@ -1,3 +1,4 @@
+import Link from "next/link";
 import LoginForm from "./login-form";
 
 export default async function LoginPage({
@@ -139,9 +140,9 @@ export default async function LoginPage({
 
         <LoginForm nextPath={nextPath} />
 
-        <a className="h61-home" href="/">
+        <Link className="h61-home" href="/">
           ← Volver a la tienda
-        </a>
+        </Link>
       </section>
     </main>
   );
