@@ -33,6 +33,8 @@ type Product = {
   stock: number | string | null;
   cover_image_url: string | null;
   status: string;
+  variant_id?: string | null;
+  parent_id?: string | null;
 };
 
 type CartItem = {
@@ -351,7 +353,37 @@ export default function PosPage() {
         .limit(500);
 
       if (error) throw error;
-      setProducts((data || []) as Product[]);
+      const parents = (data || []) as Product[];
+      const { data: variants, error: variantError } = await supabase
+        .from("product_variants")
+        .select("id,product_id,sku,barcode,title,attributes,price,sale_price,stock,is_active")
+        .eq("is_active", true)
+        .limit(2000);
+      if (variantError) throw variantError;
+      const variantsByParent = new Map<string, Product[]>();
+      for (const variant of variants || []) {
+        const parent = parents.find((item) => item.id === variant.product_id);
+        if (!parent) continue;
+        const title = String(variant.title || "").trim();
+        const attributes = variant.attributes && typeof variant.attributes === "object"
+          ? Object.values(variant.attributes as Record<string, unknown>).filter((value) => typeof value === "string").join(" · ")
+          : "";
+        const label = title || attributes || String(variant.sku || "Variante");
+        const entry: Product = {
+          ...parent,
+          id: variant.id,
+          variant_id: variant.id,
+          parent_id: parent.id,
+          name: parent.name + " · " + label,
+          sku: variant.sku || parent.sku,
+          barcode: variant.barcode || null,
+          price: variant.price ?? parent.price,
+          sale_price: variant.sale_price ?? (variant.price != null ? null : parent.sale_price),
+          stock: variant.stock ?? 0,
+        };
+        variantsByParent.set(parent.id, [...(variantsByParent.get(parent.id) || []), entry]);
+      }
+      setProducts(parents.flatMap((parent) => variantsByParent.get(parent.id) || [parent]));
     } catch (error) {
       setMessage(`PRODUCTS_ERROR: ${readableError(error)}`);
     } finally {
@@ -567,6 +599,10 @@ export default function PosPage() {
       }
     }
 
+    if (cart.some((item) => item.product.variant_id)) {
+      setMessage("Las variantes ya están visibles, pero el cobro está temporalmente bloqueado hasta actualizar el motor de inventario del POS.");
+      return;
+    }
     setBusy(true);
     setMessage("");
 
@@ -574,7 +610,8 @@ export default function PosPage() {
       const { data, error } = await supabase.rpc("pos_create_sale", {
         p_device_token: deviceToken,
         p_items: cart.map((item) => ({
-          product_id: item.product.id,
+          product_id: item.product.variant_id ? (item.product.parent_id || item.product.id) : item.product.id,
+          ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
           quantity: item.quantity,
         })),
         p_payments: [
