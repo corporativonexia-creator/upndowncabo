@@ -90,6 +90,16 @@ begin
   end if;
 
   -- ------------------------------------------------------------------------
+  -- A single product/variant must occur only once per request.
+  -- Prevent repeated lines from bypassing stock checks in the first pass.
+  if exists (
+    select 1 from jsonb_array_elements(p_items) as item
+    group by item ->> 'product_id', item ->> 'variant_id'
+    having count(*) > 1
+  ) then
+    raise exception 'DUPLICATE_SALE_ITEM';
+  end if;
+
   -- Primera pasada: bloquea inventario y calcula subtotal con precio servidor.
   -- ------------------------------------------------------------------------
   for v_item in
