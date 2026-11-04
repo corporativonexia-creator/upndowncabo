@@ -451,7 +451,7 @@ begin
     'item_count', v_item_count
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_void_sale(p_device_token text, p_sale_id uuid, p_reason text)
@@ -648,7 +648,7 @@ begin
     'status', 'voided'
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_refund_sale(p_device_token text, p_sale_id uuid, p_method text, p_reason text)
@@ -908,5 +908,5 @@ begin
     'status', 'refunded'
   );
 end;
-$function$
+$function$;
 
