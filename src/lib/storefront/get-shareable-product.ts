@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
 import { lookupFromProductKey, productKeyFor, type ShareableProduct } from "./product-share";
 
 function httpImage(raw: unknown): string | null {
@@ -19,7 +20,7 @@ function fields(raw: unknown): Record<string, unknown> {
   return raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
 }
 
-export async function findShareableProduct(key: string): Promise<ShareableProduct | null> {
+export const findShareableProduct = cache(async (key: string): Promise<ShareableProduct | null> => {
   const lookup = lookupFromProductKey(key);
   if (!lookup) return null;
   const db = await createClient();
@@ -33,8 +34,15 @@ export async function findShareableProduct(key: string): Promise<ShareableProduc
   }
   const parentId = variant ? text(variant.product_id) : lookup.id;
   if (!parentId) return null;
+  // Parent details and active-variant existence can be requested concurrently.
+  // A resolved variant is already known to be active; do not count again.
+  const activeVariantsPromise = variant
+    ? Promise.resolve(true)
+    : db.from("product_variants").select("id",{ count:"exact",head:true })
+        .eq("product_id",parentId).eq("is_active",true)
+        .then(({count,error})=>!error&&(count||0)>0);
   const result = await db.from("products")
-    .select("id,name,slug,sku,brand,model,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
+    .select("id,name,slug,sku,brand,model,category_id,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
     .eq("id", parentId).eq("status", "active").eq("online_visible", true).maybeSingle();
   if (result.error || !result.data) return null;
   const parent = result.data as Record<string, unknown>;
@@ -56,13 +64,12 @@ export async function findShareableProduct(key: string): Promise<ShareableProduc
   const sale = variant ? (variant.sale_price ?? (variant.price == null ? parent.sale_price : null)) : parent.sale_price;
   const saleNumber = sale == null ? null : finiteNum(sale);
   const hasSale = saleNumber != null && saleNumber < price;
-  const active = await db.from("product_variants").select("id", { count: "exact", head: true })
-    .eq("product_id", parentId).eq("is_active", true);
-  const hasVariants = !active.error && (active.count || 0) > 0;
+  const hasVariants = await activeVariantsPromise;
   const keyStable = productKeyFor({ id: parentId, variant_id: variant ? text(variant.id) : null, name: displayName });
   return {
     id: variant ? "variant:" + text(variant.id) : parentId,
     parentId,
+    categoryId: text(parent.category_id) || null,
     variantId: variant ? text(variant.id) : null,
     key: keyStable,
     name: displayName,
@@ -81,4 +88,4 @@ export async function findShareableProduct(key: string): Promise<ShareableProduc
     hasVariants,
     specifications: { ...fields(parent.specifications), ...attrs },
   };
-}
+});
