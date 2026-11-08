@@ -38,6 +38,7 @@ export function productPageUrl(key: string, preview: boolean, referralCode?: str
 export type ShareableProduct = {
   id: string;
   parentId: string;
+  categoryId: string | null;
   variantId: string | null;
   key: string;
   name: string;
