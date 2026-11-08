@@ -337,3 +337,16 @@
 /* Keep recommendations near the product actions now that they stream separately. */
 .ud-product-page .ud-product-container{padding-bottom:32px}
 @media(max-width:760px){.ud-product-page .ud-product-container{padding-bottom:24px}}
+
+/* Visit the shop directly from an individual product (preview only). */
+.ud-product-visit-link{
+  display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+  padding:13px 12px;margin-top:16px;
+  border:1px solid rgba(20,62,53,.13);border-radius:11px;
+  background:#eff5f0;color:#486d59;
+  font:600 12px/1.45 Inter,Arial,sans-serif;text-decoration:none;
+}
+.ud-product-visit-link>span{font-size:19px;color:#143e35;margin-right:5px}
+.ud-product-visit-link strong{font-weight:850;color:#143e35;text-decoration:underline;text-underline-offset:3px}
+.ud-product-visit-link:hover{background:#e6f0e9}
+.ud-product-visit-link:focus-visible{outline:3px solid #caa969;outline-offset:3px}
