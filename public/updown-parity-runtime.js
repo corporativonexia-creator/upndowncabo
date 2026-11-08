@@ -1774,16 +1774,12 @@
   if(el("udsDockCart"))el("udsDockCart").onclick=openCart;
   if(el("udsCheckoutButton"))el("udsCheckoutButton").onclick=async()=>{
     if(!cart.length)return showToast(currentLanguage==="en"?"Your cart is empty.":"Tu carrito está vacío.");
-    if(cart.some(i=>i.variant_id||String(i.id).startsWith("variant:"))){
-      showToast(currentLanguage==="en"?"Variant payment is pending safe inventory reservation. Your cart is saved.":"El pago de variantes requiere habilitar la reserva segura de inventario. Tu carrito está guardado.");
-      return;
-    }
     if(window.__UPDOWN_CHECKOUT_ENABLED__!==true){
       return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
     const b=el("udsCheckoutButton");b.disabled=true;b.textContent=currentLanguage==="en"?"Validating inventory…":"Validando inventario…";
     try{await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
-      const {data,error}=await db.functions.invoke("create-checkout-session",{body:{items:cart.map(i=>({id:i.id,quantity:i.quantity})),seller_ref:getStoredAffiliate()?.code||null}});
+      const {data,error}=await db.functions.invoke(PREVIEW_CATEGORY_GROUPS?.length?"create-checkout-session-v2":"create-checkout-session",{body:{items:cart.map(i=>({id:i.id,quantity:i.quantity})),seller_ref:getStoredAffiliate()?.code||null}});
       if(error){let msg=error.message||(currentLanguage==="en"?"We could not start the payment.":"No fue posible iniciar el pago.");try{if(error.context&&typeof error.context.json==="function"){const body=await error.context.json();msg=body?.error||msg}}catch(e){}try{await reconcileCart({silent:false})}catch(e){}throw new Error(msg)}
       if(!data?.url)throw new Error(currentLanguage==="en"?"Stripe did not return a payment URL.":"Stripe no devolvió una dirección de pago.");window.location.assign(data.url)
     }catch(e){console.error(e);showToast(e instanceof Error?e.message:(currentLanguage==="en"?"We could not start checkout.":"No pudimos iniciar el pago."))}finally{b.textContent=currentLanguage==="en"?"Secure checkout":"Finalizar compra segura";b.disabled=!cart.length}
