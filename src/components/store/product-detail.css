@@ -333,3 +333,7 @@
  .ud-product-loading-photo{min-height:0;aspect-ratio:1/1}
  .ud-product-loading-copy{padding:20px}
 }
+
+/* Keep recommendations near the product actions now that they stream separately. */
+.ud-product-page .ud-product-container{padding-bottom:32px}
+@media(max-width:760px){.ud-product-page .ud-product-container{padding-bottom:24px}}
