@@ -809,6 +809,19 @@
     const media=card.querySelector(".uds-card-media");
     const mediaImage=media?.querySelector("img");
     markImageFallback(mediaImage,media);
+    if(PREVIEW_CATALOG){
+      let prefetchRequested=false;
+      const requestPrefetch=()=>{
+        if(prefetchRequested)return;
+        prefetchRequested=true;
+        const destination=previewShareUrl(product);
+        if(destination)window.dispatchEvent(new CustomEvent("updown:product-prefetch",{detail:{url:destination}}));
+      };
+      card.addEventListener("pointerenter",event=>{
+        if(event.pointerType==="mouse"||event.pointerType==="pen")requestPrefetch();
+      },{once:true});
+      card.addEventListener("focusin",requestPrefetch,{once:true});
+    }
     card.querySelector(".uds-add")?.addEventListener("click",()=>addToCart(product));
     card.querySelector(".uds-details")?.addEventListener("click",()=>openProduct(product));
     card.querySelector(".uds-view-equipment")?.addEventListener("click",()=>openProduct(product));
@@ -1668,7 +1681,12 @@
         return;
       }
       try{sessionStorage.setItem("upDownPreviewCatalogReturnUrl",window.location.pathname+window.location.search+window.location.hash);}catch(e){}
-      window.location.assign(destination);
+      // Let Next.js App Router keep the shell/assets and stream the new product.
+      // Old browsers get a safe full-navigation fallback.
+      const event=new CustomEvent("updown:product-navigate",{
+        cancelable:true,detail:{url:destination}
+      });
+      if(window.dispatchEvent(event))window.location.assign(destination);
       return;
     }
     const savedModalScroll=preserveView?el("udsModal").scrollTop:0;
