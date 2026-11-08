@@ -20,8 +20,31 @@
   const PREVIEW_CATEGORY_GROUPS=Array.isArray(window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__)?window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__:null;
   const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2CategoriesV1":"upDownCatalogCacheV3Variants";
   const PREVIEW_CATALOG=PREVIEW_CATEGORY_GROUPS?.length
-    ? {view:"grid",limit:24,page:1,signature:null,initialized:false,advancedRestored:false,searchCommitted:false}:null;
-  const PREVIEW_PAGE_SIZES=[12,24,48,96];
+    ? {view:"grid",limit:20,page:1,signature:null,initialized:false,advancedRestored:false,searchCommitted:false,viewportMode:null}:null;
+  // Distinct desktop/mobile size presets. Never paginate a page again internally.
+  function previewCatalogMode(){return window.matchMedia("(max-width:760px)").matches?"mobile":"desktop"}
+  function previewPageSizes(){
+    return previewCatalogMode()==="mobile"?[4,8,16,32,64]:[10,20,30,40,50,60,70,80,90,100];
+  }
+  function previewPageSizeKey(mode){
+    return mode==="mobile"?"upDownPreviewCatalogSizeMobileV2":"upDownPreviewCatalogSizeDesktopV2";
+  }
+  function previewPageSizeDefault(mode){return mode==="mobile"?8:20}
+  function savedPreviewPageSize(mode){
+    const sizes=mode==="mobile"?[4,8,16,32,64]:[10,20,30,40,50,60,70,80,90,100];
+    let n=previewPageSizeDefault(mode);
+    try {const saved=Number(localStorage.getItem(previewPageSizeKey(mode)));if(sizes.includes(saved))n=saved;} catch(error){}
+    return n;
+  }
+  function syncPreviewPageSizeMode(){
+    if(!PREVIEW_CATALOG)return false;
+    const mode=previewCatalogMode();
+    if(mode===PREVIEW_CATALOG.viewportMode)return false;
+    PREVIEW_CATALOG.viewportMode=mode;
+    PREVIEW_CATALOG.limit=savedPreviewPageSize(mode);
+    PREVIEW_CATALOG.page=1;
+    return true;
+  }
   const QUERY_TIMEOUT_MS=8000;
 
   function timeoutSignal(ms=QUERY_TIMEOUT_MS){
@@ -779,8 +802,11 @@
   const params=new URLSearchParams(window.location.search);
   const preferredView=params.get("vista")||localStorage.getItem("upDownPreviewCatalogView");
   PREVIEW_CATALOG.view=preferredView==="lista"?"list":"grid";
-  const requestedLimit=Number(params.get("limit")||localStorage.getItem("upDownPreviewCatalogLimit")||24);
-  PREVIEW_CATALOG.limit=PREVIEW_PAGE_SIZES.includes(requestedLimit)?requestedLimit:24;
+  const mode=previewCatalogMode();
+  PREVIEW_CATALOG.viewportMode=mode;
+  const allowed=previewPageSizes();
+  const requestedLimit=Number(params.get("limit")||0);
+  PREVIEW_CATALOG.limit=allowed.includes(requestedLimit)?requestedLimit:savedPreviewPageSize(mode);
   const requestedPage=Number(params.get("page")||1);
   PREVIEW_CATALOG.page=Number.isSafeInteger(requestedPage)&&requestedPage>0?Math.min(requestedPage,10000):1;
   const category=params.get("categoria");
@@ -916,7 +942,7 @@
   if(valid===PREVIEW_CATALOG.page)return;
   PREVIEW_CATALOG.page=valid;
   renderProducts();
-  const target=el("udsPreviewCatalogBar")||el("udsResultsCount")||el("udsCatalog");
+  const target=el("udsCatalog")||el("udsPreviewCatalogBar")||el("udsResultsCount");
   target?.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 }
 
@@ -931,7 +957,7 @@
   tools.innerHTML=`
     <label class="uds-preview-sort"><span>Ordenar:</span>
       <select id="udsPreviewCatalogSort" aria-label="Ordenar resultados">
-        <option value="featured">Mejor resultado</option>
+        <option value="featured">Destacados</option>
         <option value="newest">Más recientes</option>
         <option value="price_asc">Precio: menor a mayor</option>
         <option value="price_desc">Precio: mayor a menor</option>
@@ -947,8 +973,7 @@
     </div>
     <label class="uds-preview-page-size"><span>Por página:</span>
       <select id="udsPreviewPageSize" aria-label="Artículos por página">
-        <option value="12">12</option><option value="24">24</option>
-        <option value="48">48</option><option value="96">96</option>
+        ${previewPageSizes().map(n=>`<option value="${n}">${n}</option>`).join("")}
       </select>
     </label>`;
   bar.appendChild(tools);
@@ -972,10 +997,10 @@
   }
   el("udsPreviewPageSize")?.addEventListener("change",event=>{
     const selected=Number(event.target.value);
-    if(!PREVIEW_PAGE_SIZES.includes(selected))return;
+    if(!previewPageSizes().includes(selected))return;
     PREVIEW_CATALOG.limit=selected;
     PREVIEW_CATALOG.page=1;
-    try{localStorage.setItem("upDownPreviewCatalogLimit",String(selected))}catch(e){}
+    try{localStorage.setItem(previewPageSizeKey(previewCatalogMode()),String(selected))}catch(e){}
     renderProducts();
   });
   pager.addEventListener("click",event=>{
@@ -983,6 +1008,13 @@
     if(!control||control.disabled)return;
     movePreviewCatalogPage(control.dataset.previewPage);
   });
+  const previewViewport=window.matchMedia("(max-width:760px)");
+  // Rendering on a breakpoint change also replaces the dropdown's allowed values.
+  const onViewportChange=()=>{
+    if(syncPreviewPageSizeMode())renderProducts();
+  };
+  if(previewViewport.addEventListener)previewViewport.addEventListener("change",onViewportChange);
+  else previewViewport.addListener(onViewportChange);
 }
 
   function drawPreviewCatalogPager(){
@@ -1004,13 +1036,31 @@
         aria-label="${currentLanguage==="en"?"Next page":"Página siguiente"}"><span>${currentLanguage==="en"?"Next":"Siguiente"}</span> ›</button>
       </div>`:"";
   }
-  const labels=currentLanguage==="en"?["Best match","Newest","Price: low to high","Price: high to low"]:["Mejor resultado","Más recientes","Precio: menor a mayor","Precio: mayor a menor"];
+  const labels=currentLanguage==="en"?["Featured","Newest","Price: low to high","Price: high to low"]:["Destacados","Más recientes","Precio: menor a mayor","Precio: mayor a menor"];
+  for(const id of ["udsSortFilter","udsCatalogSort"]){
+    const option=el(id)?.querySelector('option[value="featured"]');
+    if(option)option.textContent=labels[0];
+  }
   const sortSelect=el("udsPreviewCatalogSort");
   if(sortSelect){
     [...sortSelect.options].forEach((option,index)=>{option.textContent=labels[index]});
     sortSelect.value=el("udsSortFilter")?.value||"featured";
   }
-  if(el("udsPreviewPageSize"))el("udsPreviewPageSize").value=String(PREVIEW_CATALOG.limit);
+  const pageSizeSelect=el("udsPreviewPageSize");
+  if(pageSizeSelect){
+    const mode=previewCatalogMode();
+    if(pageSizeSelect.dataset.mode!==mode){
+      pageSizeSelect.replaceChildren();
+      for(const n of previewPageSizes()){
+        const option=document.createElement("option");
+        option.value=String(n);
+        option.textContent=String(n);
+        pageSizeSelect.appendChild(option);
+      }
+      pageSizeSelect.dataset.mode=mode;
+    }
+    pageSizeSelect.value=String(PREVIEW_CATALOG.limit);
+  }
   if(el("udsPreviewSearchButton")){
     el("udsPreviewSearchButton").textContent=currentLanguage==="en"?"Search":"Buscar";
     el("udsPreviewSearchButton").setAttribute("aria-label",currentLanguage==="en"?"Search products":"Buscar productos");
@@ -1029,6 +1079,7 @@
   grid.replaceChildren();
   const count=filteredProducts.length;
   if(PREVIEW_CATALOG){
+    syncPreviewPageSizeMode();
     installPreviewCatalogControls();
     const signature=previewCatalogSignature();
     if(PREVIEW_CATALOG.signature!==null&&PREVIEW_CATALOG.signature!==signature)PREVIEW_CATALOG.page=1;
@@ -4030,6 +4081,12 @@
 (()=>{
   const root=document.getElementById("updown-store");
   if(!root)return;
+  // Only the public legacy storefront retains its old four-card inner pager.
+  // The preview has one canonical page selector; no hidden sub-pages.
+  if(root.classList.contains("uds-preview")){
+    document.getElementById("udsMobileCatalogPager58")?.remove();
+    return;
+  }
 
   const isMobile=()=>window.matchMedia("(max-width:760px)").matches;
   const grid=document.getElementById("udsGrid");
