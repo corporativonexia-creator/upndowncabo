@@ -308,7 +308,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
         <section className="ud-product-gallery" aria-label="Fotografías del producto">
           <div className="ud-product-main-image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={galleryImage} alt={product.name + " · imagen " + (active + 1)} onError={e=>{if(!e.currentTarget.src.endsWith("/assets/updown-product-placeholder.svg"))e.currentTarget.src="/assets/updown-product-placeholder.svg";}} />
+            <img src={galleryImage} alt={product.name + " · imagen " + (active + 1)} fetchPriority="high" decoding="async" loading="eager" onError={e=>{if(!e.currentTarget.src.endsWith("/assets/updown-product-placeholder.svg"))e.currentTarget.src="/assets/updown-product-placeholder.svg";}} />
             {galleryCount > 1 && <>
               <button className="ud-photo-control is-prev" type="button" onClick={() => movePhoto(-1)} aria-label="Fotografía anterior">‹</button>
               <button className="ud-photo-control is-next" type="button" onClick={() => movePhoto(1)} aria-label="Fotografía siguiente">›</button>
