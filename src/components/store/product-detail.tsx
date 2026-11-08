@@ -299,10 +299,8 @@ export default function ProductDetail({ product, preview }: { product: Shareable
       </nav>}
     </header>
     <div className="ud-product-container">
-      <nav className="ud-product-breadcrumb" aria-label="Ubicación">
-        <a href={catalogHref}>Tienda</a><span aria-hidden="true">/</span>
-        <span>{product.category || "Golf"}</span><span aria-hidden="true">/</span>
-        <span aria-current="page">{product.name}</span>
+      <nav className="ud-product-breadcrumb" aria-label="Volver al catálogo">
+        <a href={catalogHref} className="ud-product-return-link">← Volver a la tienda</a>
       </nav>
       <article className="ud-product-sheet">
         <section className="ud-product-gallery" aria-label="Fotografías del producto">
