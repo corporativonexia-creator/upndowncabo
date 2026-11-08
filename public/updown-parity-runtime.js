@@ -2499,6 +2499,14 @@
     document.querySelectorAll("#updown-store [data-store-copy]").forEach(node=>{
       node.textContent=siteText(node.getAttribute("data-store-copy"));
     });
+    if(PREVIEW_CATALOG){
+      // Approved Web 2.0 hero copy; the original video and public storefront are untouched.
+      const heroTitle=document.querySelector("#updown-store .uds-hero h1");
+      if(heroTitle)heroTitle.textContent=currentLanguage==="en"
+        ?"Everything you need for your round":"Todo lo que necesitas para tu ronda";
+      if(el("udsHeroCopy"))el("udsHeroCopy").textContent=currentLanguage==="en"
+        ?"Beginners, intermediate and advanced golfers":"Principiantes, intermedios y avanzados";
+    }
     renderManagedServices();
     window.dispatchEvent(new CustomEvent("updown:language-change",{detail:currentLanguage}));
   }
