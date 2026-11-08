@@ -87,7 +87,15 @@
     const main=root.querySelector("#udsHome");
     const footer=root.querySelector(".uds-footer");
     if(!main||!footer)return;
-    if(!section.isConnected)main.appendChild(section);
+    if(!section.isConnected){
+      main.appendChild(section);
+      // The location section is injected after hydration: handle direct #udsVisit links.
+      if(window.location.hash==="#udsVisit"){
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          section.scrollIntoView({behavior:"auto",block:"start"});
+        }));
+      }
+    }
     const t=copies[locale()];
     const values={
       udsVisitKicker:t.kicker,udsVisitHeading:t.title,udsVisitIntro:t.intro,
