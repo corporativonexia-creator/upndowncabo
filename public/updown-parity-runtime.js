@@ -18,7 +18,7 @@
   const conditionLabelsEn={new:"New",preowned:"Pre-owned",demo:"Demo"};
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
   const PREVIEW_CATEGORY_GROUPS=Array.isArray(window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__)?window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__:null;
-  const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2CategoriesV1":"upDownCatalogCacheV3Variants";
+  const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2NewArrivalsV1":"upDownCatalogCacheV3Variants";
   const PREVIEW_CATALOG=PREVIEW_CATEGORY_GROUPS?.length
     ? {view:"grid",limit:20,page:1,signature:null,initialized:false,advancedRestored:false,searchCommitted:false,viewportMode:null}:null;
   // Distinct desktop/mobile size presets. Never paginate a page again internally.
@@ -2065,7 +2065,7 @@
     const all=[];
     for(let offset=0;offset<10000;offset+=400){
       const query=await db.from("products")
-        .select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
+        .select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,new_arrival_enabled,new_arrival_at,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
         .eq("status","active").eq("online_visible",true)
         .order("featured",{ascending:false})
         .order("created_at",{ascending:false})
