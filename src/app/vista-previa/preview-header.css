@@ -865,3 +865,9 @@
     transition:none !important;
   }
 }
+
+/* Empty filtered catalog spans the full width in either view. */
+#updown-store.uds-preview #udsGrid .uds-no-results {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
