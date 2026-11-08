@@ -10,41 +10,94 @@
 .ud-product-breadcrumb{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:30px;color:var(--ud-muted);font-size:11px}
 .ud-product-breadcrumb a{text-decoration:none;color:var(--ud-dark)}
 .ud-product-breadcrumb span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:min(500px,60vw)}
-.ud-product-layout{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);gap:clamp(28px,5vw,76px);align-items:start}
-.ud-product-main-image{display:grid;place-items:center;aspect-ratio:1/1;overflow:hidden;border:1px solid rgba(20,62,53,.09);border-radius:24px;background:#edeae2}
-.ud-product-main-image img{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;padding:14px}
-.ud-product-thumbnails{display:flex;flex-wrap:wrap;gap:10px;margin-top:13px}
-.ud-product-thumbnails button{width:74px;height:74px;overflow:hidden;border:2px solid transparent;border-radius:12px;background:#eceae3;cursor:pointer}
-.ud-product-thumbnails button.is-active{border-color:var(--ud-dark)}
-.ud-product-thumbnails img{width:100%;height:100%;object-fit:cover}
-.ud-product-placeholder-note{color:var(--ud-muted);font-size:12px}
-.ud-product-eyebrow{margin:0 0 12px;color:#2f6f5b;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-.ud-product-copy h1{margin:0 0 20px;color:var(--ud-dark);font:600 clamp(33px,3.9vw,57px)/1.04 "Cormorant Garamond",Georgia,serif}
-.ud-product-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:12px;margin:0 0 16px}
-.ud-product-price strong{color:var(--ud-dark);font-size:clamp(24px,2.4vw,33px);font-weight:800}
-.ud-product-price del{color:var(--ud-muted);font-size:16px}
-.ud-product-stock{margin:0 0 9px;font-weight:800;font-size:12px}
-.ud-product-stock.is-available{color:#287e55}.ud-product-stock.is-sold{color:#a23a37}
-.ud-product-sku{margin:0 0 14px;color:var(--ud-muted);font-size:12px}
-.ud-product-description{margin:16px 0 22px;white-space:pre-line;color:#43544d;line-height:1.8}
-.ud-product-advisor{padding:11px 15px;background:#e8f0eb;border-radius:12px;color:var(--ud-dark);font-size:12px}
-.ud-product-actions{display:flex;flex-direction:column;gap:10px;margin:22px 0 24px}
-.ud-product-primary{display:flex;align-items:center;justify-content:center;min-height:49px;padding:12px 18px;border:0;border-radius:999px;background:var(--ud-dark);color:#fff;text-align:center;text-decoration:none;font:800 12px/1.3 Inter,Arial,sans-serif;cursor:pointer}
-.ud-product-primary:hover{background:#2f6f5b}
-.ud-product-actions a.ud-product-primary:nth-child(2){background:#2f6f5b}
-.ud-product-sharing{border:1px solid rgba(20,62,53,.12);background:#fff;border-radius:20px;padding:22px;margin-top:28px}
-.ud-product-sharing h2{margin:0 0 4px;color:var(--ud-dark);font:600 26px/1.15 "Cormorant Garamond",Georgia,serif}
-.ud-product-sharing p{margin:0 0 16px;color:var(--ud-muted);font-size:12px}
-.ud-product-share-actions{display:flex;gap:9px;flex-wrap:wrap}
-.ud-product-share-actions button{min-height:38px;border:1px solid rgba(20,62,53,.15);background:#fff;border-radius:999px;color:var(--ud-dark);font:700 11px/1.2 Inter,Arial,sans-serif;padding:9px 14px;cursor:pointer}
-.ud-product-share-actions button:first-child{background:var(--ud-dark);color:#fff}
-.ud-product-share-actions button:hover{border-color:var(--ud-dark)}
-.ud-product-page :is(a,button,summary):focus-visible{outline:3px solid #c8a86b;outline-offset:3px}
-.ud-product-specs{margin-top:27px;border-top:1px solid rgba(20,62,53,.15);padding-top:17px}
-.ud-product-specs summary{color:var(--ud-dark);font-size:13px;font-weight:800;cursor:pointer}
-.ud-product-specs dl{display:grid;gap:9px;margin:15px 0 0}
-.ud-product-specs dl>div{display:grid;grid-template-columns:44% 1fr;gap:14px;padding:7px 0;border-bottom:1px solid rgba(20,62,53,.08)}
-.ud-product-specs dt{color:var(--ud-muted);text-transform:capitalize}
-.ud-product-specs dd{margin:0;color:var(--ud-dark);font-weight:600;word-break:break-word}
-@media(max-width:760px){.ud-product-header{padding:16px 17px;min-height:70px}.ud-product-brand{font-size:14px}.ud-product-symbol{width:37px;height:23px;flex-basis:37px}.ud-product-back{font-size:11px}.ud-product-container{width:calc(100% - 28px);padding:22px 0 54px}.ud-product-breadcrumb{margin-bottom:20px}.ud-product-layout{grid-template-columns:1fr;gap:22px}.ud-product-main-image{border-radius:18px;aspect-ratio:1.06/1}.ud-product-copy h1{font-size:clamp(34px,9vw,45px)}.ud-product-sharing{padding:17px}.ud-product-share-actions button{flex:1 1 auto}}
+/* Canonical detail layout: visual match for the storefront's product dialog. */
+.ud-product-sheet{
+  display:grid;
+  grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);
+  align-items:stretch;
+  overflow:hidden;
+  min-height:650px;
+  width:100%;
+  border:1px solid rgba(20,62,53,.10);
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 16px 54px rgba(20,62,53,.09);
+}
+.ud-product-gallery{min-width:0;display:flex;background:#ebe8e0}
+.ud-product-main-image{position:relative;flex:1;display:flex;align-items:center;justify-content:center;min-height:650px;overflow:hidden;background:#ebe8e0}
+.ud-product-main-image>img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain}
+.ud-photo-control{position:absolute;top:50%;z-index:2;width:38px;height:38px;transform:translateY(-50%);display:grid;place-items:center;cursor:pointer;border:1px solid rgba(20,62,53,.18);border-radius:50%;background:rgba(255,255,255,.9);color:#143e35;font:600 29px/1 Georgia,serif}
+.ud-photo-control.is-prev{left:15px}.ud-photo-control.is-next{right:15px}
+.ud-photo-expand{position:absolute;bottom:15px;left:15px;display:grid;place-items:center;width:34px;height:34px;background:rgba(255,255,255,.94);color:#143e35;border:0;border-radius:50%;cursor:pointer;font-size:22px}
+.ud-photo-count{position:absolute;bottom:15px;right:15px;padding:5px 12px;color:#fff;background:#143e35;border-radius:99px;font-size:11px;font-weight:800}
+.ud-product-copy{min-width:0;display:flex;flex-direction:column;padding:clamp(22px,2.6vw,38px);background:#fff;color:#143e35}
+.ud-product-eyebrow{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:0 0 7px;color:#2f6f5b;font-size:10px;line-height:1.3;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+.ud-status-badge{display:inline-flex;align-items:center;justify-content:center;padding:4px 8px;border-radius:99px;background:#edf3f0;color:#143e35;font:800 10px/1.25 Inter,Arial,sans-serif;letter-spacing:0;text-transform:none;white-space:nowrap}
+.ud-status-badge.is-sold{background:#f7e9e5;color:#a2352e}
+.ud-product-copy h1{margin:0 0 8px;color:#143e35;font:600 clamp(30px,3.4vw,50px)/1.02 "Cormorant Garamond",Georgia,serif;letter-spacing:-.025em}
+.ud-product-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:11px;margin:0 0 4px}
+.ud-product-price strong{font:800 clamp(22px,2.2vw,29px)/1.15 Inter,Arial,sans-serif;color:#143e35}
+.ud-product-price del{font-size:13px;color:#84918b}
+.ud-product-shipping{margin:0 0 15px;color:#8b9792;font-size:11px}
+.ud-product-description{margin:0 0 17px;color:#6c7974;font-size:12px;line-height:1.6}
+.ud-product-description p{margin:0}
+.ud-product-description button{background:transparent;border:0;padding:5px 0;font:800 11px Inter,Arial,sans-serif;text-decoration:underline;color:#143e35;cursor:pointer}
+.ud-product-section-label{margin:0 0 9px;color:#143e35;font:850 10px/1.3 Inter,Arial,sans-serif;letter-spacing:.1em;text-transform:uppercase}
+.ud-product-spec-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 19px;padding:0}
+.ud-product-spec{min-width:0;min-height:61px;margin:0;padding:11px 10px;display:block;border:1px solid rgba(20,62,53,.12);border-radius:9px;background:#f4f7f5}
+.ud-product-spec dt{margin:0 0 4px;color:#7d8984;font:750 10px/1.25 Inter,Arial,sans-serif;overflow-wrap:anywhere}
+.ud-product-spec dd{margin:0;color:#143e35;font:850 12px/1.3 Inter,Arial,sans-serif;overflow-wrap:anywhere}
+.ud-product-condition{border-bottom:1px solid rgba(20,62,53,.14);padding:0 0 15px;margin:0 0 15px}
+.ud-product-condition-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.ud-product-condition-row>strong{color:#143e35;font-size:12px}
+.ud-product-condition p{margin:0;color:#68736f;font-size:11px;line-height:1.6}
+.ud-product-advisor{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:0 0 16px;margin:0 0 15px;border-bottom:1px solid rgba(20,62,53,.14)}
+.ud-product-advisor small{font:800 9px/1.2 Inter,Arial,sans-serif;text-transform:uppercase;letter-spacing:.09em;color:#74837d}
+.ud-product-advisor strong{font:850 11px/1.3 Inter,Arial,sans-serif;color:#143e35}
+.ud-product-sharing{padding:12px 0 15px;margin:0 0 10px;border-bottom:1px solid rgba(20,62,53,.13)}
+.ud-product-share-title{margin:0 0 10px;font:850 10px/1.3 Inter,Arial,sans-serif;letter-spacing:.10em;text-transform:uppercase;color:#143e35}
+.ud-product-share-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ud-product-share-actions button{flex:1 1 115px;min-height:38px;padding:9px 12px;border:1px solid rgba(20,62,53,.18);border-radius:999px;background:#fff;color:#143e35;cursor:pointer;font:850 11px/1.2 Inter,Arial,sans-serif}
+.ud-product-share-actions button:first-child{background:#143e35;color:#fff}
+.ud-product-share-actions button:hover{border-color:#2f6f5b;box-shadow:0 5px 14px rgba(20,62,53,.10)}
+.ud-product-actions{display:grid;grid-template-columns:1fr 1fr 52px;align-items:stretch;gap:8px;margin-top:auto;padding-top:12px}
+.ud-product-actions a,.ud-product-actions button{min-height:46px;display:flex;align-items:center;justify-content:center;padding:10px;border-radius:11px;text-decoration:none;text-align:center;font:850 11px/1.3 Inter,Arial,sans-serif;cursor:pointer}
+.ud-product-trade{color:#143e35;background:#fff;border:1px solid rgba(20,62,53,.15)}
+.ud-product-question{color:#fff;background:#143e35;border:1px solid #143e35}
+.ud-product-cart{color:#fff;background:#143e35;border:1px solid #143e35}
+.ud-product-cart svg{width:24px;height:24px;flex:none}
+.ud-product-cart:disabled{opacity:.38;cursor:not-allowed}
+.ud-product-actions a:hover:not(:disabled),.ud-product-cart:hover:not(:disabled){filter:brightness(1.08)}
+.ud-product-feedback{margin:9px 0 0;font-size:11px;line-height:1.4;color:#1e6a50}
+.ud-product-to-cart{margin-top:8px;font-size:11px;color:#143e35}
+.ud-product-page :is(button,a):focus-visible{outline:3px solid #c8a86b;outline-offset:3px}
+.ud-product-zoom{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:50px 20px;background:rgba(6,17,12,.94)}
+.ud-product-zoom>img{max-width:100%;max-height:100%;object-fit:contain}
+.ud-product-zoom>button{position:absolute;top:16px;right:16px;display:grid;place-items:center;width:42px;height:42px;border:0;border-radius:50%;font-size:28px;color:#143e35;background:#fff;cursor:pointer}
+@media(max-width:1080px){
+ .ud-product-sheet{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr)}
+ .ud-product-copy{padding:22px}
+ .ud-product-spec-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .ud-product-main-image{min-height:610px}
+}
+@media(max-width:760px){
+ .ud-product-header{padding:14px 16px;min-height:69px}
+ .ud-product-brand{font-size:14px}
+ .ud-product-symbol{width:37px;height:23px;flex-basis:37px}
+ .ud-product-back{font-size:11px}
+ .ud-product-container{width:calc(100% - 24px);padding:20px 0 58px}
+ .ud-product-breadcrumb{margin:0 0 17px}
+ .ud-product-sheet{display:block;border-radius:20px}
+ .ud-product-main-image{min-height:0;aspect-ratio:1/1}
+ .ud-product-copy{padding:20px 16px 22px}
+ .ud-product-copy h1{font-size:clamp(35px,9vw,48px)}
+ .ud-product-spec-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ud-product-spec{min-height:62px}
+ .ud-product-share-actions button{flex:1 1 42%;min-height:44px}
+ .ud-product-actions{grid-template-columns:1fr 1fr 52px}
+}
+@media(max-width:380px){
+ .ud-product-actions{grid-template-columns:1fr 1fr 48px;gap:6px}
+ .ud-product-actions a,.ud-product-actions button{padding:8px 5px;font-size:10px}
+}
 @media(prefers-reduced-motion:reduce){.ud-product-page *{scroll-behavior:auto!important;transition:none!important}}
