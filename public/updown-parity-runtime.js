@@ -1177,6 +1177,59 @@
     toggle.setAttribute("aria-expanded",String(productDescriptionExpanded));
     toggle.textContent=siteText(productDescriptionExpanded?"product.less":"product.more");
   }
+  // Stage 4: only the admin preview receives share actions.
+  // Stable UUIDs ensure links keep working when a product's title changes.
+  function previewShareUrl(product){
+    if(!PREVIEW_CATEGORY_GROUPS?.length)return "";
+    const id=String(product.variant_id||product.id||"").replace(/^variant:/,"").toLowerCase();
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))return "";
+    const slug=(String(product.name||"producto").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,64).replace(/-+$/g,""))||"producto";
+    const url=new URL("/vista-previa/producto/"+slug+"--"+(product.variant_id?"v":"p")+"-"+id,"https://upndowncabo.com");
+    const code=getStoredAffiliate()?.code;
+    if(code)url.searchParams.set("ref",code);
+    return url.toString();
+  }
+  function productShareText(product,url){
+    return "🏌️ *"+product.name+"*\n\nDescubre sus características, precio y disponibilidad en *UP AND DOWN Cabo*.\n\n👉 Más información y fotos: "+url;
+  }
+  function previewProductShareControls(product){
+    if(!PREVIEW_CATEGORY_GROUPS?.length)return;
+    const area=el("udsModal")?.querySelector(".uds-modal-actions");
+    if(!area)return;
+    let tools=el("udsPreviewShareTools");
+    if(!tools){
+      tools=document.createElement("div");
+      tools.id="udsPreviewShareTools";
+      tools.className="uds-preview-share-tools";
+      area.before(tools);
+    }
+    tools.replaceChildren();
+    const url=previewShareUrl(product);
+    if(!url)return;
+    const label=currentLanguage==="en"?"Share product":"Compartir producto";
+    const b=(title,handler)=>{
+      const button=document.createElement("button");
+      button.type="button";button.textContent=title;
+      button.addEventListener("click",handler);
+      tools.appendChild(button);
+    };
+    b(label,async()=>{
+      if(navigator.share){
+        try{
+          await navigator.share({title:product.name+" | UP AND DOWN Cabo",text:currentLanguage==="en"?"Discover photos and availability at UP AND DOWN Cabo.":"Descubre fotos, precio y disponibilidad en UP AND DOWN Cabo.",url});
+          return;
+        }catch(error){if(error?.name==="AbortError")return}
+      }
+      try{await navigator.clipboard.writeText(url);showToast(currentLanguage==="en"?"Product link copied.":"Enlace del producto copiado.");}
+      catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
+    });
+    b("WhatsApp",()=>window.open("https://wa.me/?text="+encodeURIComponent(productShareText(product,url)),"_blank","noopener,noreferrer"));
+    const direct=document.createElement("a");
+    direct.href=url;direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
+    direct.className="uds-preview-product-link";
+    tools.appendChild(direct);
+  }
+
   function openProduct(product,preserveView=false){
     const savedModalScroll=preserveView?el("udsModal").scrollTop:0;
     const savedGridScroll=preserveView?(el("udsModal").querySelector(".uds-modal-grid")?.scrollTop||0):0;
@@ -1218,6 +1271,7 @@
     el("udsModalAdd").innerHTML=`<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>`;
     el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask":"Preguntar";
     el("udsModalTrade").textContent=currentLanguage==="en"?"Trade in":"Intercambiar";
+    previewProductShareControls(product);
     closePanels(false);openOverlay();el("udsModal").classList.add("is-open");el("udsModal").setAttribute("aria-hidden","false"); requestAnimationFrame(()=>{const m=el("udsModal");if(m)m.scrollTop=savedModalScroll;const g=m?.querySelector(".uds-modal-grid");if(g)g.scrollTop=savedGridScroll;});
   }
 
