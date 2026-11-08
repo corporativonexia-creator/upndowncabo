@@ -160,16 +160,20 @@
   max-width: none !important;
   margin: 0 !important;
   padding: 72px max(22px, calc((100vw - 1280px)/2)) 82px !important;
-  background: #143e35 !important;
-  color: #fff !important;
+  background: #F8F6F2 !important;
+  color: #17201D !important;
 }
 #updown-store.uds-preview #udsCategories .uds-section-head {
   margin-bottom: 30px !important;
 }
-#updown-store.uds-preview #udsCategories .uds-eyebrow,
-#updown-store.uds-preview #udsCategories .uds-section-head h2,
+#updown-store.uds-preview #udsCategories .uds-eyebrow {
+  color: #2F6F5B !important;
+}
+#updown-store.uds-preview #udsCategories .uds-section-head h2 {
+  color: #143E35 !important;
+}
 #updown-store.uds-preview #udsCategories .uds-section-intro {
-  color: #fff !important;
+  color: #68736F !important;
 }
 #updown-store.uds-preview #udsCategoryGrid {
   display: grid !important;
