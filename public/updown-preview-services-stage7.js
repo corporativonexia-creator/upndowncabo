@@ -141,10 +141,16 @@
     }
 
     // Commercial order; keep all admin-created and third-party services.
-    for(const kind of ["repair","trade","putter-restoration","classes","ghin"]){
+    const prioritized=["repair","trade","putter-restoration","classes","ghin"];
+    const extraCards=[...grid.querySelectorAll(":scope > [data-service-card]")]
+      .filter(card=>!prioritized.includes(card.dataset.serviceKind));
+    for(const kind of prioritized){
       const card=byKind(kind);
       if(card&&card.parentElement===grid)grid.appendChild(card);
     }
+    // Custom admin-managed services stay visible after the main grouped cards.
+    // The hidden maintenance node remains connected for legacy integrations.
+    for(const card of extraCards)grid.appendChild(card);
     root.classList.add("uds-preview-services-stage7");
   }
 
