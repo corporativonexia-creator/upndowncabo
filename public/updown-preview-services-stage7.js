@@ -10,6 +10,7 @@
 
   const lang=()=>document.documentElement.lang.toLowerCase().startsWith("en")?"en":"es";
   const byKind=(kind)=>root.querySelector('#udsServices [data-service-kind="'+kind+'"]');
+  const vsGolfServiceKey="27a30f4f-018e-460a-9b7d-b1dc1488143f";
 
   const copies={
     repair:{
@@ -128,6 +129,24 @@
     }
 
     for(const kind of ["repair","trade","putter-restoration"])setCard(kind);
+
+    // The additional GHIN badge duplicates the USGA logo already in the photo.
+    // Keep the original DOM and assets intact for the main site.
+    const ghin=byKind("ghin");
+    ghin?.querySelector(".uds-service-ghin-logo")?.setAttribute("aria-hidden","true");
+
+    // One visual hierarchy across all six cards; only the preview copy changes.
+    const vs=byKind(vsGolfServiceKey);
+    if(vs){
+      const title=vs.querySelector(".uds-service-title h3");
+      const subtitle=vs.querySelector(".uds-service-title small");
+      if(title)title.textContent=lang()==="en"?"Restoration and customization":"Restauración y personalización";
+      if(subtitle){
+        subtitle.textContent=lang()==="en"?"VS GOLF · Putters and wedges":"VS GOLF · Putters y wedges";
+        subtitle.hidden=false;
+      }
+      vs.classList.add("uds-preview-vs-card");
+    }
     const repair=byKind("repair");
     const maintenance=byKind("maintenance");
     if(maintenance){
@@ -177,6 +196,24 @@
   }
   root.addEventListener("click",onMobileMenuClick,true);
 
+  // Closing a card should return the visitor to the full service selection.
+  // Listen in capture phase so the legacy delegated toggle can stay unchanged.
+  function onServiceToggle(event){
+    const trigger=event.target.closest?.("#udsServices .uds-service-head");
+    const section=root.querySelector("#udsServices");
+    if(!trigger||!section)return;
+    const card=trigger.closest("[data-service-card]");
+    if(!card?.classList.contains("is-open"))return;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(card.classList.contains("is-open")||!section.isConnected)return;
+      section.scrollIntoView({
+        behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
+        block:"start"
+      });
+    }));
+  }
+  root.addEventListener("click",onServiceToggle,true);
+
   const onReady=()=>apply();
   window.addEventListener("updown:services-ready",onReady);
   window.addEventListener("updown:language-change",onReady);
@@ -184,6 +221,7 @@
     window.removeEventListener("updown:services-ready",onReady);
     window.removeEventListener("updown:language-change",onReady);
     root.removeEventListener("click",onMobileMenuClick,true);
+    root.removeEventListener("click",onServiceToggle,true);
     window.removeEventListener("updown:preview-services-dispose",dispose);
     if(window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__===dispose){
       window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__=null;
