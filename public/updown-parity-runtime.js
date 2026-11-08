@@ -204,7 +204,56 @@
   function cartUnits(){return cart.reduce((s,i)=>s+Number(i.quantity||0),0)}
   function cartTotal(){return cart.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0)}
   function saveCart(){localStorage.setItem("upDownCart",JSON.stringify(cart));renderCart()}
+  // Preview cart: variant stock/price are authoritative on product_variants, not products.
+  // This path never updates Supabase. Stripe V1 remains blocked for variant-containing carts.
+  async function reconcilePreviewCart(options={}){
+    if(!cart.length){renderCart();return {changed:false,adjustments:[]};}
+    const variantIds=[...new Set(cart.filter(i=>i.variant_id||String(i.id).startsWith("variant:")).map(i=>String(i.variant_id||i.id).replace(/^variant:/,"")).filter(Boolean))];
+    const parentIds=[...new Set(cart.filter(i=>!i.variant_id&&!String(i.id).startsWith("variant:")).map(i=>String(i.id)).filter(Boolean))];
+    const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    if(variantRows.error)throw variantRows.error;
+    const parentSet=[...new Set([...parentIds,...(variantRows.data||[]).map(v=>v.product_id)])];
+    const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    if(parents.error)throw parents.error;
+    const pMap=new Map((parents.data||[]).map(p=>[p.id,p]));
+    const vMap=new Map((variantRows.data||[]).map(v=>[v.id,v]));
+    const next=[];const adjustments=[];let changed=false;
+    for(const item of cart){
+      const variantId=String(item.variant_id||String(item.id).replace(/^variant:/,""));
+      const isVariant=Boolean(item.variant_id||String(item.id).startsWith("variant:"));
+      const variant=isVariant?vMap.get(variantId):null;
+      const parent=pMap.get(variant?.product_id||item.parent_id||item.id);
+      if(!parent||(isVariant&&!variant)){
+        adjustments.push(item.name+" ya no está disponible y se retiró del carrito.");changed=true;continue;
+      }
+      const stock=Number(isVariant?variant.stock:parent.stock)||0;
+      if(stock<=0){adjustments.push(item.name+" está agotado y se retiró del carrito.");changed=true;continue;}
+      const label=String(variant?.title||variant?.sku||"").trim();
+      const isGeneric=/^(principal|única|unica)$/i.test(label);
+      const name=isVariant&&label&&!isGeneric?parent.name+" · "+label:parent.name;
+      const listPrice=isVariant?(variant.price??parent.price):parent.price;
+      const sale=isVariant?(variant.sale_price??(variant.price==null?parent.sale_price:null)):parent.sale_price;
+      const price=Number(sale??listPrice);
+      const imageAttrs=variant?.attributes&&typeof variant.attributes==="object"?variant.attributes:{};
+      const image=String(imageAttrs.image_url||imageAttrs.photo_url||parent.cover_image_url||"");
+      const quantity=Math.min(Math.max(1,Number(item.quantity)||1),stock);
+      if(quantity!==Number(item.quantity)||price!==Number(item.price)||stock!==Number(item.stock)||name!==item.name||image!==item.image)changed=true;
+      if(quantity!==Number(item.quantity))adjustments.push(name+" se ajustó a "+quantity+" pza(s) por disponibilidad.");
+      next.push({
+        id:isVariant?"variant:"+variantId:parent.id,
+        variant_id:isVariant?variantId:null,
+        parent_id:parent.id,
+        name,slug:parent.slug,image,price,currency:parent.currency||"MXN",stock,quantity,
+        sku:isVariant?(variant.sku||parent.sku):parent.sku,
+        summary:isVariant?(label||parent.model||""):(parent.model||"")
+      });
+    }
+    cart=next;localStorage.setItem("upDownCart",JSON.stringify(cart));renderCart();
+    if(!options.silent&&adjustments.length)showToast(adjustments.length===1?adjustments[0]:"Actualizamos "+adjustments.length+" artículos por cambios en el inventario.");
+    return {changed,adjustments};
+  }
   async function reconcileCart(options={}){
+    if(PREVIEW_CATEGORY_GROUPS?.length)return reconcilePreviewCart(options);
     const silent=Boolean(options.silent);
 
     if(!cart.length){
@@ -370,8 +419,11 @@
   }
   function addToCart(product){
     if(Number(product.stock)<=0){showToast(currentLanguage==="en"?"This product is sold out.":"Este producto está agotado.");return}
-    const ex=cart.find(i=>i.id===product.id);if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,name:product.name,slug:product.slug,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    const isVariant=Boolean(product.variant_id);
+    if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
+    const ex=cart.find(i=>i.id===product.id);
+    if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -695,10 +747,10 @@
     const media=card.querySelector(".uds-card-media");
     const mediaImage=media?.querySelector("img");
     markImageFallback(mediaImage,media);
-    card.querySelector(".uds-add")?.addEventListener("click",()=>product.variant_id?consultVariant(product):addToCart(product));
+    card.querySelector(".uds-add")?.addEventListener("click",()=>addToCart(product));
     card.querySelector(".uds-details")?.addEventListener("click",()=>openProduct(product));
     card.querySelector(".uds-view-equipment")?.addEventListener("click",()=>openProduct(product));
-    card.querySelector(".uds-quick-add")?.addEventListener("click",()=>product.variant_id?consultVariant(product):addToCart(product));
+    card.querySelector(".uds-quick-add")?.addEventListener("click",()=>addToCart(product));
     card.classList.add("is-openable");
     card.setAttribute("role","button");
     card.setAttribute("tabindex","0");
@@ -1270,8 +1322,8 @@
     const isSoldOut=Number(product.stock)<=0;
     el("udsModal").classList.toggle("is-sold-out",isSoldOut);
     el("udsModalAdd").disabled=isSoldOut;
-    el("udsModalAdd").title=product.variant_id?(currentLanguage==="en"?"Ask about this variant":"Consultar esta variante"):"";
-    el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(product.variant_id?(currentLanguage==="en"?"Ask about this variant":"Consultar esta variante"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito")));
+    el("udsModalAdd").title=product.variant_id?(currentLanguage==="en"?"Add this variant to cart":"Agregar esta variante al carrito"):"";
+    el("udsModalAdd").setAttribute("aria-label",isSoldOut?(currentLanguage==="en"?"Sold out":"Agotado"):(currentLanguage==="en"?"Add to cart":"Agregar al carrito"));
     el("udsModalAdd").innerHTML=`<svg class="uds-modal-cart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>`;
     el("udsModalConcierge").textContent=currentLanguage==="en"?"Ask":"Preguntar";
     el("udsModalTrade").textContent=currentLanguage==="en"?"Trade in":"Intercambiar";
@@ -1710,7 +1762,7 @@
   document.querySelectorAll("#updown-store [data-shop-condition]").forEach(b=>b.addEventListener("click",()=>shopByCondition(b.dataset.shopCondition)));
   document.querySelectorAll("#updown-store [data-collection]").forEach(b=>b.addEventListener("click",()=>setCollection(b.dataset.collection,b)));
   document.querySelectorAll("#updown-store .uds-editorial-shop").forEach(b=>b.onclick=()=>shopByKeyword(b.dataset.categoryKeyword));
-  if(el("udsModalAdd"))el("udsModalAdd").onclick=()=>{if(modalProduct){if(modalProduct.variant_id)consultVariant(modalProduct);else addToCart(modalProduct)}};
+  if(el("udsModalAdd"))el("udsModalAdd").onclick=()=>{if(modalProduct)addToCart(modalProduct)};
   if(el("udsModalConcierge"))el("udsModalConcierge").onclick=()=>{if(modalProduct)openConcierge(modalProduct,"question")};
   if(el("udsModalTrade"))el("udsModalTrade").onclick=()=>{if(modalProduct)openConcierge(modalProduct,"trade")};
   if(el("udsAdvisorContact"))el("udsAdvisorContact").onclick=()=>openConcierge(null,"question");
@@ -1722,6 +1774,10 @@
   if(el("udsDockCart"))el("udsDockCart").onclick=openCart;
   if(el("udsCheckoutButton"))el("udsCheckoutButton").onclick=async()=>{
     if(!cart.length)return showToast(currentLanguage==="en"?"Your cart is empty.":"Tu carrito está vacío.");
+    if(cart.some(i=>i.variant_id||String(i.id).startsWith("variant:"))){
+      showToast(currentLanguage==="en"?"Variant payment is pending safe inventory reservation. Your cart is saved.":"El pago de variantes requiere habilitar la reserva segura de inventario. Tu carrito está guardado.");
+      return;
+    }
     if(window.__UPDOWN_CHECKOUT_ENABLED__!==true){
       return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
