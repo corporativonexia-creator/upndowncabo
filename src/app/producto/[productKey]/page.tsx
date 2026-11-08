@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { findShareableProduct } from "@/lib/storefront/get-shareable-product";
+import { findRelatedProducts } from "@/lib/storefront/get-related-products";
 import { productMetadata } from "@/lib/storefront/product-metadata";
 import ProductDetail from "@/components/store/product-detail";
 import { productPageUrl } from "@/lib/storefront/product-share";
@@ -14,6 +15,7 @@ export default async function ProductPage({ params }: Props) {
   // /producto remains behind the existing UNDER_CONSTRUCTION proxy gate until launch.
   const product = await findShareableProduct((await params).productKey);
   if (!product) notFound();
+  const related = await findRelatedProducts(product);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -36,6 +38,6 @@ export default async function ProductPage({ params }: Props) {
   };
   return <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-    <ProductDetail product={product} preview={false} />
+    <ProductDetail product={product} related={related} preview={false} />
   </>;
 }
