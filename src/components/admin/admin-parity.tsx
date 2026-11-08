@@ -45,7 +45,7 @@ export default function AdminParity() {
     });
 
     (async () => {
-      await load("/updown-admin-legacy-runtime.js?v=variant-delete-20261101");
+      await load("/updown-admin-legacy-runtime.js?v=novedades-seven-days-20261108");
       await load("/updown-product-heic-inventory-hotfix.js?v=heic-inventory-v3-20261002");
       await load("/updown-product-smart-entry-v1.js?v=on-demand-variants-20261101");
       await load("/updown-product-condition-v1.js?v=condition-v1-20261003");
