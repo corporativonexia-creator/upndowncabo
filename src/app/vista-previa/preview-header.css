@@ -1314,3 +1314,242 @@
     transition:none!important;
   }
 }
+
+/* STAGE 7.1 — photographic service cards, full-bleed photo and visible title.
+   Preview only: no changes to original services, contacts, forms or photos. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head {
+  position:relative!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  height:296px!important;
+  min-height:296px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open):not(.has-service-photo) .uds-service-head {
+  background:linear-gradient(145deg,#f5f5ef,#e7eee7)!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo .uds-service-head {
+  background:#e6eee8!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo .uds-service-head .uds-service-photo {
+  position:absolute!important;
+  display:block!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  max-width:none!important;
+  max-height:none!important;
+  aspect-ratio:auto!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  opacity:1!important;
+  filter:none!important;
+  transform:none!important;
+  z-index:0!important;
+  pointer-events:none!important;
+}
+/* Only a dark gradient behind the lower title: no wash over the photo. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open).has-service-photo .uds-service-head::before {
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  background:linear-gradient(to top,rgba(7,31,24,.87) 0%,rgba(7,31,24,.43) 26%,rgba(7,31,24,0) 56%)!important;
+  pointer-events:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head>div {
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  top:auto!important;
+  z-index:2!important;
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:22px 22px 24px!important;
+  text-align:left!important;
+  pointer-events:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open).has-service-photo .uds-service-title h3 {
+  display:block!important;
+  color:#fff!important;
+  font-size:clamp(25px,2.4vw,35px)!important;
+  line-height:1.02!important;
+  font-weight:700!important;
+  text-shadow:0 2px 6px rgba(0,0,0,.35)!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open).has-service-photo .uds-service-title small {
+  color:#f3e4bd!important;
+  text-shadow:0 1px 4px rgba(0,0,0,.45)!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open).has-service-photo .uds-service-icon {
+  background:rgba(255,255,255,.19)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.29)!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card .uds-service-toggle {
+  position:absolute!important;
+  top:12px!important;
+  right:12px!important;
+  left:auto!important;
+  bottom:auto!important;
+  z-index:5!important;
+  display:grid!important;
+  place-items:center!important;
+  background:rgba(255,255,255,.96)!important;
+  color:#143e35!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.12)!important;
+}
+
+/* Expanded: retain the same compact horizontal image/title arrangement,
+   but display the photograph at full opacity without white overlay. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open .uds-service-head {
+  position:relative!important;
+  display:block!important;
+  box-sizing:border-box!important;
+  height:218px!important;
+  min-height:218px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-head {
+  background:#f0f3ee!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open .uds-service-head::before {
+  display:none!important;
+  content:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-photo {
+  top:0!important;
+  bottom:0!important;
+  left:0!important;
+  right:auto!important;
+  width:67%!important;
+  height:100%!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  opacity:1!important;
+  filter:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-head>div {
+  position:absolute!important;
+  left:67%!important;
+  right:0!important;
+  top:0!important;
+  bottom:0!important;
+  z-index:2!important;
+  width:33%!important;
+  max-width:33%!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:25px 26px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:flex-start!important;
+  text-align:left!important;
+  background:#f0f3ee!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-title h3 {
+  color:#143e35!important;
+  font-size:clamp(24px,2.1vw,31px)!important;
+  font-weight:700!important;
+  line-height:1.08!important;
+  text-shadow:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-title small {
+  color:#527a63!important;
+  text-shadow:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-icon {
+  background:#dfe9e1!important;
+  color:#143e35!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open:not(.has-service-photo) .uds-service-head {
+  height:155px!important;
+  min-height:155px!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open:not(.has-service-photo) .uds-service-head>div {
+  position:relative!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:20px 24px!important;
+  z-index:2!important;
+}
+@media(min-width:701px) and (max-width:1024px){
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head {
+    height:265px!important;min-height:265px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-head>div {
+    padding:20px 19px!important;
+  }
+}
+@media(max-width:700px){
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head {
+    height:250px!important;min-height:250px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head>div {
+    padding:12px 12px 16px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title h3 {
+    font-size:clamp(20px,4.6vw,26px)!important;
+    line-height:1.05!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title small {
+    font-size:8px!important;
+    line-height:1.2!important;
+    margin-bottom:5px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-icon {
+    width:29px!important;height:29px!important;
+    min-width:29px!important;min-height:29px!important;
+    margin-bottom:7px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card .uds-service-toggle {
+    top:9px!important;right:9px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-head {
+    height:284px!important;min-height:284px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-photo {
+    top:0!important;left:0!important;right:0!important;
+    width:100%!important;height:58%!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-head>div {
+    top:58%!important;left:0!important;right:0!important;bottom:0!important;
+    width:100%!important;max-width:100%!important;height:42%!important;
+    padding:10px 15px!important;
+    display:flex!important;flex-direction:column!important;justify-content:center!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-title h3 {
+    font-size:clamp(22px,6vw,30px)!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open.has-service-photo .uds-service-icon {
+    display:none!important;
+  }
+}
+@media(max-width:360px){
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head {
+    height:234px!important;min-height:234px!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title h3 {
+    font-size:19px!important;
+  }
+}
