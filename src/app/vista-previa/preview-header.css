@@ -775,3 +775,93 @@
     transition:none !important;
   }
 }
+
+/* STAGE 5: submit a search intentionally; typing never collapses or scrolls the hero. */
+#updown-store.uds-preview .uds-preview-search-field {
+  display: flex !important;
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  align-items: center !important;
+}
+#updown-store.uds-preview .uds-preview-search-field #udsSearch {
+  display: block !important;
+  box-sizing: border-box !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-right: 87px !important;
+}
+#updown-store.uds-preview .uds-preview-search-field #udsPreviewSearchButton {
+  position: absolute !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  top: 5px !important;
+  right: 5px !important;
+  bottom: 5px !important;
+  min-height: 0 !important;
+  width: 72px !important;
+  margin: 0 !important;
+  padding: 0 8px !important;
+  background: #143e35 !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  font: 800 11px/1.2 Inter,Arial,sans-serif !important;
+  cursor: pointer !important;
+  z-index: 1 !important;
+}
+#updown-store.uds-preview .uds-preview-search-field #udsPreviewSearchButton:hover {
+  background: #2f6f5b !important;
+}
+#updown-store.uds-preview .uds-preview-search-field #udsPreviewSearchButton:focus-visible {
+  outline: 3px solid #c8a86b !important;
+  outline-offset: 2px !important;
+}
+#updown-store.uds-preview .uds-hero {
+  transition: max-height .36s cubic-bezier(.22,1,.36,1), opacity .24s ease !important;
+  max-height: 1200px;
+}
+#updown-store.uds-preview.uds-search-focus .uds-hero {
+  min-height: 0 !important;
+  max-height: 0 !important;
+  height: auto !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+#updown-store.uds-preview.uds-search-focus #udsCategories,
+#updown-store.uds-preview.uds-search-focus #udsNew,
+#updown-store.uds-preview.uds-search-focus .uds-brands-section,
+#updown-store.uds-preview.uds-search-focus .uds-advisor-meta {
+  display: none !important;
+}
+#updown-store.uds-preview.uds-search-focus .uds-discovery {
+  margin-top: 0 !important;
+}
+#updown-store.uds-preview.uds-search-focus #udsCatalog {
+  padding-top: 32px !important;
+}
+#updown-store.uds-preview .uds-discovery {
+  scroll-margin-top: 100px;
+}
+@media(max-width:699px) {
+  #updown-store.uds-preview .uds-discovery {
+    scroll-margin-top: 75px;
+  }
+  #updown-store.uds-preview .uds-preview-search-field #udsPreviewSearchButton {
+    width: 68px !important;
+    border-radius: 11px !important;
+  }
+  #updown-store.uds-preview .uds-preview-search-field #udsSearch {
+    padding-right: 80px !important;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  #updown-store.uds-preview .uds-hero {
+    transition:none !important;
+  }
+}
