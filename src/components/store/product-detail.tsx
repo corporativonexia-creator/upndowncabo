@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { productPageUrl, type ShareableProduct } from "@/lib/storefront/product-share";
-import type { RelatedProduct } from "@/lib/storefront/get-related-products";
 import { VS_GOLF_LOGO, VS_GOLF_INSTAGRAM } from "./vs-golf";
 import "./product-detail.css";
 
@@ -31,7 +30,7 @@ function shareText(name: string, url: string) {
   return "🏌️ *" + name + "*\n\nDescubre sus características, precio y disponibilidad en *UP AND DOWN Cabo*.\n\n👉 Más información y fotos: " + url;
 }
 
-export default function ProductDetail({ product, preview, related = [] }: { product: ShareableProduct; preview: boolean; related?: RelatedProduct[] }) {
+export default function ProductDetail({ product, preview }: { product: ShareableProduct; preview: boolean }) {
   const [active, setActive] = useState(0);
   const [affiliate, setAffiliate] = useState<Affiliate | null>(null);
   const [copied, setCopied] = useState(false);
@@ -371,28 +370,7 @@ export default function ProductDetail({ product, preview, related = [] }: { prod
           {added && <a className="ud-product-to-cart" href={catalogHref}>Seguir explorando productos</a>}
         </section>
       </article>
-      {related.length>0&&<section className="ud-related" aria-label="Artículos relacionados">
-        <div className="ud-related-heading">
-          <div><span>DESCUBRE MÁS EQUIPO</span><h2>Productos que también podrían interesarte</h2></div>
-          <div className="ud-related-controls">
-            <button type="button" aria-label="Ver productos anteriores" onClick={()=>document.getElementById("ud-related-strip")?.scrollBy({left:-390,behavior:"smooth"})}>‹</button>
-            <button type="button" aria-label="Ver más productos" onClick={()=>document.getElementById("ud-related-strip")?.scrollBy({left:390,behavior:"smooth"})}>›</button>
-          </div>
-        </div>
-        <div id="ud-related-strip" className="ud-related-strip" role="list">
-          {related.map(item=><a role="listitem" key={item.id} className="ud-related-card" href={productPageUrl(item.key,preview,affiliate?.code)}>
-            <div className="ud-related-image">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img loading="lazy" alt={item.image?item.name:""} src={item.image||"/assets/updown-product-placeholder.svg"} onError={e=>{const img=e.currentTarget;if(!img.src.endsWith("/assets/updown-product-placeholder.svg")){img.src="/assets/updown-product-placeholder.svg";img.alt="";}}}/>
-              {item.stock<=0&&<span className="ud-related-sold">Agotado</span>}
-            </div>
-            <div className="ud-related-caption">
-              <small>{item.relation}</small><strong>{item.name}</strong>
-              <span>{amount(item.price,item.currency)}</span>
-            </div>
-          </a>)}
-        </div>
-      </section>}
+
     </div>
     {zoomed && <div className="ud-product-zoom" role="dialog" aria-modal="true" aria-label="Fotografía ampliada" onClick={() => setZoomed(false)}>
       <button type="button" onClick={() => setZoomed(false)} aria-label="Cerrar imagen">×</button>
