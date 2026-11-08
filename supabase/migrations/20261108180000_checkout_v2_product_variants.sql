@@ -32,6 +32,9 @@ create table if not exists public.checkout_v2_items (
   unique (reservation_id, product_id, variant_id)
 );
 create index if not exists checkout_v2_items_reservation_idx on public.checkout_v2_items(reservation_id);
+create index if not exists checkout_v2_items_product_idx on public.checkout_v2_items(product_id);
+create index if not exists checkout_v2_items_variant_idx on public.checkout_v2_items(variant_id) where variant_id is not null;
+create index if not exists order_items_variant_id_idx on public.order_items(variant_id) where variant_id is not null;
 create index if not exists checkout_v2_reservations_expiry_idx on public.checkout_v2_reservations(expires_at) where status='active';
 create unique index if not exists checkout_v2_items_unique_product_no_variant on public.checkout_v2_items(reservation_id,product_id) where variant_id is null;
 
@@ -318,6 +321,21 @@ begin
     case when v_seller.id is not null then v_seller.code else null end,
     v_seller.id,v_rate,v_commission
   ) returning id,order_number into v_order_id,v_order_number;
+
+  -- Keep the existing affiliate commission ledger in sync with all V2 orders.
+  if v_seller.id is not null then
+    update public.orders set metadata = metadata || jsonb_build_object(
+      'affiliate_seller_id',v_seller.id,'affiliate_code',v_seller.code,
+      'affiliate_commission_rate',v_rate,'affiliate_commission_amount',v_commission
+    ) where id=v_order_id;
+    insert into public.affiliate_commissions(
+      order_id,seller_id,seller_code,currency,order_total,
+      commission_rate,commission_amount,status
+    ) values(
+      v_order_id,v_seller.id,v_seller.code,v_currency,v_sum,
+      v_rate,v_commission,'pending'
+    ) on conflict(order_id) do nothing;
+  end if;
 
   -- Atomic conversion of the reserved quantity to a sale:
   -- both operations are inside this transaction and all rows stay locked.
