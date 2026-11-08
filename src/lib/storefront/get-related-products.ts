@@ -43,21 +43,20 @@ function amount(value: unknown, fallback = 0) {
  */
 export async function findRelatedProducts(current: ShareableProduct): Promise<RelatedProduct[]> {
   const db = await createClient();
-  const source = await db.from("products")
-    .select("category_id,brand,model")
-    .eq("id", current.parentId).maybeSingle();
-  if (source.error || !source.data) return [];
+  // The product page already validated this category and brand. Reuse them.
+  const categoryId = current.categoryId;
+  const brand = current.brand;
 
   const projection = "id,name,category_id,brand,model,price,sale_price,currency,stock,cover_image_url,product_images(image_url,is_primary,sort_order)";
   const empty = {data: [] as ProductRow[], error: null};
   const [inCategory, byBrand] = await Promise.all([
-    source.data.category_id
+    categoryId
       ? db.from("products").select(projection).eq("status","active").eq("online_visible",true)
-          .eq("category_id",source.data.category_id).order("created_at",{ascending:false}).limit(90)
+          .eq("category_id",categoryId).order("created_at",{ascending:false}).limit(90)
       : Promise.resolve(empty),
-    source.data.brand
+    brand
       ? db.from("products").select(projection).eq("status","active").eq("online_visible",true)
-          .ilike("brand",source.data.brand).order("created_at",{ascending:false}).limit(35)
+          .ilike("brand",brand).order("created_at",{ascending:false}).limit(35)
       : Promise.resolve(empty),
   ]);
   if (inCategory.error && byBrand.error) return [];
