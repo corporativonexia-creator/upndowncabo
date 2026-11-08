@@ -19,6 +19,9 @@
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
   const PREVIEW_CATEGORY_GROUPS=Array.isArray(window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__)?window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__:null;
   const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2CategoriesV1":"upDownCatalogCacheV3Variants";
+  const PREVIEW_CATALOG=PREVIEW_CATEGORY_GROUPS?.length
+    ? {view:"grid",limit:24,page:1,signature:null,initialized:false}:null;
+  const PREVIEW_PAGE_SIZES=[12,24,48,96];
   const QUERY_TIMEOUT_MS=8000;
 
   function timeoutSignal(ms=QUERY_TIMEOUT_MS){
@@ -124,6 +127,7 @@
     window.dispatchEvent(new Event("updown:catalog-ready"));
     filteredProducts=[...products];
     renderCategories();
+    restorePreviewCatalogState();
     renderCommerceFilters();
     renderPicks();
     renderNewArrivals();
@@ -767,11 +771,222 @@
       openProduct(product);
     });
   }
-  function renderProducts(){
-    const grid=el("udsGrid");grid.innerHTML="";el("udsResultsCount").textContent=currentLanguage==="en"?`${filteredProducts.length} product${filteredProducts.length===1?"":"s"}`:`${filteredProducts.length} producto${filteredProducts.length===1?"":"s"}`;
-    if(!filteredProducts.length){grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No products match these filters.":"No encontramos productos con esos filtros."}</div>`;return}
-    filteredProducts.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);grid.appendChild(card)})
+  function restorePreviewCatalogState(){
+  if(!PREVIEW_CATALOG||PREVIEW_CATALOG.initialized)return;
+  PREVIEW_CATALOG.initialized=true;
+  const params=new URLSearchParams(window.location.search);
+  const preferredView=params.get("vista")||localStorage.getItem("upDownPreviewCatalogView");
+  PREVIEW_CATALOG.view=preferredView==="lista"?"list":"grid";
+  const requestedLimit=Number(params.get("limit")||localStorage.getItem("upDownPreviewCatalogLimit")||24);
+  PREVIEW_CATALOG.limit=PREVIEW_PAGE_SIZES.includes(requestedLimit)?requestedLimit:24;
+  const requestedPage=Number(params.get("page")||1);
+  PREVIEW_CATALOG.page=Number.isSafeInteger(requestedPage)&&requestedPage>0?Math.min(requestedPage,10000):1;
+  const category=params.get("categoria");
+  if(category&&categories.some(item=>item.slug===category)){
+    activeCategory=category;
+    if(el("udsCategorySelect"))el("udsCategorySelect").value=category;
+    if(el("udsCategoryMobileFilter"))el("udsCategoryMobileFilter").value=category;
   }
+  const search=params.get("q");
+  if(search!==null&&el("udsSearch"))el("udsSearch").value=search.slice(0,140);
+  const condition=params.get("condicion");
+  if(condition&&["all","new","preowned","demo"].includes(condition)){
+    if(el("udsConditionFilter"))el("udsConditionFilter").value=condition;
+    if(el("udsConditionMobileFilter"))el("udsConditionMobileFilter").value=condition;
+  }
+  const sort=params.get("orden");
+  if(sort&&["featured","newest","price_asc","price_desc"].includes(sort)){
+    if(el("udsSortFilter"))el("udsSortFilter").value=sort;
+    if(el("udsCatalogSort"))el("udsCatalogSort").value=sort;
+  }
+}
+
+  function previewCatalogSignature(){
+  return JSON.stringify([
+    activeCategory,activeCollection,
+    ...["udsSearch","udsConditionFilter","udsBrandFilter","udsHandFilter",
+        "udsFlexFilter","udsLoftFilter","udsSortFilter"].map(id=>el(id)?.value||"")
+  ]);
+}
+
+  function writePreviewCatalogUrl(){
+  if(!PREVIEW_CATALOG)return;
+  try{
+    const url=new URL(window.location.href);
+    const set=(key,value,defaultValue)=>{
+      if(!value||value===defaultValue)url.searchParams.delete(key);
+      else url.searchParams.set(key,String(value));
+    };
+    set("vista",PREVIEW_CATALOG.view==="list"?"lista":"galeria","galeria");
+    set("limit",PREVIEW_CATALOG.limit,24);
+    set("page",PREVIEW_CATALOG.page,1);
+    set("categoria",activeCategory,"all");
+    set("q",el("udsSearch")?.value.trim()||"","");
+    set("orden",el("udsSortFilter")?.value||"featured","featured");
+    set("condicion",el("udsConditionFilter")?.value||"all","all");
+    window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
+  }catch(error){console.warn("[UPDOWN preview catalog URL]",error)}
+}
+
+  function previewPageButtons(totalPages){
+  const current=PREVIEW_CATALOG.page;
+  const pages=new Set([1,totalPages]);
+  for(let n=Math.max(1,current-2);n<=Math.min(totalPages,current+2);n++)pages.add(n);
+  const ordered=[...pages].sort((a,b)=>a-b);
+  let previous=0;
+  const chunks=[];
+  for(const n of ordered){
+    if(n>previous+1)chunks.push('<span class="uds-preview-page-ellipsis" aria-hidden="true">…</span>');
+    chunks.push('<button type="button" data-preview-page="'+n+'" aria-label="'+
+      (currentLanguage==="en"?"Page ":"Página ")+n+'" '+(n===current?'aria-current="page"':'')+'>'+n+'</button>');
+    previous=n;
+  }
+  return chunks.join("");
+}
+
+  function movePreviewCatalogPage(nextPage){
+  if(!PREVIEW_CATALOG)return;
+  const totalPages=Math.max(1,Math.ceil(filteredProducts.length/PREVIEW_CATALOG.limit));
+  const valid=Math.min(totalPages,Math.max(1,Math.trunc(Number(nextPage)||1)));
+  if(valid===PREVIEW_CATALOG.page)return;
+  PREVIEW_CATALOG.page=valid;
+  renderProducts();
+  const target=el("udsPreviewCatalogBar")||el("udsResultsCount")||el("udsCatalog");
+  target?.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+}
+
+  function installPreviewCatalogControls(){
+  if(!PREVIEW_CATALOG||el("udsPreviewCatalogTools"))return;
+  const grid=el("udsGrid"),bar=document.querySelector("#updown-store #udsCatalog .uds-catalog-bar");
+  if(!grid||!bar)return;
+  bar.id="udsPreviewCatalogBar";
+  const tools=document.createElement("div");
+  tools.id="udsPreviewCatalogTools";
+  tools.className="uds-preview-catalog-tools";
+  tools.innerHTML=`
+    <label class="uds-preview-sort"><span>Ordenar:</span>
+      <select id="udsPreviewCatalogSort" aria-label="Ordenar resultados">
+        <option value="featured">Mejor resultado</option>
+        <option value="newest">Más recientes</option>
+        <option value="price_asc">Precio: menor a mayor</option>
+        <option value="price_desc">Precio: mayor a menor</option>
+      </select>
+    </label>
+    <div class="uds-preview-view-switch" role="group" aria-label="Vista de productos">
+      <button type="button" id="udsPreviewViewList" title="Vista de lista" aria-label="Mostrar como lista" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M4 12h2M4 18h2M9 6h11M9 12h11M9 18h11"/></svg>
+      </button>
+      <button type="button" id="udsPreviewViewGrid" title="Vista de galería" aria-label="Mostrar como galería" aria-pressed="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+    </div>
+    <label class="uds-preview-page-size"><span>Por página:</span>
+      <select id="udsPreviewPageSize" aria-label="Artículos por página">
+        <option value="12">12</option><option value="24">24</option>
+        <option value="48">48</option><option value="96">96</option>
+      </select>
+    </label>`;
+  bar.appendChild(tools);
+  const pager=document.createElement("nav");
+  pager.id="udsPreviewCatalogPager";
+  pager.className="uds-preview-catalog-pager";
+  pager.setAttribute("aria-label","Páginas del catálogo");
+  grid.after(pager);
+  el("udsPreviewCatalogSort")?.addEventListener("change",event=>{
+    const sort=event.target.value;
+    if(el("udsSortFilter"))el("udsSortFilter").value=sort;
+    if(el("udsCatalogSort"))el("udsCatalogSort").value=sort;
+    applyFilters();
+  });
+  for(const [id,view] of [["udsPreviewViewGrid","grid"],["udsPreviewViewList","list"]]){
+    el(id)?.addEventListener("click",()=>{
+      PREVIEW_CATALOG.view=view;
+      try{localStorage.setItem("upDownPreviewCatalogView",view==="list"?"lista":"galeria")}catch(e){}
+      renderProducts();
+    });
+  }
+  el("udsPreviewPageSize")?.addEventListener("change",event=>{
+    const selected=Number(event.target.value);
+    if(!PREVIEW_PAGE_SIZES.includes(selected))return;
+    PREVIEW_CATALOG.limit=selected;
+    PREVIEW_CATALOG.page=1;
+    try{localStorage.setItem("upDownPreviewCatalogLimit",String(selected))}catch(e){}
+    renderProducts();
+  });
+  pager.addEventListener("click",event=>{
+    const control=event.target.closest("button[data-preview-page]");
+    if(!control||control.disabled)return;
+    movePreviewCatalogPage(control.dataset.previewPage);
+  });
+}
+
+  function drawPreviewCatalogPager(){
+  if(!PREVIEW_CATALOG)return;
+  const count=filteredProducts.length;
+  const pages=Math.max(1,Math.ceil(count/PREVIEW_CATALOG.limit));
+  const first=count?(PREVIEW_CATALOG.page-1)*PREVIEW_CATALOG.limit+1:0;
+  const last=Math.min(count,PREVIEW_CATALOG.page*PREVIEW_CATALOG.limit);
+  const span=el("udsPreviewCatalogPager");
+  if(span){
+    span.innerHTML=count?`
+      <span class="uds-preview-page-summary">${currentLanguage==="en"?"Showing":"Mostrando"} ${first}–${last}
+        ${currentLanguage==="en"?"of":"de"} ${count} ${currentLanguage==="en"?"results":"resultados"}</span>
+      <div class="uds-preview-page-controls">
+        <button type="button" data-preview-page="${PREVIEW_CATALOG.page-1}" ${PREVIEW_CATALOG.page<=1?"disabled":""}
+        aria-label="${currentLanguage==="en"?"Previous page":"Página anterior"}">‹ <span>${currentLanguage==="en"?"Previous":"Anterior"}</span></button>
+        ${previewPageButtons(pages)}
+        <button type="button" data-preview-page="${PREVIEW_CATALOG.page+1}" ${PREVIEW_CATALOG.page>=pages?"disabled":""}
+        aria-label="${currentLanguage==="en"?"Next page":"Página siguiente"}"><span>${currentLanguage==="en"?"Next":"Siguiente"}</span> ›</button>
+      </div>`:"";
+  }
+  const labels=currentLanguage==="en"?["Best match","Newest","Price: low to high","Price: high to low"]:["Mejor resultado","Más recientes","Precio: menor a mayor","Precio: mayor a menor"];
+  const sortSelect=el("udsPreviewCatalogSort");
+  if(sortSelect){
+    [...sortSelect.options].forEach((option,index)=>{option.textContent=labels[index]});
+    sortSelect.value=el("udsSortFilter")?.value||"featured";
+  }
+  if(el("udsPreviewPageSize"))el("udsPreviewPageSize").value=String(PREVIEW_CATALOG.limit);
+  const sortLabel=document.querySelector("#udsPreviewCatalogTools .uds-preview-sort span");
+  if(sortLabel)sortLabel.textContent=currentLanguage==="en"?"Sort:":"Ordenar:";
+  const sizeLabel=document.querySelector("#udsPreviewCatalogTools .uds-preview-page-size span");
+  if(sizeLabel)sizeLabel.textContent=currentLanguage==="en"?"Per page:":"Por página:";
+  if(el("udsPreviewViewGrid"))el("udsPreviewViewGrid").setAttribute("aria-pressed",String(PREVIEW_CATALOG.view==="grid"));
+  if(el("udsPreviewViewList"))el("udsPreviewViewList").setAttribute("aria-pressed",String(PREVIEW_CATALOG.view==="list"));
+}
+
+  function renderProducts(){
+  const grid=el("udsGrid");
+  if(!grid)return;
+  grid.replaceChildren();
+  const count=filteredProducts.length;
+  if(PREVIEW_CATALOG){
+    installPreviewCatalogControls();
+    const signature=previewCatalogSignature();
+    if(PREVIEW_CATALOG.signature!==null&&PREVIEW_CATALOG.signature!==signature)PREVIEW_CATALOG.page=1;
+    PREVIEW_CATALOG.signature=signature;
+    PREVIEW_CATALOG.page=Math.min(PREVIEW_CATALOG.page,Math.max(1,Math.ceil(count/PREVIEW_CATALOG.limit)));
+    grid.classList.toggle("uds-preview-list",PREVIEW_CATALOG.view==="list");
+    grid.classList.toggle("uds-preview-gallery",PREVIEW_CATALOG.view==="grid");
+    const start=(PREVIEW_CATALOG.page-1)*PREVIEW_CATALOG.limit;
+    const visible=filteredProducts.slice(start,start+PREVIEW_CATALOG.limit);
+    el("udsResultsCount").textContent=currentLanguage==="en"?count+" results":count+" resultados";
+    if(!visible.length)grid.innerHTML='<div class="uds-no-results">'+
+      (currentLanguage==="en"?"No products match these filters.":"No encontramos productos con esos filtros.")+'</div>';
+    else for(const product of visible){
+      const card=document.createElement("article");
+      card.className="uds-card";
+      card.innerHTML=cardHtml(product);
+      bindCard(card,product);
+      grid.appendChild(card);
+    }
+    drawPreviewCatalogPager();
+    writePreviewCatalogUrl();
+    return;
+  }
+  el("udsResultsCount").textContent=currentLanguage==="en"?`${count} product${count===1?"":"s"}`:`${count} producto${count===1?"":"s"}`;
+  if(!count){grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No products match these filters.":"No encontramos productos con esos filtros."}</div>`;return}
+  filteredProducts.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);grid.appendChild(card)})
+}
   function renderNewArrivals(){
     const rail=el("udsNewRail");
     if(!rail)return;
