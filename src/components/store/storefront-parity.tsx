@@ -183,6 +183,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
     let previewServicesScript: HTMLScriptElement | null = null;
+    let previewLocationScript: HTMLScriptElement | null = null;
     const script = document.createElement("script");
     script.src = previewMode ? "/updown-parity-runtime.js?v=preview-web2-novedades-seven-days-v7-20261108" : "/updown-parity-runtime.js?v=2B.1-UX5.3-electronics-20261102"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
@@ -192,11 +193,17 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
       // Stage 7 runs only in the protected preview and never alters managed DB rows.
       if (previewMode) {
         previewServicesScript = document.createElement("script");
-        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-stage7-v2-20261108";
+        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-stage7-v3-20261108";
         previewServicesScript.dataset.updownPreviewServices = "stage7";
         previewServicesScript.async = false;
         previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
         document.body.appendChild(previewServicesScript);
+        previewLocationScript = document.createElement("script");
+        previewLocationScript.src = "/updown-preview-location-stage8.js?v=location-stage8-20261108";
+        previewLocationScript.dataset.updownPreviewLocation = "stage8";
+        previewLocationScript.async = false;
+        previewLocationScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Ubicación · Etapa 8.");
+        document.body.appendChild(previewLocationScript);
       }
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
@@ -204,11 +211,13 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     return () => {
       window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__ = undefined;
       window.dispatchEvent(new Event("updown:preview-services-dispose"));
+      window.dispatchEvent(new Event("updown:preview-location-dispose"));
       window.dispatchEvent(new Event("updown:storefront-dispose"));
       copyAbort.abort();
       observer?.disconnect();
       stopCoursePagination();
       previewServicesScript?.remove();
+      previewLocationScript?.remove();
       script.remove();
       script.onload = null;
       script.onerror = null;
