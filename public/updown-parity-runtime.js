@@ -24,14 +24,14 @@
   // Distinct desktop/mobile size presets. Never paginate a page again internally.
   function previewCatalogMode(){return window.matchMedia("(max-width:760px)").matches?"mobile":"desktop"}
   function previewPageSizes(){
-    return previewCatalogMode()==="mobile"?[4,8,16,32,64]:[10,20,30,40,50,60,70,80,90,100];
+    return previewCatalogMode()==="mobile"?[4,8,16,32,64]:[12,24,48,96];
   }
   function previewPageSizeKey(mode){
-    return mode==="mobile"?"upDownPreviewCatalogSizeMobileV2":"upDownPreviewCatalogSizeDesktopV2";
+    return mode==="mobile"?"upDownPreviewCatalogSizeMobileV2":"upDownPreviewCatalogSizeDesktopV3";
   }
-  function previewPageSizeDefault(mode){return mode==="mobile"?8:20}
+  function previewPageSizeDefault(mode){return mode==="mobile"?8:24}
   function savedPreviewPageSize(mode){
-    const sizes=mode==="mobile"?[4,8,16,32,64]:[10,20,30,40,50,60,70,80,90,100];
+    const sizes=mode==="mobile"?[4,8,16,32,64]:[12,24,48,96];
     let n=previewPageSizeDefault(mode);
     try {const saved=Number(localStorage.getItem(previewPageSizeKey(mode)));if(sizes.includes(saved))n=saved;} catch(error){}
     return n;
@@ -442,7 +442,15 @@
 
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
-      row.innerHTML=`<img src="${escapeHtml(item.image||"")}" alt="${escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
+      const fallback="/assets/updown-product-placeholder.svg";
+      const imageSrc=PREVIEW_CATALOG&&(!item.image||typeof item.image!=="string"||!/^https?:\/\//i.test(item.image))?fallback:item.image||"";
+      row.innerHTML=`<img src="${escapeHtml(imageSrc)}" alt="${PREVIEW_CATALOG?"":escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
+      if(PREVIEW_CATALOG){
+        const image=row.querySelector("img");
+        image?.addEventListener("error",()=>{
+          if(image.getAttribute("src")!==fallback)image.src=fallback;
+        });
+      }
       row.querySelector(".uds-minus").onclick=()=>changeQty(item.id,-1);row.querySelector(".uds-plus").onclick=()=>changeQty(item.id,1);row.querySelector(".uds-remove").onclick=()=>removeFromCart(item.id);el("udsCartList").appendChild(row)
     })
   }
@@ -783,7 +791,8 @@
     card.classList.add("is-openable");
     card.setAttribute("role","button");
     card.setAttribute("tabindex","0");
-    card.setAttribute("aria-haspopup","dialog");
+    if(PREVIEW_CATALOG){card.setAttribute("role","link");card.removeAttribute("aria-haspopup");}
+    else card.setAttribute("aria-haspopup","dialog");
     card.setAttribute("aria-label",currentLanguage==="en"?`View details of ${product.name}`:`Ver detalles de ${product.name}`);
     card.addEventListener("keydown",event=>{
       if(event.target!==card||event.defaultPrevented)return;
@@ -1626,6 +1635,17 @@
   }
 
   function openProduct(product,preserveView=false){
+    if(PREVIEW_CATALOG){
+      // Canonical Web 2.0: navigation goes to the stable, independent product page.
+      const destination=previewShareUrl(product);
+      if(!destination){
+        showToast(currentLanguage==="en"?"Product link unavailable.":"No se pudo abrir la ficha de este artículo.");
+        return;
+      }
+      try{sessionStorage.setItem("upDownPreviewCatalogReturnUrl",window.location.pathname+window.location.search+window.location.hash);}catch(e){}
+      window.location.assign(destination);
+      return;
+    }
     const savedModalScroll=preserveView?el("udsModal").scrollTop:0;
     const savedGridScroll=preserveView?(el("udsModal").querySelector(".uds-modal-grid")?.scrollTop||0):0;
     const savedGalleryIndex=preserveView?modalGalleryIndex:0;
@@ -2094,6 +2114,36 @@
   ["udsCatalogCategory","udsCatalogCondition","udsCatalogBrand","udsCatalogHand","udsCatalogFlex","udsCatalogLoft","udsCatalogSort"].forEach(id=>el(id)?.addEventListener("change",()=>applyCatalogFilters(false)));
   if(el("udsClearFilters"))el("udsClearFilters").onclick=clearCommerceFilters;
   if(el("udsCartButton"))if(el("udsCartButton"))el("udsCartButton").onclick=openCart;if(el("udsFloatingCart"))if(el("udsFloatingCart"))el("udsFloatingCart").onclick=openCart;if(el("udsCloseCart"))if(el("udsCloseCart"))el("udsCloseCart").onclick=()=>closePanels();if(el("udsMenuButton"))if(el("udsMenuButton"))el("udsMenuButton").onclick=openMenu;if(el("udsCloseMenu"))if(el("udsCloseMenu"))el("udsCloseMenu").onclick=()=>closePanels();if(el("udsOverlay"))if(el("udsOverlay"))el("udsOverlay").onclick=()=>closePanels();if(el("udsCloseModal"))if(el("udsCloseModal"))el("udsCloseModal").onclick=()=>closePanels();if(el("udsModalPrev"))if(el("udsModalPrev"))el("udsModalPrev").onclick=()=>moveModalGallery(-1);if(el("udsModalNext"))if(el("udsModalNext"))el("udsModalNext").onclick=()=>moveModalGallery(1);
+
+  // Safari + Chrome: direct target navigation, independent of hashchange
+  // and of the cart overlay. Header stays interactive while cart is open.
+  if(PREVIEW_CATALOG){
+    const header=document.querySelector("#updown-store .uds-header");
+    header?.addEventListener("click",event=>{
+      const target=event.target.closest("a,button");
+      if(!target||target.id==="udsCartButton")return;
+      if(el("udsCart")?.classList.contains("is-open"))closePanels();
+    },true);
+    header?.querySelectorAll('.uds-desktop-nav a[href^="#"]').forEach(anchor=>{
+      // Classes already has its own accordion navigation.
+      if(anchor.dataset.navKey==="classes")return;
+      anchor.addEventListener("click",event=>{
+        const sectionId=anchor.getAttribute("href")?.slice(1);
+        const section=sectionId?document.getElementById(sectionId):null;
+        if(!section)return;
+        event.preventDefault();
+        if(PREVIEW_CATALOG.searchCommitted){
+          PREVIEW_CATALOG.searchCommitted=false;
+          updateFocusedSearchMode();
+        }
+        closePanels();
+        try{window.history.replaceState(window.history.state,"",window.location.pathname+window.location.search+"#"+sectionId);}catch(e){}
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          section.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+        }));
+      });
+    });
+  }
 
   el("udsModalImage").onclick=openImageViewer;
   el("udsModalImage").addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();openImageViewer();}});
