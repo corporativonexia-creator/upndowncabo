@@ -1794,6 +1794,20 @@
     el("udDescriptionEn").value=p.description_en||p.specifications?.description_en||p.specifications?.english_description||"";
     fillGolfSpecifications(p.specifications||{});
     el("udFeatured").checked=!!p.featured;
+    if(el("udNewArrival")){
+      el("udNewArrival").checked=!!p.new_arrival_enabled;
+      el("udNewArrivalRestart").checked=false;
+      el("udNewArrivalRestartWrap").style.display="block";
+      const start=p.new_arrival_at?new Date(p.new_arrival_at).getTime():NaN;
+      const expiry=Number.isFinite(start)?start+7*24*60*60*1000:NaN;
+      const active=!!p.new_arrival_enabled&&Number.isFinite(expiry)&&Date.now()<expiry;
+      const note=!p.new_arrival_enabled
+        ?"Desactivado: este producto no aparece en Novedades."
+        :active
+          ?"Novedad vigente hasta "+new Date(expiry).toLocaleString("es-MX")+"."
+          :"Sin vigencia activa. Marca «Renovar siete días» para volver a destacarlo.";
+      el("udNewArrivalInfo").textContent=note;
+    }
     el("udImage").value="";
     productGalleryState=normalizedProductGallery(p);
     renderGalleryEditor();
@@ -1814,6 +1828,12 @@
     if(el("udCurrency"))el("udCurrency").value="MXN";
     if(el("udOnlineVisible")) el("udOnlineVisible").value="both";
     el("udCondition").value="new";
+    if(el("udNewArrival")){
+      el("udNewArrival").checked=true;
+      el("udNewArrivalRestart").checked=false;
+      el("udNewArrivalRestartWrap").style.display="none";
+      el("udNewArrivalInfo").textContent="Al publicar el producto en la web, inicia automáticamente su período de siete días.";
+    }
     currentProductSpecifications={};
     fillGolfSpecifications({});
     productGalleryState=[];
@@ -1896,12 +1916,18 @@
         low_stock_threshold:2,
         cover_image_url:imageUrl,
         featured:el("udFeatured").checked,
+        new_arrival_enabled:el("udNewArrival")?.checked??true,
         status:el("udStatus").value,
         online_visible:el("udOnlineVisible")?.value!=="physical",
         pos_visible:el("udOnlineVisible")?.value!=="online",
         seo_title:`${name} | UP AND DOWN`,
         seo_description:el("udShort").value.trim()||null
       };
+
+      // Renewal is deliberate; editing name, price or stock never resets the timer.
+      if(id && payload.new_arrival_enabled && el("udNewArrivalRestart")?.checked){
+        payload.new_arrival_at=new Date().toISOString();
+      }
 
       let saved;
       if(id){
