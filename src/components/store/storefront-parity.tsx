@@ -182,16 +182,37 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
       window.dispatchEvent(new Event("updown:copy-ready"));
     }).catch(() => { /* The local bilingual catalog remains available. */ });
     let stopCoursePagination = () => {};
+    let previewServicesScript: HTMLScriptElement | null = null;
     const script = document.createElement("script");
     script.src = previewMode ? "/updown-parity-runtime.js?v=preview-web2-novedades-seven-days-v7-20261108" : "/updown-parity-runtime.js?v=2B.1-UX5.3-electronics-20261102"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
       stopCoursePagination = installCoursePagination();
+      // Stage 7 runs only in the protected preview and never alters managed DB rows.
+      if (previewMode) {
+        previewServicesScript = document.createElement("script");
+        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-stage7-20261108";
+        previewServicesScript.dataset.updownPreviewServices = "stage7";
+        previewServicesScript.async = false;
+        previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
+        document.body.appendChild(previewServicesScript);
+      }
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
     document.body.appendChild(script);
-    return () => { window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__ = undefined; window.dispatchEvent(new Event("updown:storefront-dispose")); copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
+    return () => {
+      window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__ = undefined;
+      window.dispatchEvent(new Event("updown:preview-services-dispose"));
+      window.dispatchEvent(new Event("updown:storefront-dispose"));
+      copyAbort.abort();
+      observer?.disconnect();
+      stopCoursePagination();
+      previewServicesScript?.remove();
+      script.remove();
+      script.onload = null;
+      script.onerror = null;
+    };
   }, [deviceMode, previewMode]);
 
   if (!deviceMode) return null;
