@@ -52,9 +52,13 @@
       :"¡Hola! Vi la tienda UP AND DOWN Cabo en su página web. Me gustaría saber cómo llegar a Plaza Alba 206, en El Tezal, y recibir información sobre sus equipos de golf. ¡Gracias!";
     let referral="";
     try{
-      const code=new URLSearchParams(window.location.search).get("ref");
-      if(code&&/^[a-z0-9_-]{1,48}$/i.test(code))referral=code.toUpperCase();
-    }catch{/* no referral */}
+      let code=new URLSearchParams(window.location.search).get("ref");
+      if(!code){
+        const stored=JSON.parse(localStorage.getItem("upDownAffiliateReferral")||"null");
+        if(stored&&Number(stored.expires_at)>Date.now())code=stored.code;
+      }
+      if(code&&/^[a-z0-9_-]{1,48}$/i.test(String(code)))referral=String(code).toUpperCase();
+    }catch{/* private browsing can disable storage */}
     return "https://wa.me/526243554700?text="+encodeURIComponent(msg+(referral?"\nReferencia: "+referral:""));
   }
   const iconPin='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.7"/></svg>';
