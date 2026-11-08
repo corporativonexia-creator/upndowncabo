@@ -200,10 +200,10 @@
   flex: none !important;
   border: 1px solid rgba(255,255,255,.16) !important;
   border-radius: 19px !important;
-  background: #2f6f5b !important;
+  background: #f0eee8 !important;
   overflow: hidden !important;
   text-align: left !important;
-  box-shadow: 0 14px 30px rgba(5,24,18,.16) !important;
+  box-shadow: 0 12px 26px rgba(20,62,53,.10) !important;
 }
 #updown-store.uds-preview #udsCategoryGrid > .uds-category-tile:last-child {
   grid-column: span 2 !important;
