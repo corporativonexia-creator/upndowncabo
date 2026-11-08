@@ -3,6 +3,7 @@
 import { StoreSearch } from "./responsive/store-search";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { storefrontCopy } from "./storefront-copy";
 import { VS_GOLF_INSTAGRAM, VS_GOLF_LOGO } from "./vs-golf";
@@ -107,7 +108,39 @@ function SharedLegacyStorefront({ previewMode }: { previewMode: boolean }) {
 }
 
 export default function StorefrontParity({ previewMode = false }: { previewMode?: boolean }) {
+  const router=useRouter();
   const [deviceMode, setDeviceMode] = useState<StorefrontDeviceMode | null>(null);
+  useEffect(()=>{
+    if(!previewMode)return;
+    const seen=new Set<string>();
+    const productPath=(event:Event)=>{
+      const value=(event as CustomEvent<{url?:string}>).detail?.url;
+      if(!value)return null;
+      try{
+        const parsed=new URL(value,window.location.origin);
+        if(parsed.origin!==window.location.origin||!parsed.pathname.startsWith("/vista-previa/producto/"))return null;
+        return parsed.pathname+parsed.search;
+      }catch{return null;}
+    };
+    const navigate=(event:Event)=>{
+      const path=productPath(event);
+      if(!path)return;
+      event.preventDefault();
+      router.push(path);
+    };
+    const prefetch=(event:Event)=>{
+      const path=productPath(event);
+      if(!path||seen.has(path)||seen.size>=12)return;
+      seen.add(path);
+      router.prefetch(path);
+    };
+    window.addEventListener("updown:product-navigate",navigate);
+    window.addEventListener("updown:product-prefetch",prefetch);
+    return ()=>{
+      window.removeEventListener("updown:product-navigate",navigate);
+      window.removeEventListener("updown:product-prefetch",prefetch);
+    };
+  },[router,previewMode]);
   useEffect(() => {
     const syncDeviceMode = () => setDeviceMode(getStorefrontDeviceModeFromWindow());
     syncDeviceMode(); window.addEventListener("resize", syncDeviceMode);
