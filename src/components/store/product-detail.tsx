@@ -364,6 +364,10 @@ export default function ProductDetail({ product, preview }: { product: Shareable
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="10" cy="20" r="1.2" fill="currentColor"/><circle cx="18" cy="20" r="1.2" fill="currentColor"/></svg>
             </button>
           </div>
+          {preview && <a className="ud-product-visit-link" href={navHref("udsVisit")}>
+            <span aria-hidden="true">⌖</span>
+            ¿Prefieres conocer el equipo en persona? <strong>Cómo llegar a la tienda</strong>
+          </a>}
           {cartMessage && <p className="ud-product-feedback" role="status">{cartMessage}</p>}
           {added && <a className="ud-product-to-cart" href={catalogHref}>Seguir explorando productos</a>}
         </section>
