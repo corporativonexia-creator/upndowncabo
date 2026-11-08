@@ -160,6 +160,28 @@
     applyFilters();
     localizeStaticDom(currentLanguage);
     localizeWhatsAppLinks(currentLanguage);
+    // From independent product pages, keep smart search and the shared cart navigable.
+    if(PREVIEW_CATALOG && !window.__UPDOWN_PREVIEW_ENTRY_ACTION_DONE__){
+      const params=new URLSearchParams(window.location.search);
+      const openCartRequested=params.get("cart")==="1";
+      const searchRequested=Boolean(params.get("q")?.trim());
+      if(openCartRequested||searchRequested){
+        window.__UPDOWN_PREVIEW_ENTRY_ACTION_DONE__=true;
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          if(openCartRequested){
+            openCart();
+            const clean=new URL(window.location.href);
+            clean.searchParams.delete("cart");
+            window.history.replaceState(window.history.state,"",clean.pathname+clean.search+clean.hash);
+          } else {
+            el("udsCatalog")?.scrollIntoView({
+              behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
+              block:"start"
+            });
+          }
+        }));
+      }
+    }
   }
 
   function restoreCatalogCache(){
