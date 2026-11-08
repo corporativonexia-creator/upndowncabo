@@ -3,7 +3,7 @@
 .ud-product-header{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:86px;padding:16px max(22px,calc((100vw - 1200px)/2));border-bottom:1px solid rgba(20,62,53,.13);background:#fbfaf7}
 .ud-product-brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;color:var(--ud-dark);font:700 19px/1 Georgia,serif;letter-spacing:.11em}
 .ud-product-brand small{display:block;margin-top:7px;font:700 9px/1.1 Inter,Arial,sans-serif;letter-spacing:.22em;color:var(--ud-muted)}
-.ud-product-symbol{font:700 45px/.8 Georgia,serif;color:var(--ud-dark)}
+.ud-product-symbol{display:block;width:52px;height:27px;flex:0 0 52px;color:var(--ud-dark)}.ud-product-symbol svg{display:block;width:100%;height:100%;fill:currentColor}
 .ud-product-back{font-size:12px;font-weight:750;color:var(--ud-dark);text-decoration:none}
 .ud-product-back:hover,.ud-product-breadcrumb a:hover{text-decoration:underline}
 .ud-product-container{width:min(1200px,calc(100% - 40px));margin:auto;padding:28px 0 90px}
@@ -46,5 +46,5 @@
 .ud-product-specs dl>div{display:grid;grid-template-columns:44% 1fr;gap:14px;padding:7px 0;border-bottom:1px solid rgba(20,62,53,.08)}
 .ud-product-specs dt{color:var(--ud-muted);text-transform:capitalize}
 .ud-product-specs dd{margin:0;color:var(--ud-dark);font-weight:600;word-break:break-word}
-@media(max-width:760px){.ud-product-header{padding:16px 17px;min-height:70px}.ud-product-brand{font-size:14px}.ud-product-symbol{font-size:32px}.ud-product-back{font-size:11px}.ud-product-container{width:calc(100% - 28px);padding:22px 0 54px}.ud-product-breadcrumb{margin-bottom:20px}.ud-product-layout{grid-template-columns:1fr;gap:22px}.ud-product-main-image{border-radius:18px;aspect-ratio:1.06/1}.ud-product-copy h1{font-size:clamp(34px,9vw,45px)}.ud-product-sharing{padding:17px}.ud-product-share-actions button{flex:1 1 auto}}
+@media(max-width:760px){.ud-product-header{padding:16px 17px;min-height:70px}.ud-product-brand{font-size:14px}.ud-product-symbol{width:37px;height:23px;flex-basis:37px}.ud-product-back{font-size:11px}.ud-product-container{width:calc(100% - 28px);padding:22px 0 54px}.ud-product-breadcrumb{margin-bottom:20px}.ud-product-layout{grid-template-columns:1fr;gap:22px}.ud-product-main-image{border-radius:18px;aspect-ratio:1.06/1}.ud-product-copy h1{font-size:clamp(34px,9vw,45px)}.ud-product-sharing{padding:17px}.ud-product-share-actions button{flex:1 1 auto}}
 @media(prefers-reduced-motion:reduce){.ud-product-page *{scroll-behavior:auto!important;transition:none!important}}
