@@ -165,7 +165,10 @@
       const params=new URLSearchParams(window.location.search);
       const openCartRequested=params.get("cart")==="1";
       const searchRequested=Boolean(params.get("q")?.trim());
-      if(openCartRequested||searchRequested){
+      const hashId=decodeURIComponent(window.location.hash.slice(1));
+      const allowedHashes=new Set(["udsCatalog","udsCategories","udsNew","udsServices","udsGolfClasses","udsCourses","udsJournal"]);
+      const anchor=allowedHashes.has(hashId)?el(hashId):null;
+      if(openCartRequested||searchRequested||anchor){
         window.__UPDOWN_PREVIEW_ENTRY_ACTION_DONE__=true;
         requestAnimationFrame(()=>requestAnimationFrame(()=>{
           if(openCartRequested){
@@ -174,7 +177,7 @@
             clean.searchParams.delete("cart");
             window.history.replaceState(window.history.state,"",clean.pathname+clean.search+clean.hash);
           } else {
-            el("udsCatalog")?.scrollIntoView({
+            (anchor|| (searchRequested?el("udsCatalog"):null))?.scrollIntoView({
               behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
               block:"start"
             });
