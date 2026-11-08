@@ -101,3 +101,9 @@
  .ud-product-actions a,.ud-product-actions button{padding:8px 5px;font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.ud-product-page *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Specific choice required when a parent product has multiple active variants. */
+.ud-product-variant-picker { margin: 4px 0 20px; padding: 16px 13px; background: #eff4f1; border: 1px solid rgba(20,62,53,.14); border-radius: 12px; }
+.ud-product-variant-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.ud-product-variant-options a { display: inline-flex; align-items: center; min-height: 37px; padding: 8px 12px; border-radius: 999px; background: #fff; border: 1px solid rgba(20,62,53,.16); color: #143e35; font-size: 11px; font-weight: 800; text-decoration: none; }
+.ud-product-variant-options a:hover,.ud-product-variant-options a:focus-visible { border-color: #2f6f5b; background: #e6ede9; }
