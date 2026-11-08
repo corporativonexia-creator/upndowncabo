@@ -5,7 +5,7 @@ import { MobileHeader } from "./mobile-header";
 import { HeroVideo } from "./hero-video";
 
 /** Mobile/tablet presentation shell. Shared storefront controls/data live above this layer. */
-export function MobileStorefront({ children }: { children: ReactNode }) {
+export function MobileStorefront({ children, previewMode = false }: { children: ReactNode; previewMode?: boolean }) {
   useLayoutEffect(() => {
     document.getElementById("udsMobileCatalogPager58")?.remove();
   }, []);
@@ -143,7 +143,7 @@ export function MobileStorefront({ children }: { children: ReactNode }) {
 
         .uds-device-ux--mobile #updown-store main{margin-top:0!important;padding-top:var(--uds-mobile-header-height)!important}
       `}</style>
-      <MobileHeader />
+      <MobileHeader previewMode={previewMode} />
       {children}
       <HeroVideo />
     </div>
