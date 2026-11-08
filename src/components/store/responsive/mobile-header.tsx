@@ -3,10 +3,9 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { getStorefrontText, type StorefrontLanguage } from "../storefront-copy";
+import { VS_GOLF_INSTAGRAM, VS_GOLF_LOGO, VS_GOLF_SERVICE_KEY } from "../vs-golf";
 
 type MobileService = { key: string; title_es: string; title_en: string; image_url: string | null };
-const VS_GOLF_SERVICE_KEY = "27a30f4f-018e-460a-9b7d-b1dc1488143f";
-const VS_GOLF_LOGO = "https://xlkjztcxqlsegboivccg.supabase.co/storage/v1/object/public/site-content/services/0811b780-f34c-4b44-8816-50c04cecde0b/37180710-f81a-4b6f-aac3-a6bf5720bcff.png";
 declare global {
   interface Window {
     __UPDOWN_SERVICES__?: MobileService[];
@@ -32,7 +31,7 @@ function scrollToId(id: string) {
 
 function openSearch() { window.dispatchEvent(new Event("updown:open-search")); }
 
-export function MobileHeader() {
+export function MobileHeader({ previewMode = false }: { previewMode?: boolean }) {
   const [services, setServices] = useState<MobileService[] | null>(null);
   const [language, setLanguage] = useState<StorefrontLanguage>("es");
   const [, setCopyVersion] = useState(0);
@@ -86,7 +85,7 @@ export function MobileHeader() {
 
   return (
     <>
-      <header className="uds-native-mobile-header" aria-label="Navegación móvil">
+      <header className={`uds-native-mobile-header${previewMode ? " uds-preview-mobile-header" : ""}`} aria-label="Navegación móvil">
         <a className="uds-native-mobile-logo" href="#udsHome" aria-label="UP AND DOWN, inicio">
           <svg viewBox="0 0 841.89 292.21" aria-hidden="true" focusable="false">
             <path d="M487.69,0c2.11,0,4.84.51,7.24.67,19.23,1.24,37.18,3.93,54.09,14.38l19.95,12.32c7.23,4.47,14.2,8.69,21.96,12.09,10.35,4.66,21.08,6.28,32.42,6.4l23.96.23-19.01,16.47c-3.62,3.13-7.52,5.51-11.66,7.98-17.32,10.34-35.07,8.55-54.04,3.73s-38.9-5.76-58.5-2.1c-7.43,1.39-14.49,2.98-21.75,5.63v131.14s54.16,17.53,54.16,17.53l68.64,21.12c13.32,3.67,26.34,6.32,39.98,8.62,57.26,9.69,111.58,7.83,166.77-10.79,2.46-.83,4.53,2.25,4.66,3.89.2,2.48-1.01,4.22-3.46,5.14-56.31,21.08-117.16,27.27-176.73,17.8-26.3-4.18-52.32-10.57-77.62-18.8l-91.08-29.62c-12.62-4.11-25.15-7.06-38.06-10.03-35.81-8.22-72.32-10.61-109.03-7.48-32.44,2.77-64.62,8.14-96.1,16.49l-128.11,34c-16.24,4.31-32.54,7.18-49.17,8.54l-14.51,1.18c-2.24.18-3.66-2.82-3.67-4.56s1.04-4.35,3.29-4.61c20.48-2.39,40.47-5.84,60.49-10.92,9.16-2.33,17.81-4.43,26.85-7.27l92.58-29.06c10.18-3.2,20.07-5.54,30.44-8.07,21.58-5.27,43.17-9.15,65.32-11.77,32.47-3.84,64.88-3.58,97.21.82,9.86,1.34,19.13,2.61,28.74,4.94l36.28,8.8.07-22.1.09-91.09-.14-91.6h17.45Z" fill="currentColor" />
@@ -102,7 +101,9 @@ export function MobileHeader() {
           {available("ghin") && <button type="button" className="uds-native-service-logo" disabled={services === null} aria-label={language === "en" ? "View GHIN service" : "Ver servicio GHIN"} onClick={() => navigateService("ghin")}>
             <Image src="/assets/usga-ghin.png" width={34} height={34} sizes="40px" alt="USGA GHIN" />
           </button>}
-          {available(VS_GOLF_SERVICE_KEY) && <button type="button" className="uds-native-service-logo is-vs-golf" disabled={services === null} aria-label={language === "en" ? "VS Golf: Putters and Wedges service" : "VS Golf: servicio de Putters y Wedges"} onClick={() => navigateService(VS_GOLF_SERVICE_KEY)}>
+          {previewMode ? <a className="uds-native-service-logo is-vs-golf" href={VS_GOLF_INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="VS GOLF en Instagram">
+            <Image src={VS_GOLF_LOGO} width={34} height={34} sizes="40px" alt="VS GOLF" />
+          </a> : available(VS_GOLF_SERVICE_KEY) && <button type="button" className="uds-native-service-logo is-vs-golf" disabled={services === null} aria-label={language === "en" ? "VS Golf: Putters and Wedges service" : "VS Golf: servicio de Putters y Wedges"} onClick={() => navigateService(VS_GOLF_SERVICE_KEY)}>
             <Image src={VS_GOLF_LOGO} width={34} height={34} sizes="40px" alt="VS Golf" />
           </button>}
           <button type="button" aria-label={t("mobile.search")} onClick={() => { setMenuOpen(false); openSearch(); }}>
