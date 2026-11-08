@@ -6,7 +6,9 @@ export function productMetadata(product: ShareableProduct | null, preview: boole
   const title = product.name + " | UP AND DOWN Cabo";
   const description = ("Descubre " + product.name + ". Consulta fotografías, características, precio y disponibilidad en UP AND DOWN Cabo.").slice(0, 190);
   const url = productPageUrl(product.key, preview);
-  const image = product.images[0];
+  // Use the real product photo when present; otherwise create a branded Open Graph card.
+  // Both destinations remain behind the launch gate until the shop opens publicly.
+  const image = product.images[0] || productPageUrl(product.key, false) + "/social-card";
   return {
     metadataBase: new URL("https://upndowncabo.com"),
     title,
