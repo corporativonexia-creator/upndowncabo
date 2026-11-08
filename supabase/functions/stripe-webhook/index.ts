@@ -70,7 +70,7 @@ async function releaseReservation(session:any,reason:string){
   if(!token) return {released:false,legacy:true};
 
   const {data,error}=await supabase.rpc(
-    "release_checkout_reservation",
+    session?.metadata?.checkout_version==="v2" ? "release_checkout_inventory_v2" : "release_checkout_reservation",
     {
       p_reservation_token:token,
       p_reason:reason
@@ -106,6 +106,31 @@ async function processPaidCheckout(event:Stripe.Event,session:any){
       ignored:true,
       reason:`payment_status_${session.payment_status || "unknown"}`
     };
+  }
+
+  // Dedicated V2 checkout: exact variant stock and order rows are finalized in one
+  // transaction. Historic sessions continue through the unchanged legacy RPC.
+  if(session?.metadata?.checkout_version==="v2"){
+    const {data,error}=await supabase.rpc("process_checkout_inventory_v2",{
+      p_stripe_event_id:event.id,
+      p_event_type:event.type,
+      p_stripe_session_id:session.id,
+      p_payment_intent_id:idOf(session.payment_intent),
+      p_checkout_reference:
+        typeof session.client_reference_id==="string"
+          ? session.client_reference_id
+          : session?.metadata?.checkout_reference || null,
+      p_customer_email:session?.customer_details?.email || null,
+      p_customer_name:customerName(session),
+      p_customer_phone:session?.customer_details?.phone || null,
+      p_currency:typeof session.currency==="string" ? session.currency.toUpperCase() : "MXN",
+      p_amount_subtotal:typeof session.amount_subtotal==="number" ? session.amount_subtotal/100 : 0,
+      p_amount_total:typeof session.amount_total==="number" ? session.amount_total/100 : 0,
+      p_stripe_created_at:new Date(event.created*1000).toISOString(),
+      p_reservation_token:reservationToken
+    });
+    if(error)throw error;
+    return data;
   }
 
   const affiliateSellerId=
