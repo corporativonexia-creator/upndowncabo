@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { findShareableProduct } from "@/lib/storefront/get-shareable-product";
+import { findRelatedProducts } from "@/lib/storefront/get-related-products";
 import { productMetadata } from "@/lib/storefront/product-metadata";
 import ProductDetail from "@/components/store/product-detail";
 
@@ -15,5 +16,6 @@ export default async function PrivateProductPage({ params }: Props) {
   await requireRole("admin", "/vista-previa");
   const product = await findShareableProduct((await params).productKey);
   if (!product) notFound();
-  return <ProductDetail product={product} preview />;
+  const related = await findRelatedProducts(product);
+  return <ProductDetail product={product} related={related} preview />;
 }
