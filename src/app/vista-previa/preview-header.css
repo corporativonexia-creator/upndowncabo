@@ -943,3 +943,74 @@
     font-size: 12px;
   }
 }
+
+/* Preview-only cart ergonomics: fixed header remains clickable above the backdrop. */
+@media(min-width:1024px){
+  #updown-store.uds-preview .uds-header{
+    z-index:2147483000!important;
+  }
+  #updown-store.uds-preview #udsOverlay{
+    top:94px!important;
+    z-index:2147482990!important;
+  }
+  #updown-store.uds-preview #udsCart{
+    position:fixed!important;
+    top:94px!important;
+    bottom:0!important;
+    right:0!important;
+    height:calc(100dvh - 94px)!important;
+    max-height:calc(100dvh - 94px)!important;
+    z-index:2147482995!important;
+  }
+  #updown-store.uds-preview #udsCart .uds-cart-head{
+    position:sticky!important;top:0!important;
+    z-index:3!important;display:flex!important;
+    flex:none!important;align-items:center!important;
+    justify-content:space-between!important;
+    min-height:66px!important;padding:11px 17px!important;
+    background:#fff!important;border-bottom:1px solid rgba(20,62,53,.12)!important;
+  }
+  #updown-store.uds-preview #udsCloseCart{
+    position:relative!important;
+    top:auto!important;right:auto!important;
+    display:grid!important;place-items:center!important;
+    flex:0 0 43px!important;
+    width:43px!important;height:43px!important;
+    border:1px solid rgba(20,62,53,.16)!important;
+    border-radius:50%!important;background:#fff!important;
+    color:#143e35!important;opacity:1!important;
+    visibility:visible!important;pointer-events:auto!important;
+    z-index:4!important;
+  }
+}
+#updown-store.uds-preview #udsCartList{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  min-height:0!important;
+  overscroll-behavior:contain!important;
+}
+#updown-store.uds-preview #udsCartList .uds-cart-item{
+  min-width:0!important;
+  grid-template-columns:76px minmax(0,1fr) 28px!important;
+}
+#updown-store.uds-preview #udsCartList .uds-cart-item>div{
+  min-width:0!important;overflow:hidden!important;
+}
+#updown-store.uds-preview #udsCartList .uds-cart-item img{
+  display:block!important;width:76px!important;height:72px!important;
+  max-width:76px!important;max-height:72px!important;
+  min-width:76px!important;min-height:72px!important;
+  background:#e7f0ea!important;object-fit:contain!important;
+  font-size:0!important;line-height:0!important;
+  overflow:hidden!important;
+}
+#updown-store.uds-preview #udsCartList .uds-cart-item h4{
+  overflow-wrap:anywhere!important;word-break:normal!important;
+  font-size:12px!important;line-height:1.32!important;
+}
+#updown-store.uds-preview #udsCategories{
+  scroll-margin-top:114px!important;
+}
+@media(max-width:760px){
+  #updown-store.uds-preview #udsCategories{scroll-margin-top:76px!important;}
+}
