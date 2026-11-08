@@ -1553,3 +1553,62 @@
     font-size:19px!important;
   }
 }
+
+/* Stage 7.2: simple, consistent titles; no duplicated service badges. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-icon,
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-ghin-logo {
+  display:none!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-ghin-layout{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title h3 {
+  display:block!important;
+  margin:0!important;
+  font-family:"Cormorant Garamond",Georgia,serif!important;
+  font-weight:700!important;
+  font-size:clamp(24px,2.15vw,32px)!important;
+  line-height:1.04!important;
+  letter-spacing:0!important;
+  max-width:100%!important;
+  overflow-wrap:break-word!important;
+  text-wrap:balance;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title small {
+  display:block!important;
+  margin:0 0 7px!important;
+  font:800 10px/1.2 Inter,Arial,sans-serif!important;
+  letter-spacing:.065em!important;
+  text-transform:uppercase!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head > div {
+  padding-bottom:22px!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.is-open .uds-service-title h3 {
+  font-family:"Cormorant Garamond",Georgia,serif!important;
+  font-weight:700!important;
+  letter-spacing:0!important;
+  line-height:1.07!important;
+  text-wrap:balance;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices {
+  scroll-margin-top:110px!important;
+}
+@media(max-width:700px){
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices {scroll-margin-top:78px!important}
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title h3 {
+    font-size:clamp(19px,4.7vw,25px)!important;
+    line-height:1.05!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-title small {
+    font-size:8px!important;
+    line-height:1.25!important;
+  }
+  #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:not(.is-open) .uds-service-head > div{
+    padding:12px 12px 16px!important;
+  }
+}
