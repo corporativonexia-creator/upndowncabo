@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/require-role";
 import StorefrontParity from "@/components/store/storefront-parity";
+import "./preview-header.css";
 
 export const metadata: Metadata = {
   title: "Vista previa privada · UP AND DOWN",
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 
 export default async function StorefrontPreviewPage() {
   await requireRole("admin", "/vista-previa");
-  return <StorefrontParity />;
+  return <StorefrontParity previewMode />;
 }
