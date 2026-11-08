@@ -34,7 +34,7 @@ export async function findShareableProduct(key: string): Promise<ShareableProduc
   const parentId = variant ? text(variant.product_id) : lookup.id;
   if (!parentId) return null;
   const result = await db.from("products")
-    .select("id,name,slug,sku,brand,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
+    .select("id,name,slug,sku,brand,model,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
     .eq("id", parentId).eq("status", "active").eq("online_visible", true).maybeSingle();
   if (result.error || !result.data) return null;
   const parent = result.data as Record<string, unknown>;
@@ -67,6 +67,8 @@ export async function findShareableProduct(key: string): Promise<ShareableProduc
     key: keyStable,
     name: displayName,
     brand: text(parent.brand) || null,
+    model: text(parent.model) || null,
+    shortDescription: text(parent.short_description),
     sku: (variant ? text(variant.sku) : "") || text(parent.sku) || null,
     description: text(parent.description) || text(parent.short_description),
     condition: text(parent.item_condition),
