@@ -1158,9 +1158,68 @@
   if(!count){grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No products match these filters.":"No encontramos productos con esos filtros."}</div>`;return}
   filteredProducts.forEach(p=>{const card=document.createElement("article");card.className="uds-card";card.innerHTML=cardHtml(p);bindCard(card,p);grid.appendChild(card)})
 }
+  function previewIsNewArrival(product,now=Date.now()){
+    if(!product.new_arrival_enabled||!product.new_arrival_at)return false;
+    const start=Date.parse(product.new_arrival_at);
+    return Number.isFinite(start)&&start<=now&&now-start<7*86400000;
+  }
+  function previewNewArrivalCards(root,items,label,key){
+    const group=document.createElement("section");
+    group.className="uds-preview-new-group";
+    group.setAttribute("aria-label",label);
+    const header=document.createElement("div");
+    header.className="uds-preview-new-group-head";
+    const title=document.createElement("h3");title.textContent=label;
+    const arrows=document.createElement("div");arrows.className="uds-preview-new-controls";
+    const track=document.createElement("div");
+    track.className="uds-preview-new-track";
+    track.id="udsPreviewNewTrack"+key;
+    track.tabIndex=0;
+    track.setAttribute("aria-label",label);
+    [-1,1].forEach(direction=>{
+      const button=document.createElement("button");
+      button.type="button";
+      button.textContent=direction===-1?"‹":"›";
+      button.setAttribute("aria-label",(direction===-1?"Anterior":"Siguiente")+" · "+label);
+      button.addEventListener("click",()=>track.scrollBy({
+        left:direction*Math.max(210,track.clientWidth*.9),
+        behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"
+      }));
+      arrows.appendChild(button);
+    });
+    header.append(title,arrows);
+    group.append(header,track);
+    if(!items.length){
+      const note=document.createElement("p");
+      note.className="uds-preview-new-empty";
+      note.textContent=key==="New"
+        ?(currentLanguage==="en"?"Recently published products will appear here for seven days.":"Los artículos nuevos aparecerán aquí durante siete días.")
+        :(currentLanguage==="en"?"No current offers.":"No hay ofertas activas por ahora.");
+      track.replaceWith(note);arrows.hidden=true;
+    }else{
+      for(const product of items){
+        const card=document.createElement("article");
+        card.className="uds-card";
+        card.innerHTML=cardHtml(product);
+        bindCard(card,product);
+        track.appendChild(card);
+      }
+    }
+    root.appendChild(group);
+  }
   function renderNewArrivals(){
-    const rail=el("udsNewRail");
-    if(!rail)return;
+    const rail=el("udsNewRail");if(!rail)return;
+    if(PREVIEW_CATALOG){
+      const now=Date.now();
+      const arrivals=products.filter(p=>previewIsNewArrival(p,now))
+        .sort((a,b)=>Date.parse(b.new_arrival_at)-Date.parse(a.new_arrival_at)||String(a.id).localeCompare(String(b.id)));
+      const offers=products.filter(p=>p.sale_price!=null&&Number(p.sale_price)>0&&Number(p.sale_price)<Number(p.price))
+        .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+      rail.replaceChildren();rail.classList.add("uds-preview-new-rails");
+      previewNewArrivalCards(rail,arrivals,currentLanguage==="en"?"New arrivals":"Novedades","New");
+      if(offers.length)previewNewArrivalCards(rail,offers,currentLanguage==="en"?"Offers":"Ofertas","Offers");
+      return;
+    }
     const offers=[...products]
       .filter(p=>p.sale_price!==null&&Number(p.sale_price)<Number(p.price))
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
