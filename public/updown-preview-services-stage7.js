@@ -154,12 +154,36 @@
     root.classList.add("uds-preview-services-stage7");
   }
 
+  function updateMobileServiceMenu(){
+    const menu=document.getElementById("udsMobileMenu53");
+    if(!menu)return;
+    for(const btn of menu.querySelectorAll(".uds53-group .uds53-sub > button")){
+      const label=(btn.textContent||"").trim().toLowerCase();
+      if(["reparación","repair"].includes(label)){
+        btn.textContent=lang()==="en"?"Repair and maintenance":"Reparación y mantenimiento";
+      }else if(["intercambios","trade-ins"].includes(label)){
+        btn.textContent=lang()==="en"?"Trade-ins and consignment":"Intercambios y consignación";
+      }else if(["mantenimiento","maintenance"].includes(label)){
+        btn.hidden=true;
+      }else if(["restauración de putters","putter restoration"].includes(label)){
+        btn.textContent=lang()==="en"?"Lie and loft · Coming soon":"Ajuste de lie y loft · Próximamente";
+      }
+    }
+  }
+  function onMobileMenuClick(event){
+    if(event.target.closest("#udsMenuButton, #udsDockMenu")){
+      requestAnimationFrame(updateMobileServiceMenu);
+    }
+  }
+  root.addEventListener("click",onMobileMenuClick,true);
+
   const onReady=()=>apply();
   window.addEventListener("updown:services-ready",onReady);
   window.addEventListener("updown:language-change",onReady);
   const dispose=()=>{
     window.removeEventListener("updown:services-ready",onReady);
     window.removeEventListener("updown:language-change",onReady);
+    root.removeEventListener("click",onMobileMenuClick,true);
     window.removeEventListener("updown:preview-services-dispose",dispose);
     if(window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__===dispose){
       window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__=null;
