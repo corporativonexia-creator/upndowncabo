@@ -37,6 +37,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
   const [zoomed, setZoomed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [cartMessage, setCartMessage] = useState("");
+  const [variants, setVariants] = useState<Array<{id:string;title:string;stock:number}>>([]);
 
   useEffect(() => {
     const saved = existingAffiliate();
@@ -64,6 +65,22 @@ export default function ProductDetail({ product, preview }: { product: Shareable
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!product.hasVariants || product.variantId) return;
+    const endpoint = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    if (!endpoint || !key) return;
+    let cancelled = false;
+    const client = createClient(endpoint, key);
+    client.from("product_variants").select("id,title,sku,stock,is_active")
+      .eq("product_id",product.parentId).eq("is_active",true).order("sku")
+      .then(({data,error}) => {
+        if(cancelled||error)return;
+        setVariants((data||[]).map(v=>({id:String(v.id),title:String(v.title||v.sku||"Variante"),stock:Number(v.stock)||0})));
+      });
+    return ()=>{cancelled=true;};
+  }, [product.hasVariants,product.variantId,product.parentId]);
 
   const link = productPageUrl(product.key, preview, affiliate?.code || null);
   const whatsappMessage = shareText(product.name, link);
@@ -107,10 +124,8 @@ export default function ProductDetail({ product, preview }: { product: Shareable
 
   function addToCart() {
     if (product.stock <= 0) { setCartMessage("Este artículo está agotado."); return; }
-    if (product.variantId || product.hasVariants) {
-      // Product variants currently use advisor validation in the canonical storefront.
-      window.open(contactLink, "_blank", "noopener,noreferrer");
-      setCartMessage("Consulta esta variante con un asesor antes de comprar.");
+    if (product.hasVariants && !product.variantId) {
+      setCartMessage("Elige una variante específica antes de agregar este producto al carrito.");
       return;
     }
     try {
@@ -121,10 +136,12 @@ export default function ProductDetail({ product, preview }: { product: Shareable
       if (next > product.stock) { setAdded(false); setCartMessage("Ya alcanzaste las existencias disponibles."); return; }
       if (match) match.quantity = next;
       else cart.push({
-        id: product.id, name: product.name, slug: product.key, image: product.images[0] || "",
+        id: product.id, variant_id: product.variantId, parent_id: product.parentId,
+        name: product.name, slug: product.key, sku: product.sku, image: product.images[0] || "",
         price: product.price, currency: product.currency, stock: product.stock, quantity: 1, summary: product.category
       });
       localStorage.setItem("upDownCart", JSON.stringify(cart));
+      window.dispatchEvent(new Event("updown:cart-update"));
       setAdded(true);
       setCartMessage("✓ " + product.name + " · " + next + (next === 1 ? " pieza" : " piezas") + " en tu carrito.");
     } catch { setAdded(false); setCartMessage("No fue posible actualizar el carrito."); }
@@ -172,7 +189,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
   }
   const shortDescription = product.shortDescription || product.description || "Consulta con nuestro equipo sobre este producto.";
   const hasLongDescription = Boolean(product.shortDescription && product.description && product.shortDescription !== product.description);
-  const cartActionName = product.variantId || product.hasVariants ? "Consultar esta variante para comprar" : "Agregar al carrito";
+  const cartActionName = product.hasVariants && !product.variantId ? "Selecciona una variante" : "Agregar al carrito";
   const shopUrl = (preview ? "/vista-previa" : "/") + (affiliate?.code ? "?ref=" + encodeURIComponent(affiliate.code) : "");
   const galleryCount = Math.max(1, product.images.length);
   const galleryImage = product.images[active] || "/assets/category-placeholder.svg";
@@ -223,6 +240,15 @@ export default function ProductDetail({ product, preview }: { product: Shareable
           <dl className="ud-product-spec-grid">{(configure.length ? configure : [{ label: "Producto", value: product.name }]).map((entry, index) =>
             <div className="ud-product-spec" key={entry.label + index}><dt>{entry.label}</dt><dd>{entry.value}</dd></div>)}
           </dl>
+          {product.hasVariants && !product.variantId && <div className="ud-product-variant-picker">
+            <h2 className="ud-product-section-label">Elige tu variante</h2>
+            <div className="ud-product-variant-options">
+              {variants.map(v => <a key={v.id} href={productPageUrl(
+                (product.name.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0,50) || "producto") + "--v-" + v.id,
+                preview, affiliate?.code
+              )}>{v.title} · {v.stock > 0 ? v.stock + " pza." : "Agotado"}</a>)}
+            </div>
+          </div>}
           <h2 className="ud-product-section-label">Condición y disponibilidad</h2>
           <div className="ud-product-condition">
             <div className="ud-product-condition-row"><strong>{conditionLabel}</strong><span className={product.stock > 0 ? "ud-status-badge" : "ud-status-badge is-sold"}>{stockLabel}</span></div>
@@ -243,7 +269,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
           <div className="ud-product-actions">
             <a className="ud-product-trade" href={tradeLink} target="_blank" rel="noopener noreferrer">Intercambiar</a>
             <a className="ud-product-question" href={contactLink} target="_blank" rel="noopener noreferrer">Preguntar</a>
-            <button className="ud-product-cart" type="button" onClick={addToCart} disabled={product.stock <= 0} title={cartActionName} aria-label={cartActionName}>
+            <button className="ud-product-cart" type="button" onClick={addToCart} disabled={product.stock <= 0 || (product.hasVariants && !product.variantId)} title={cartActionName} aria-label={cartActionName}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="10" cy="20" r="1.2" fill="currentColor"/><circle cx="18" cy="20" r="1.2" fill="currentColor"/></svg>
             </button>
           </div>
