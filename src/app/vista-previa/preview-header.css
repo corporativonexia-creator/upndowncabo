@@ -871,3 +871,75 @@
   grid-column: 1 / -1 !important;
   width: 100% !important;
 }
+
+/* WEB 2.0 / Catalog pagination V5.2 — readable numeric size choices. */
+#updown-store.uds-preview #udsPreviewCatalogTools #udsPreviewPageSize {
+  display: block !important;
+  width: 94px !important;
+  min-width: 94px !important;
+  max-width: 94px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px 0 14px !important;
+  border: 1px solid rgba(20,62,53,.20) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  color: #143e35 !important;
+  font-family: Inter, Arial, sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  line-height: normal !important;
+  text-align: left !important;
+  text-overflow: clip !important;
+  -webkit-text-fill-color: #143e35 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+#updown-store.uds-preview #udsPreviewCatalogTools #udsPreviewPageSize option {
+  color: #143e35 !important;
+  background: #fff !important;
+  font: 600 14px/1.3 Arial,sans-serif !important;
+}
+#updown-store.uds-preview #udsMobileCatalogPager58 {
+  display: none !important;
+}
+#updown-store.uds-preview #udsCatalog {
+  scroll-margin-top: 92px !important;
+}
+#updown-store.uds-preview #udsPreviewCatalogPager .uds-preview-page-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+  font: 800 12px/1.35 Inter,Arial,sans-serif;
+  color: #143e35;
+  white-space: nowrap;
+}
+@media(max-width:760px) {
+  #updown-store.uds-preview #udsPreviewCatalogTools #udsPreviewPageSize {
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+    height: 44px !important;
+    font-size: 14px !important;
+  }
+  #updown-store.uds-preview #udsCatalog {
+    scroll-margin-top: 76px !important;
+  }
+  #updown-store.uds-preview #udsPreviewCatalogPager .uds-preview-page-controls {
+    width: 100% !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+  #updown-store.uds-preview #udsPreviewCatalogPager .uds-preview-page-controls > button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border-radius: 12px !important;
+  }
+  #updown-store.uds-preview #udsPreviewCatalogPager .uds-preview-page-status {
+    flex: 1 1 auto;
+    font-size: 12px;
+  }
+}
