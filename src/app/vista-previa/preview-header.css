@@ -1014,3 +1014,101 @@
 @media(max-width:760px){
   #updown-store.uds-preview #udsCategories{scroll-margin-top:76px!important;}
 }
+
+/* Stage 6 — Novedades: four visible cards, naturally swipable across all products. */
+#updown-store.uds-preview #udsNewRail.uds-preview-new-rails{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  overflow:visible!important;
+  margin:0!important;
+  padding:0!important;
+}
+#updown-store.uds-preview .uds-preview-new-group{
+  display:block;
+  width:100%;
+  min-width:0;
+  margin:0 0 28px;
+}
+#updown-store.uds-preview .uds-preview-new-group-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:0 0 13px;
+}
+#updown-store.uds-preview .uds-preview-new-group-head h3{
+  margin:0;color:#143e35;
+  font:700 clamp(19px,2vw,26px)/1.2 "Cormorant Garamond",Georgia,serif;
+}
+#updown-store.uds-preview .uds-preview-new-controls{
+  display:flex;align-items:center;gap:7px;
+}
+#updown-store.uds-preview .uds-preview-new-controls[hidden]{display:none!important}
+#updown-store.uds-preview .uds-preview-new-controls button{
+  display:grid!important;place-items:center!important;
+  width:40px!important;height:40px!important;min-height:40px!important;
+  min-width:40px!important;margin:0!important;padding:0!important;
+  border:1px solid rgba(20,62,53,.18)!important;border-radius:50%!important;
+  background:#fff!important;color:#143e35!important;
+  font:700 25px/1 Georgia,serif!important;
+  box-shadow:none!important;cursor:pointer;
+}
+#updown-store.uds-preview .uds-preview-new-controls button:hover{background:#e9f1ec!important}
+#updown-store.uds-preview .uds-preview-new-controls button:focus-visible,
+#updown-store.uds-preview .uds-preview-new-track:focus-visible{
+  outline:3px solid #c8a86b!important;outline-offset:3px!important;
+}
+#updown-store.uds-preview .uds-preview-new-track{
+  display:flex!important;flex-wrap:nowrap!important;gap:14px!important;
+  width:100%!important;min-width:0!important;margin:0!important;
+  padding:0 2px 14px!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  scroll-snap-type:x proximity;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-color:#b7d0c2 transparent;scrollbar-width:thin;
+  scroll-behavior:smooth;
+}
+#updown-store.uds-preview .uds-preview-new-track>.uds-card{
+  display:flex!important;flex:0 0 calc((100% - 42px)/4)!important;
+  width:calc((100% - 42px)/4)!important;min-width:0!important;
+  margin:0!important;height:auto!important;scroll-snap-align:start!important;
+  border-radius:15px!important;overflow:hidden!important;
+}
+#updown-store.uds-preview .uds-preview-new-track>.uds-card .uds-card-media{
+  width:100%!important;max-width:none!important;
+  aspect-ratio:1/1!important;height:auto!important;
+}
+#updown-store.uds-preview .uds-preview-new-track>.uds-card .uds-card-media img{
+  width:100%!important;height:100%!important;object-fit:contain!important;
+}
+#updown-store.uds-preview .uds-preview-new-empty{
+  margin:0;padding:22px 20px;border:1px solid #dce8df;border-radius:14px;
+  color:#587165;background:#f1f6f2;font-size:13px;line-height:1.5;
+}
+@media(min-width:701px) and (max-width:1030px){
+  #updown-store.uds-preview .uds-preview-new-track>.uds-card{
+    flex-basis:calc((100% - 28px)/3)!important;
+    width:calc((100% - 28px)/3)!important;
+  }
+}
+@media(max-width:700px){
+  #updown-store.uds-preview .uds-preview-new-group-head h3{font-size:21px}
+  #updown-store.uds-preview .uds-preview-new-controls button{
+    width:36px!important;min-width:36px!important;
+    height:36px!important;min-height:36px!important;
+  }
+  #updown-store.uds-preview .uds-preview-new-track{
+    gap:10px!important;
+    padding-bottom:12px!important;
+  }
+  #updown-store.uds-preview .uds-preview-new-track>.uds-card{
+    flex-basis:calc((100% - 10px)/2)!important;
+    width:calc((100% - 10px)/2)!important;
+    border-radius:13px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #updown-store.uds-preview .uds-preview-new-track{scroll-behavior:auto!important}
+}
+#updown-store.uds-preview .ud-product-breadcrumb .ud-product-return-link{font-weight:800;color:#143e35}
