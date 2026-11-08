@@ -1224,6 +1224,10 @@
       catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
     });
     b("WhatsApp",()=>window.open("https://wa.me/?text="+encodeURIComponent(productShareText(product,url)),"_blank","noopener,noreferrer"));
+    b(currentLanguage==="en"?"Copy link":"Copiar enlace",async()=>{
+      try{await navigator.clipboard.writeText(url);showToast(currentLanguage==="en"?"Product link copied.":"Enlace del producto copiado.");}
+      catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
+    });
     const direct=document.createElement("a");
     direct.href=url;direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
     direct.className="uds-preview-product-link";
