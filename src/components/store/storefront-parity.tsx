@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { storefrontCopy } from "./storefront-copy";
 import { VS_GOLF_INSTAGRAM, VS_GOLF_LOGO } from "./vs-golf";
+import { PREVIEW_CATEGORY_GROUPS, type PreviewCategoryGroup } from "./preview-category-config";
 import { legacyHomeMarkup } from "./legacy-home-markup";
 import { DesktopStorefront } from "./responsive/desktop-storefront";
 import { MobileStorefront } from "./responsive/mobile-storefront";
@@ -18,6 +19,7 @@ declare global {
     __UPDOWN_CHECKOUT_ENABLED__?: boolean;
     __UPDOWN_PARITY_BOOTED__?: boolean;
     __UPDOWN_PARITY_VERSION__?: string;
+    __UPDOWN_PREVIEW_CATEGORY_GROUPS__?: PreviewCategoryGroup[];
   }
 }
 
@@ -125,6 +127,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     window.__UPDOWN_SUPABASE_URL__ = process.env.NEXT_PUBLIC_SUPABASE_URL;
     window.__UPDOWN_SUPABASE_PUBLISHABLE_KEY__ = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     window.__UPDOWN_CHECKOUT_ENABLED__ = process.env.NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT === "true";
+    window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__ = previewMode ? PREVIEW_CATEGORY_GROUPS : undefined;
     window.__UPDOWN_SEARCH_STATUS__ = "loading";
     window.__UPDOWN_SEARCH_PRODUCTS__ = undefined;
     window.__UPDOWN_OPEN_SEARCH_PRODUCT__ = undefined;
@@ -155,8 +158,8 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     };
     script.onerror = () => { window.__UPDOWN_PARITY_BOOTED__ = false; console.error("UP AND DOWN: no fue posible cargar el runtime de paridad."); };
     document.body.appendChild(script);
-    return () => { window.dispatchEvent(new Event("updown:storefront-dispose")); copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
-  }, [deviceMode]);
+    return () => { window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__ = undefined; window.dispatchEvent(new Event("updown:storefront-dispose")); copyAbort.abort(); observer?.disconnect(); stopCoursePagination(); script.remove(); script.onload = null; script.onerror = null; };
+  }, [deviceMode, previewMode]);
 
   if (!deviceMode) return null;
   const storefront = <SharedLegacyStorefront previewMode={previewMode} />;
