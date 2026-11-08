@@ -42,7 +42,10 @@ export type ShareableProduct = {
   key: string;
   name: string;
   brand: string | null;
+  model: string | null;
   sku: string | null;
+  shortDescription: string;
+
   description: string;
   condition: string;
   category: string;
