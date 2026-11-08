@@ -202,6 +202,15 @@ Deno.serve(async (request: Request): Promise<Response> => {
     return jsonResponse({ error: "Método no permitido." }, 405);
   }
 
+  // Safe feature flag: disabled on the real shop until a signed-off payment test.
+  // Important: no inventory is reserved and no Stripe charge is possible while disabled.
+  if (Deno.env.get("UPDOWN_CHECKOUT_V2_ENABLED") !== "true") {
+    return jsonResponse({
+      error: "La pasarela de variantes está en validación. El carrito permanece guardado.",
+      code: "CHECKOUT_V2_DISABLED",
+    }, 503);
+  }
+
   let reservationToken: string | null = null;
   let stripeSessionId: string | null = null;
   let reservationReleased = false;
