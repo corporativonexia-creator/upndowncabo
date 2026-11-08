@@ -17,7 +17,8 @@
   const conditionLabels={new:"Nuevo",preowned:"Seminuevo",demo:"Demostración"};
   const conditionLabelsEn={new:"New",preowned:"Pre-owned",demo:"Demo"};
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
-  const CATALOG_CACHE_KEY="upDownCatalogCacheV3Variants";
+  const PREVIEW_CATEGORY_GROUPS=Array.isArray(window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__)?window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__:null;
+  const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2CategoriesV1":"upDownCatalogCacheV3Variants";
   const QUERY_TIMEOUT_MS=8000;
 
   function timeoutSignal(ms=QUERY_TIMEOUT_MS){
@@ -83,7 +84,42 @@
     openConcierge(product,"question");
   }
 
+  // In-memory commercial categories, strictly for /vista-previa.
+  // Preserve the original category on each listing; never update Supabase.
+  function applyPreviewCategoryGroups(){
+    if(!PREVIEW_CATEGORY_GROUPS?.length)return;
+    const sourceCategories=categories;
+    const categorySource=new Map(sourceCategories.map(c=>[String(c.slug||"").toLowerCase(),c]));
+    const bySource=new Map();
+    for(const group of PREVIEW_CATEGORY_GROUPS){
+      for(const slug of [...group.sources,group.slug])bySource.set(slug.toLowerCase(),group.slug);
+    }
+    const grouped=PREVIEW_CATEGORY_GROUPS.map((group,index)=>{
+      const mainSource=group.sources.map(slug=>categorySource.get(slug)).find(Boolean)
+        ||categorySource.get(group.slug);
+      return {
+        id:mainSource?.id||"preview:"+group.slug,
+        name:group.name_es,
+        name_en:group.name_en,
+        slug:group.slug,
+        image_url:mainSource?.image_url||null,
+        sort_order:index+1
+      };
+    });
+    const byDisplay=new Map(grouped.map(c=>[c.slug,c]));
+    products=products.map(p=>{
+      const source=p.original_categories||p.categories;
+      const groupSlug=bySource.get(String(source?.slug||"").toLowerCase());
+      const commercial=byDisplay.get(groupSlug);
+      return commercial
+        ? {...p,original_categories:source,categories:commercial}
+        : p;
+    });
+    categories=grouped;
+  }
+
   function renderCatalogState(){
+    applyPreviewCategoryGroups();
     window.__UPDOWN_SEARCH_STATUS__="ready";
     window.dispatchEvent(new Event("updown:catalog-ready"));
     filteredProducts=[...products];
@@ -1656,6 +1692,7 @@
   // Golf category names are shared terminology in both storefront languages.
   function categoryLabel(category){
     if(!category)return "Golf";
+    if(PREVIEW_CATEGORY_GROUPS?.length && category.name_en)return currentLanguage==="en"?category.name_en:category.name;
     const candidates=[category.slug,category.name].filter(Boolean).map(v=>normalizeSpecKey(v));
     if(candidates.includes("electronicos"))return currentLanguage==="en"?"Electronics":"Electrónicos";
     for(const key of candidates){if(CATEGORY_EN[key])return CATEGORY_EN[key]}
