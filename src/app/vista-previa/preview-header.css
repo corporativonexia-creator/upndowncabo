@@ -1,0 +1,152 @@
+/* Web 2.0 /vista-previa stage 2. Intentionally scoped to the private preview.
+   Do not apply header changes to the current public storefront. */
+
+@media (min-width: 1024px) {
+  #updown-store.uds-preview .uds-header {
+    background: rgba(248, 246, 242, .985) !important;
+    color: #143e35 !important;
+    border-bottom: 1px solid rgba(20, 62, 53, .16) !important;
+    box-shadow: 0 6px 24px rgba(20, 62, 53, .065) !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-topbar {
+    width: calc(100% - 32px) !important;
+    max-width: 1440px !important;
+    grid-template-columns: minmax(198px, 228px) minmax(0, 1fr) auto !important;
+    column-gap: clamp(10px, 1.2vw, 20px) !important;
+    color: #143e35 !important;
+    overflow: visible !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 9px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    flex: 0 1 auto !important;
+    color: #143e35 !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo .uds-original-vector-logo {
+    display: block !important;
+    width: 68px !important;
+    max-width: 68px !important;
+    height: 36px !important;
+    flex: 0 0 68px !important;
+    color: #143e35 !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo-copy,
+  #updown-store.uds-preview .uds-header .uds-logo-copy strong {
+    display: block !important;
+    color: #143e35 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo-copy {
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo-copy strong {
+    font-size: clamp(13px, 1.12vw, 17px) !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+    letter-spacing: .035em !important;
+    text-shadow: none !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-desktop-nav {
+    min-width: 0 !important;
+    gap: clamp(7px, .85vw, 15px) !important;
+    overflow: visible !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-desktop-nav a.uds-nav-link {
+    color: #143e35 !important;
+    font-size: clamp(9px, .71vw, 11px) !important;
+    font-weight: 750 !important;
+    letter-spacing: .035em !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-desktop-nav a.uds-nav-link:hover,
+  #updown-store.uds-preview .uds-header .uds-desktop-nav a.uds-nav-link:focus-visible {
+    color: #2f6f5b !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-top-actions,
+  #updown-store.uds-preview .uds-header .uds-lang-switch {
+    color: #143e35 !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-nav-ghin-icon,
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon {
+    box-sizing: border-box !important;
+    display: grid !important;
+    place-items: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
+    min-width: 36px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(20, 62, 53, .15) !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    box-shadow: 0 4px 12px rgba(20, 62, 53, .08) !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon {
+    background: #101010 !important;
+    text-decoration: none !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-nav-ghin-icon:hover,
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(20, 62, 53, .15) !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon:focus-visible {
+    outline: 3px solid #bc9b61 !important;
+    outline-offset: 3px !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1210px) {
+  #updown-store.uds-preview .uds-header .uds-topbar {
+    grid-template-columns: minmax(164px, 186px) minmax(0, 1fr) auto !important;
+    column-gap: 7px !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo .uds-original-vector-logo {
+    width: 49px !important;
+    max-width: 49px !important;
+    flex-basis: 49px !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo { gap: 5px !important; }
+  #updown-store.uds-preview .uds-header .uds-logo-copy strong { font-size: 12px !important; }
+  #updown-store.uds-preview .uds-header .uds-desktop-nav { gap: 5px !important; }
+  #updown-store.uds-preview .uds-header .uds-desktop-nav a.uds-nav-link { font-size: 8px !important; letter-spacing: 0 !important; }
+  #updown-store.uds-preview .uds-header .uds-nav-ghin-icon,
+  #updown-store.uds-preview .uds-header .uds-nav-vs-icon {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    flex-basis: 32px !important;
+  }
+}
+/* The native mobile header is outside #updown-store, hence its own preview-only class. */
+.uds-native-mobile-header.uds-preview-mobile-header a.uds-native-service-logo.is-vs-golf {
+  display: grid !important;
+  place-items: center !important;
+  text-decoration: none !important;
+  border-radius: 50% !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header a.uds-native-service-logo.is-vs-golf:focus-visible {
+  outline: 2px solid #b39459 !important;
+  outline-offset: 2px !important;
+}
