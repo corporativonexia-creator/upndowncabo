@@ -1031,7 +1031,11 @@
       <div class="uds-preview-page-controls">
         <button type="button" data-preview-page="${PREVIEW_CATALOG.page-1}" ${PREVIEW_CATALOG.page<=1?"disabled":""}
         aria-label="${currentLanguage==="en"?"Previous page":"Página anterior"}">‹ <span>${currentLanguage==="en"?"Previous":"Anterior"}</span></button>
-        ${previewPageButtons(pages)}
+        ${previewCatalogMode()==="mobile"
+          ? '<span class="uds-preview-page-status" aria-live="polite">'+
+            (currentLanguage==="en"?"Page ":"Página ")+PREVIEW_CATALOG.page+
+            (currentLanguage==="en"?" of ":" de ")+pages+'</span>'
+          : previewPageButtons(pages)}
         <button type="button" data-preview-page="${PREVIEW_CATALOG.page+1}" ${PREVIEW_CATALOG.page>=pages?"disabled":""}
         aria-label="${currentLanguage==="en"?"Next page":"Página siguiente"}"><span>${currentLanguage==="en"?"Next":"Siguiente"}</span> ›</button>
       </div>`:"";
