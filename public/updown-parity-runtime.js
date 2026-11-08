@@ -1860,12 +1860,32 @@
     return false;
   }
 
+  // Preview-only: retrieve every product in deterministic Supabase pages.
+  // The UI then paginates the filtered results without loading thousands of DOM cards.
+  async function fetchPreviewAllProducts(){
+    const all=[];
+    for(let offset=0;offset<10000;offset+=400){
+      const query=await db.from("products")
+        .select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
+        .eq("status","active").eq("online_visible",true)
+        .order("featured",{ascending:false})
+        .order("created_at",{ascending:false})
+        .order("id",{ascending:true})
+        .range(offset,offset+399).abortSignal(timeoutSignal());
+      if(query.error)return {data:null,error:query.error};
+      const batch=query.data||[];
+      all.push(...batch);
+      if(batch.length<400)return {data:all,error:null};
+    }
+    return {data:null,error:{message:"El catálogo excede el límite de sincronización de 10,000 productos. Se requiere ampliar la consulta."}};
+  }
+
   async function loadStore(){
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
       db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
-      db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
+      PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
     ]);
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
