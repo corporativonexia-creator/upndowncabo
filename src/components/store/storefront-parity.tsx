@@ -5,6 +5,7 @@ import { StoreSearch } from "./responsive/store-search";
 import { useEffect, useState } from "react";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { storefrontCopy } from "./storefront-copy";
+import { VS_GOLF_INSTAGRAM, VS_GOLF_LOGO } from "./vs-golf";
 import { legacyHomeMarkup } from "./legacy-home-markup";
 import { DesktopStorefront } from "./responsive/desktop-storefront";
 import { MobileStorefront } from "./responsive/mobile-storefront";
@@ -92,11 +93,18 @@ function installCoursePagination() {
 
 const storefrontMarkupWithoutAnnouncement = legacyHomeMarkup.replace(/\s*<div class="uds-announcement">[\s\S]*?<\/div>\s*/, "\n");
 
-function SharedLegacyStorefront() {
-  return <div id="updown-store" className="updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3" data-migration-phase="2B-UX3" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: storefrontMarkupWithoutAnnouncement }} />;
+// Only the admin-only /vista-previa route receives this navigation item.
+const previewVsGolfLink = `<a class="uds-nav-vs-icon" href="${VS_GOLF_INSTAGRAM}" target="_blank" rel="noopener noreferrer" aria-label="VS GOLF en Instagram" title="VS GOLF · Instagram"><img src="${VS_GOLF_LOGO}" alt="VS GOLF" loading="eager" /></a>`;
+const previewStorefrontMarkup = storefrontMarkupWithoutAnnouncement.replace(
+  '<a class="uds-nav-link" data-nav-key="classes"',
+  `${previewVsGolfLink}<a class="uds-nav-link" data-nav-key="classes"`,
+);
+
+function SharedLegacyStorefront({ previewMode }: { previewMode: boolean }) {
+  return <div id="updown-store" className={`updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3${previewMode ? " uds-preview" : ""}`} data-migration-phase="2B-UX3" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: previewMode ? previewStorefrontMarkup : storefrontMarkupWithoutAnnouncement }} />;
 }
 
-export default function StorefrontParity() {
+export default function StorefrontParity({ previewMode = false }: { previewMode?: boolean }) {
   const [deviceMode, setDeviceMode] = useState<StorefrontDeviceMode | null>(null);
   useEffect(() => {
     const syncDeviceMode = () => setDeviceMode(getStorefrontDeviceModeFromWindow());
@@ -151,8 +159,8 @@ export default function StorefrontParity() {
   }, [deviceMode]);
 
   if (!deviceMode) return null;
-  const storefront = <SharedLegacyStorefront />;
-  return <>{deviceMode === "mobile" ? <MobileStorefront>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>}<StoreSearch /></>;
+  const storefront = <SharedLegacyStorefront previewMode={previewMode} />;
+  return <>{deviceMode === "mobile" ? <MobileStorefront previewMode={previewMode}>{storefront}</MobileStorefront> : <DesktopStorefront>{storefront}</DesktopStorefront>}<StoreSearch /></>;
 }
 
 
