@@ -440,6 +440,25 @@
     return {changed,adjustments};
   }
 
+  // Stage 9: while Stripe is explicitly disabled, offer a real contact action
+  // rather than a checkout button that only shows an error. Preview route only.
+  function previewCartWhatsAppUrl(){
+    const heading=currentLanguage==="en"
+      ?"Hello UP AND DOWN Cabo! I'd like to ask about these items:"
+      :"¡Hola, UP AND DOWN Cabo! Quiero consultar estos artículos:";
+    const lines=cart.slice(0,20).map(item=>
+      "• "+String(item.name||"Artículo").slice(0,100)+" × "+Math.max(1,Number(item.quantity)||1)+
+      (item.sku?" · "+String(item.sku).slice(0,45):"")
+    );
+    if(cart.length>20)lines.push("… +"+(cart.length-20)+(currentLanguage==="en"?" more items":" artículos más"));
+    const reference=getStoredAffiliate()?.code;
+    const text=[heading,...lines,
+      currentLanguage==="en"?"Please confirm availability, price and purchase options.":"¿Me confirman disponibilidad, precios y opciones de compra?",
+      ...(reference?["Referencia: "+reference]:[])
+    ].join("\n");
+    return "https://wa.me/526243554700?text="+encodeURIComponent(text);
+  }
+
   function renderCart(){
     const units=cartUnits(),total=cartTotal();
 
@@ -455,7 +474,15 @@
     if(floatingCount)floatingCount.textContent=units;
     if(floatingTotal)floatingTotal.textContent=money(total);
     if(dockCount)dockCount.textContent=units;
-    if(checkoutButton)checkoutButton.disabled=!cart.length;
+    if(checkoutButton){
+      checkoutButton.disabled=!cart.length;
+      if(PREVIEW_CATALOG&&window.__UPDOWN_CHECKOUT_ENABLED__!==true){
+        checkoutButton.textContent=currentLanguage==="en"?"Ask about your order on WhatsApp":"Consultar pedido por WhatsApp";
+        checkoutButton.title=currentLanguage==="en"
+          ?"Online payment is not enabled yet."
+          :"El pago en línea está pendiente de habilitación.";
+      }
+    }
     if(cartTotalNode)cartTotalNode.textContent=money(total);
 
     if(!cartList)return;
@@ -2326,6 +2353,11 @@
   if(el("udsDockCart"))el("udsDockCart").onclick=openCart;
   if(el("udsCheckoutButton"))el("udsCheckoutButton").onclick=async()=>{
     if(!cart.length)return showToast(currentLanguage==="en"?"Your cart is empty.":"Tu carrito está vacío.");
+    if(PREVIEW_CATALOG&&window.__UPDOWN_CHECKOUT_ENABLED__!==true){
+      // Synchronous click gesture: not a payment, never mutates the cart.
+      window.open(previewCartWhatsAppUrl(),"_blank","noopener,noreferrer");
+      return;
+    }
     if(window.__UPDOWN_CHECKOUT_ENABLED__!==true){
       return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
