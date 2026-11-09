@@ -21,9 +21,11 @@ type Access = {
 };
 
 
+type PromotionMode = "percent" | "amount" | "final";
 type CartItem = {
   product: Product;
   quantity: number;
+  promotion?: { mode: PromotionMode; value: string };
 };
 
 type ShiftPayment = {
@@ -49,6 +51,11 @@ type ShiftSale = {
     product_name: string;
     unit_price: number | string;
     quantity: number;
+    line_subtotal?: number | string;
+    discount_amount?: number | string;
+    promotion_mode?: string | null;
+    promotion_value?: number | string | null;
+    promotional_unit_price?: number | string | null;
     line_total: number | string;
   }>;
   payments: ShiftPayment[];
@@ -112,6 +119,48 @@ function productPrice(product: Product) {
 function numeric(value: number | string | null | undefined) {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
+}
+
+// POS 2.1: display calculations only. Supabase re-derives prices securely.
+function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+function discountedUnitPrice(item: CartItem) {
+  const base = productPrice(item.product);
+  if (!item.promotion) return base;
+  const value = Number(item.promotion.value);
+  if (item.promotion.value.trim() === "" || !Number.isFinite(value) || value < 0) return NaN;
+  let price: number;
+  switch (item.promotion.mode) {
+    case "percent":
+      if (value > 100) return NaN;
+      price = roundMoney(base * (1 - value / 100));
+      break;
+    case "amount":
+      price = roundMoney(base - value);
+      break;
+    case "final":
+      price = roundMoney(value);
+      break;
+    default:
+      return NaN;
+  }
+  return price >= 0 && price <= base ? price : NaN;
+}
+function pos21Items(cart: CartItem[]) {
+  return cart.map(item => ({
+    product_id: item.product.parent_id || item.product.id,
+    ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
+    quantity: item.quantity,
+    ...(item.promotion ? {
+      promotion_mode: item.promotion.mode,
+      promotion_value: Number(item.promotion.value),
+    } : {}),
+  }));
+}
+const paymentMethods = ["cash", "card_terminal", "transfer", "other"] as const;
+function allowedDiscountFraction(role?: string | null) {
+  return role === "pos_admin" ? 0.25 : role === "supervisor" ? 0.10 : 0;
 }
 
 function parseMoneyText(value: string) {
@@ -291,6 +340,18 @@ export default function PosPage() {
     useState<ShiftPayment["method"]>("cash");
   const [paymentReference, setPaymentReference] = useState("");
   const [cashReceived, setCashReceived] = useState("");
+  const [mixedPayment,setMixedPayment] = useState(false);
+  const [mixedAmounts,setMixedAmounts] = useState<Record<ShiftPayment["method"],string>>({
+    cash:"",card_terminal:"",transfer:"",other:""
+  });
+  const [mixedReferences,setMixedReferences] = useState<Record<ShiftPayment["method"],string>>({
+    cash:"",card_terminal:"",transfer:"",other:""
+  });
+  const [promoApproval,setPromoApproval] = useState<{token:string;itemsFingerprint:string}|null>(null);
+  const [approvalEmail,setApprovalEmail] = useState("");
+  const [approvalPassword,setApprovalPassword] = useState("");
+  const [approvalReason,setApprovalReason] = useState("");
+  const [approvalBusy,setApprovalBusy] = useState(false);
   const [shiftSales, setShiftSales] = useState<ShiftSale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
 
@@ -497,6 +558,7 @@ export default function PosPage() {
   }, [products, cart]);
 
   function addToCart(product: Product) {
+    setPromoApproval(null);
     if (product.currency === "USD") {
       setMessage("Este artículo está registrado en USD. El POS cobra en MXN; configura un precio en pesos antes de venderlo para evitar un cobro incorrecto.");
       return;
@@ -520,6 +582,7 @@ export default function PosPage() {
   }
 
   function setCartQuantity(productId: string, nextQuantity: number) {
+    setPromoApproval(null);
     setCart((current) =>
       current
         .map((item) => {
@@ -535,9 +598,57 @@ export default function PosPage() {
   }
 
   function removeFromCart(productId: string) {
+    setPromoApproval(null);
     setCart((current) =>
       current.filter((item) => item.product.id !== productId),
     );
+  }
+
+  function setItemPromotion(productId:string,mode:PromotionMode|"none",value?:string) {
+    setPromoApproval(null);
+    setCart(current=>current.map(item=>item.product.id===productId
+      ? {...item,promotion:mode==="none" ? undefined : {mode,value:value??(
+          mode==="percent"?"10":mode==="amount"?"100":String(roundMoney(productPrice(item.product)*0.9))
+        )}}
+      : item));
+  }
+
+  async function approvePromotion(){
+    if(!access?.employee_id||!approvalEmail.trim()||!approvalPassword||approvalReason.trim().length<6){
+      setMessage("Ingresa correo, contraseña administrativa y motivo de al menos 6 caracteres.");
+      return;
+    }
+    const items=pos21Items(cart);
+    setApprovalBusy(true);
+    try{
+      // Isolated authentication: do not replace the cashier's POS session.
+      const adminClient=createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+        {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,
+           storageKey:"updown-pos21-one-time-approval"}}
+      );
+      const {error:signError}=await adminClient.auth.signInWithPassword({
+        email:approvalEmail.trim(),password:approvalPassword
+      });
+      if(signError)throw signError;
+      try{
+        const {data,error}=await adminClient.rpc("pos21_issue_promotion_approval",{
+          p_cashier_employee_id:access.employee_id,p_items:items,p_reason:approvalReason.trim()
+        });
+        if(error)throw error;
+        setPromoApproval({token:String(data),itemsFingerprint:JSON.stringify(items)});
+        setMessage("Promoción excepcional autorizada. La autorización es válida para este carrito durante 10 minutos.");
+      }finally{
+        await adminClient.auth.signOut();
+      }
+    }catch(error){
+      setPromoApproval(null);
+      setMessage("AUTORIZACION_RECHAZADA: "+readableError(error));
+    }finally{
+      setApprovalPassword("");
+      setApprovalBusy(false);
+    }
   }
 
   async function checkoutSale() {
@@ -547,42 +658,57 @@ export default function PosPage() {
       return;
     }
 
-    const total = cart.reduce(
-      (sum, item) => sum + productPrice(item.product) * item.quantity,
-      0,
-    );
-
-    if (paymentMethod === "cash") {
-      const received = parseMoneyText(cashReceived);
-      if (received < total) {
-        setMessage(
-          `Efectivo insuficiente. Total ${money(total)} · recibido ${money(received)}.`,
-        );
-        return;
-      }
+    const original = roundMoney(cart.reduce((sum,item)=>sum+productPrice(item.product)*item.quantity,0));
+    const total = roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+    if(!Number.isFinite(total)||total<=0){
+      setMessage("Precio promocional inválido. Revisa los descuentos de cada artículo.");return;
     }
+    const saved = roundMoney(original-total);
+    const allowed = roundMoney(original*allowedDiscountFraction(access.employee_role));
+    const items = pos21Items(cart);
+    const fingerprintItems = JSON.stringify(items);
+    if(saved > allowed && (!promoApproval || promoApproval.itemsFingerprint!==fingerprintItems)){
+      setMessage("Esta promoción supera el límite del empleado. Solicita autorización del administrador.");
+      return;
+    }
+    const payments:ShiftPayment[] = mixedPayment
+      ? paymentMethods.filter(m=>parseMoneyText(mixedAmounts[m])>0)
+          .map(m=>({method:m,amount:roundMoney(parseMoneyText(mixedAmounts[m])),
+                    reference:m==="cash"?null:mixedReferences[m].trim()||null}))
+      : [{method:paymentMethod,amount:total,reference:paymentMethod==="cash"?null:paymentReference.trim()||null}];
+    const allocated=roundMoney(payments.reduce((sum,p)=>sum+numeric(p.amount),0));
+    if(!payments.length||allocated!==total || payments.some(p=>numeric(p.amount)<=0)){
+      setMessage("Los importes de pago deben sumar exactamente "+money(total)+".");
+      return;
+    }
+    const cashApplied=payments.find(p=>p.method==="cash")?.amount||0;
+    if(numeric(cashApplied)>0 && parseMoneyText(cashReceived)<numeric(cashApplied)){
+      setMessage("Efectivo recibido insuficiente para cubrir la parte en efectivo.");return;
+    }
+    const approvalToken=saved>allowed?promoApproval?.token:null;
+    const paymentNote=payments.length>1
+      ?"Pago mixto: "+payments.map(p=>paymentLabel(p.method)+" "+money(numeric(p.amount))).join("; ")
+      :null;
 
     checkoutLock.current = true;
     setBusy(true);
     setMessage("");
 
     try {
-      const items = cart.map(item => ({
-        product_id: item.product.parent_id || item.product.id,
-        ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
-        quantity: item.quantity,
-      }));
-      const payment = { method: paymentMethod, amount: Number(total.toFixed(2)), reference: paymentReference.trim() || null };
-      const fingerprint = JSON.stringify([access.open_shift_id, items, payment]);
+      const fingerprint = JSON.stringify([access.open_shift_id, items, payments, approvalToken]);
       if (checkoutRequest.current?.fingerprint !== fingerprint) {
         checkoutRequest.current = { fingerprint, id: crypto.randomUUID() };
       }
-      const { data, error } = await supabase.rpc("pos_create_sale", {
+      const { data, error } = await supabase.rpc("pos_create_sale_v21", {
         p_device_token: deviceToken,
         p_items: items,
-        p_payments: [{ ...payment, metadata: { pos_request_id: checkoutRequest.current.id } }],
+        p_payments: payments.map((payment,index)=>({
+          ...payment,
+          ...(index===0?{metadata:{pos_request_id:checkoutRequest.current!.id}}:{})
+        })),
         p_discount_amount: 0,
-        p_notes: null,
+        p_notes: paymentNote,
+        p_promo_approval_token:approvalToken
       });
 
       if (error) throw error;
@@ -592,15 +718,16 @@ export default function PosPage() {
         total?: number | string;
       } | null;
 
-      const change =
-        paymentMethod === "cash"
-          ? Math.max(0, parseMoneyText(cashReceived) - total)
-          : 0;
+      const change = numeric(cashApplied)>0 ? Math.max(0,parseMoneyText(cashReceived)-numeric(cashApplied)) : 0;
 
       checkoutRequest.current = null;
       setCart([]);
       setCashReceived("");
       setPaymentReference("");
+      setPromoApproval(null);
+      setMixedPayment(false);
+      setMixedAmounts({cash:"",card_terminal:"",transfer:"",other:""});
+      setMixedReferences({cash:"",card_terminal:"",transfer:"",other:""});
 
       // Refrescamos el turno para obtener la venta recién confirmada por Supabase.
       // No imprimimos antes de esta confirmación para evitar tickets de ventas fallidas.
@@ -670,7 +797,7 @@ export default function PosPage() {
         `Venta #${result?.sale_number ?? "—"} cobrada por ${money(
           numeric(result?.total ?? total),
         )}${
-          paymentMethod === "cash" && change > 0
+          numeric(cashApplied)>0 && change > 0
             ? ` · Cambio ${money(change)}`
             : ""
         }.${printNote}`,
@@ -1366,9 +1493,23 @@ export default function PosPage() {
       .some((value) => String(value).toLowerCase().includes(query));
   });
 
-  const cartSubtotal = cart.reduce(
-    (sum, item) => sum + productPrice(item.product) * item.quantity,
-    0,
+  const cartOriginalSubtotal = roundMoney(cart.reduce(
+    (sum,item)=>sum+productPrice(item.product)*item.quantity,0
+  ));
+  const cartSubtotal = roundMoney(cart.reduce(
+    (sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0
+  ));
+  const cartTotalDiscount = roundMoney(cartOriginalSubtotal-cartSubtotal);
+  const maxAllowedDiscount = roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
+  const needsPromoApproval = cartTotalDiscount>maxAllowedDiscount;
+  const approvalValid = !!promoApproval && promoApproval.itemsFingerprint===JSON.stringify(pos21Items(cart));
+  const mixedAllocated = roundMoney(paymentMethods.reduce(
+    (sum,m)=>sum+(parseMoneyText(mixedAmounts[m])||0),0
+  ));
+  const mixedCash = parseMoneyText(mixedAmounts.cash);
+  const invalidMixedPayment = mixedPayment && (
+    mixedAllocated!==cartSubtotal || mixedAllocated<=0 ||
+    (mixedCash>0&&parseMoneyText(cashReceived)<mixedCash)
   );
 
   const cashSales = shiftSales.reduce(
@@ -1387,9 +1528,8 @@ export default function PosPage() {
     (numeric(access?.opening_cash) + cashSales + cashIn - cashOut - cashRefunds);
   const cashReceivedAmount = parseMoneyText(cashReceived);
   const cashChange =
-    paymentMethod === "cash"
-      ? Math.max(0, cashReceivedAmount - cartSubtotal)
-      : 0;
+    mixedPayment ? (mixedCash>0?Math.max(0,cashReceivedAmount-mixedCash):0)
+      : paymentMethod === "cash" ? Math.max(0,cashReceivedAmount-cartSubtotal) : 0;
 
   const canReverseSales =
     access?.employee_role === "supervisor" ||
