@@ -76,16 +76,23 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
   if (!parentIds.length) return [];
   const variantsByParent = new Map<string,VariantRow[]>();
   // Bounded API calls avoid a large PostgREST IN clause and its default row cap.
-  for(let i=0;i<parentIds.length;i+=35) {
-    const ids=parentIds.slice(i,i+35);
-    const res=await db.from("product_variants")
-      .select("id,product_id,title,sku,price,sale_price,stock,attributes")
-      .in("product_id",ids).eq("is_active",true).order("id",{ascending:true}).limit(700);
-    if(res.error) continue;
-    for(const variant of (res.data || []) as VariantRow[]) {
-      const entries=variantsByParent.get(variant.product_id) || [];
-      entries.push(variant);
-      variantsByParent.set(variant.product_id,entries);
+  // Stage 9: bounded concurrency, not one network roundtrip per group.
+  // Three requests at a time is enough without overloading the database.
+  const batches: string[][]=[];
+  for(let i=0;i<parentIds.length;i+=35)batches.push(parentIds.slice(i,i+35));
+  for(let i=0;i<batches.length;i+=3){
+    const results=await Promise.all(batches.slice(i,i+3).map(ids=>
+      db.from("product_variants")
+        .select("id,product_id,title,sku,price,sale_price,stock,attributes")
+        .in("product_id",ids).eq("is_active",true).order("id",{ascending:true}).limit(700)
+    ));
+    for(const result of results){
+      if(result.error)continue;
+      for(const variant of (result.data||[]) as VariantRow[]){
+        const entries=variantsByParent.get(variant.product_id)||[];
+        entries.push(variant);
+        variantsByParent.set(variant.product_id,entries);
+      }
     }
   }
 
