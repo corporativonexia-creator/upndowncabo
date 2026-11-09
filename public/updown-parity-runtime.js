@@ -2079,6 +2079,33 @@
     return {data:null,error:{message:"El catálogo excede el límite de sincronización de 10,000 productos. Se requiere ampliar la consulta."}};
   }
 
+  // Stage 9: on preview, never download draft/offline products' variants.
+  // Fetch exact visible parent IDs in bounded groups with stable pagination.
+  async function fetchPreviewVisibleVariants(parentProducts){
+    const ids=[...new Set((parentProducts||[]).map(row=>row.id).filter(Boolean))];
+    if(!ids.length)return {data:[],error:null};
+    const groups=[];
+    for(let i=0;i<ids.length;i+=60)groups.push(ids.slice(i,i+60));
+    const result=await Promise.all(groups.map(async parentIds=>{
+      const rows=[];
+      for(let offset=0;offset<10000;offset+=400){
+        const response=await db.from("product_variants")
+          .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,is_active")
+          .in("product_id",parentIds).eq("is_active",true)
+          .order("id",{ascending:true}).range(offset,offset+399)
+          .abortSignal(timeoutSignal());
+        if(response.error)return {data:[],error:response.error};
+        const batch=response.data||[];
+        rows.push(...batch);
+        if(batch.length<400)return {data:rows,error:null};
+      }
+      return {data:[],error:{message:"La consulta de variantes visibles superó el límite de seguridad."}};
+    }));
+    const failure=result.find(entry=>entry.error);
+    if(failure)return {data:null,error:failure.error};
+    return {data:result.flatMap(entry=>entry.data||[]),error:null};
+  }
+
   async function loadStore(){
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
@@ -2088,15 +2115,21 @@
     ]);
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
-      // Fetch variants in pages; PostgREST otherwise silently caps results at the project row limit.
-      for(let offset=0;offset<10000;offset+=500){
-        const result=await db.from("product_variants")
-          .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,is_active")
-          .eq("is_active",true).order("id",{ascending:true}).range(offset,offset+499)
-          .abortSignal(timeoutSignal());
-        if(result.error){variantError=result.error;break;}
-        variantRows.push(...(result.data||[]));
-        if((result.data||[]).length<500)break;
+      if(PREVIEW_CATALOG){
+        const visibleVariants=await fetchPreviewVisibleVariants(prods);
+        variantRows=visibleVariants.data||[];
+        variantError=visibleVariants.error;
+      }else{
+        // Preserve existing public-store behavior until the preview is approved.
+        for(let offset=0;offset<10000;offset+=500){
+          const result=await db.from("product_variants")
+            .select("id,product_id,title,sku,barcode,attributes,price,sale_price,stock,is_active")
+            .eq("is_active",true).order("id",{ascending:true}).range(offset,offset+499)
+            .abortSignal(timeoutSignal());
+          if(result.error){variantError=result.error;break;}
+          variantRows.push(...(result.data||[]));
+          if((result.data||[]).length<500)break;
+        }
       }
     }
     if(ce||pe||variantError){
