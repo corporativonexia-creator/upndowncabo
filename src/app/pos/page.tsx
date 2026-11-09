@@ -1878,10 +1878,49 @@ export default function PosPage() {
                                 </button>
                               </div>
                               <div className="pos-line-total">
-                                {money(
-                                  productPrice(item.product) * item.quantity,
-                                )}
+                                {Number.isFinite(discountedUnitPrice(item))
+                                  ? money(discountedUnitPrice(item)*item.quantity)
+                                  : "Promoción inválida"}
                               </div>
+                            </div>
+                            <div style={{display:"grid",gap:8,marginTop:10,padding:"12px",background:"#f5f8f5",borderRadius:12}}>
+                              <label style={{fontSize:12,fontWeight:750,color:"#143e35"}}>Promoción para este artículo</label>
+                              <select
+                                aria-label={"Promoción de "+item.product.name}
+                                value={item.promotion?.mode||"none"}
+                                onChange={event=>setItemPromotion(item.product.id,event.target.value as PromotionMode|"none")}
+                              >
+                                <option value="none">Sin descuento</option>
+                                <option value="percent">% Descuento</option>
+                                <option value="amount">$ Cantidad a descontar</option>
+                                <option value="final">$ Precio final por unidad</option>
+                              </select>
+                              {item.promotion && (
+                                <>
+                                  <label style={{fontSize:11,color:"#365e4b"}}>
+                                    {item.promotion.mode==="percent"?"Porcentaje":item.promotion.mode==="amount"?"Cantidad por unidad":"Precio final por unidad"}
+                                  </label>
+                                  <input
+                                    inputMode="decimal" type="number" min="0" step="0.01"
+                                    max={item.promotion.mode==="percent"?"100":String(productPrice(item.product))}
+                                    value={item.promotion.value}
+                                    onChange={event=>setItemPromotion(item.product.id,item.promotion!.mode,event.target.value)}
+                                  />
+                                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12}}>
+                                    <span>Precio original: {money(productPrice(item.product))} c/u</span>
+                                    <strong style={{color:"#24724c"}}>
+                                      Ahorro: {Number.isFinite(discountedUnitPrice(item))
+                                        ? money(roundMoney((productPrice(item.product)-discountedUnitPrice(item))*item.quantity))
+                                        : "Valor inválido"}
+                                    </strong>
+                                  </div>
+                                  <button type="button" className="pos-btn pos-btn-secondary"
+                                    onClick={()=>setItemPromotion(item.product.id,"none")}
+                                    style={{padding:"8px 12px",fontSize:11,justifySelf:"start"}}>
+                                    Quitar descuento
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -1894,81 +1933,161 @@ export default function PosPage() {
                         <strong>{money(cartSubtotal)}</strong>
                       </div>
 
-                      <div className="pos-payment-tabs">
-                        {(
-                          [
-                            ["cash", "Efectivo"],
-                            ["card_terminal", "Terminal"],
-                            ["transfer", "Transferencia"],
-                            ["other", "Otro"],
-                          ] as const
-                        ).map(([method, label]) => (
-                          <button
-                            key={method}
-                            className={paymentMethod === method ? "active" : ""}
-                            type="button"
-                            onClick={() => setPaymentMethod(method)}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {paymentMethod === "cash" ? (
-                        <>
-                          <div className="pos-field">
-                            <label>Efectivo recibido</label>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={cashReceived}
-                              placeholder="$0.00"
-                              onChange={(event) =>
-                                setCashReceived(
-                                  event.target.value.replace(/[^0-9.]/g, ""),
-                                )
-                              }
-                              onBlur={(event) => {
-                                if (!event.currentTarget.value) return;
-                                setCashReceived(
-                                  formatMoneyInput(event.currentTarget.value),
-                                );
-                              }}
-                              onFocus={(event) => {
-                                const raw = event.currentTarget.value.replace(
-                                  /[^0-9.]/g,
-                                  "",
-                                );
-                                setCashReceived(raw);
-                              }}
-                            />
+                      {cartTotalDiscount>0 && (
+                        <div style={{border:"1px solid #c2dfce",background:"#edf6ee",padding:"12px",borderRadius:12,display:"grid",gap:6,marginBottom:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
+                            <span>Precio original</span><strong>{money(cartOriginalSubtotal)}</strong>
                           </div>
-                          <div className="pos-change">
-                            <span>Cambio</span>
-                            <strong>{money(cashChange)}</strong>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
+                            <span>Ahorro total por promociones</span><strong>−{money(cartTotalDiscount)}</strong>
                           </div>
-                        </>
-                      ) : (
-                        <div className="pos-field">
-                          <label>Referencia / últimos dígitos (opcional)</label>
-                          <input
-                            value={paymentReference}
-                            onChange={(event) =>
-                              setPaymentReference(event.target.value)
-                            }
-                            placeholder="Referencia de pago"
-                          />
                         </div>
                       )}
-
+                      {needsPromoApproval && (
+                        <div style={{border:"1px solid #d6ab65",borderRadius:12,padding:14,display:"grid",gap:8,background:"#fff9ed",marginBottom:12}}>
+                          <strong style={{color:"#633d16"}}>Autorización administrativa requerida</strong>
+                          <small>Esta promoción supera el límite del empleado ({money(maxAllowedDiscount)}).
+                            El administrador POS debe aprobarla con su cuenta y un motivo.</small>
+                          {approvalValid ? (
+                            <strong style={{color:"#217347"}}>Autorización registrada para este carrito.</strong>
+                          ) : (
+                            <>
+                              <input type="email" aria-label="Correo del administrador POS"
+                                value={approvalEmail} placeholder="Correo del administrador POS"
+                                onChange={e=>setApprovalEmail(e.target.value)}/>
+                              <input type="password" aria-label="Contraseña de autorización" autoComplete="off"
+                                value={approvalPassword} placeholder="Contraseña del administrador"
+                                onChange={e=>setApprovalPassword(e.target.value)}/>
+                              <input aria-label="Motivo de autorización" value={approvalReason}
+                                placeholder="Motivo de la promoción extraordinaria"
+                                onChange={e=>setApprovalReason(e.target.value)}/>
+                              <button className="pos-btn" type="button"
+                                disabled={approvalBusy||busy} onClick={approvePromotion}>
+                                {approvalBusy?"Verificando…":"Solicitar autorización"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                      <label style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",fontSize:13,fontWeight:700}}>
+                        <input type="checkbox" checked={mixedPayment}
+                          onChange={e=>setMixedPayment(e.target.checked)} style={{width:18,height:18}}/>
+                        Pago mixto: combinar efectivo, tarjeta y transferencia
+                      </label>
+                      {mixedPayment ? (
+                        <div style={{display:"grid",gap:12,margin:"12px 0"}}>
+                          {paymentMethods.map(method=>(
+                            <div className="pos-field" key={method} style={{background:"#f6f8f6",padding:10,borderRadius:10}}>
+                              <label>{paymentLabel(method)}</label>
+                              <input type="number" min="0" inputMode="decimal" step="0.01"
+                                value={mixedAmounts[method]} placeholder="$0.00"
+                                onChange={e=>setMixedAmounts(old=>({...old,[method]:e.target.value}))}/>
+                              {method!=="cash"&&parseMoneyText(mixedAmounts[method])>0&&(
+                                <input type="text" aria-label={"Referencia de "+paymentLabel(method)}
+                                  placeholder="Referencia de operación (opcional)"
+                                  value={mixedReferences[method]}
+                                  onChange={e=>setMixedReferences(old=>({...old,[method]:e.target.value}))}/>
+                              )}
+                            </div>
+                          ))}
+                          {mixedCash>0&&(
+                            <div className="pos-field">
+                              <label>Efectivo recibido para esta parte</label>
+                              <input type="text" inputMode="decimal" value={cashReceived}
+                                placeholder={money(mixedCash)}
+                                onChange={e=>setCashReceived(e.target.value.replace(/[^0-9.]/g,""))}/>
+                              <div className="pos-change"><span>Cambio</span><strong>{money(cashChange)}</strong></div>
+                            </div>
+                          )}
+                          <div className="pos-total-row" style={{fontSize:12}}>
+                            <span>Pagos registrados: {money(mixedAllocated)}</span>
+                            <strong style={{color:mixedAllocated===cartSubtotal?"#18734a":"#a22d27"}}>
+                              {mixedAllocated===cartSubtotal?"Importe completo":
+                               "Diferencia: "+money(roundMoney(cartSubtotal-mixedAllocated))}
+                            </strong>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                        <div className="pos-payment-tabs">
+                          {(
+                            [
+                              ["cash", "Efectivo"],
+                              ["card_terminal", "Terminal"],
+                              ["transfer", "Transferencia"],
+                              ["other", "Otro"],
+                            ] as const
+                          ).map(([method, label]) => (
+                            <button
+                              key={method}
+                              className={paymentMethod === method ? "active" : ""}
+                              type="button"
+                              onClick={() => setPaymentMethod(method)}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+  
+                        {paymentMethod === "cash" ? (
+                          <>
+                            <div className="pos-field">
+                              <label>Efectivo recibido</label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={cashReceived}
+                                placeholder="$0.00"
+                                onChange={(event) =>
+                                  setCashReceived(
+                                    event.target.value.replace(/[^0-9.]/g, ""),
+                                  )
+                                }
+                                onBlur={(event) => {
+                                  if (!event.currentTarget.value) return;
+                                  setCashReceived(
+                                    formatMoneyInput(event.currentTarget.value),
+                                  );
+                                }}
+                                onFocus={(event) => {
+                                  const raw = event.currentTarget.value.replace(
+                                    /[^0-9.]/g,
+                                    "",
+                                  );
+                                  setCashReceived(raw);
+                                }}
+                              />
+                            </div>
+                            <div className="pos-change">
+                              <span>Cambio</span>
+                              <strong>{money(cashChange)}</strong>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="pos-field">
+                            <label>Referencia / últimos dígitos (opcional)</label>
+                            <input
+                              value={paymentReference}
+                              onChange={(event) =>
+                                setPaymentReference(event.target.value)
+                              }
+                              placeholder="Referencia de pago"
+                            />
+                          </div>
+                        )}
+                        </>
+                      )}
                       <button
                         className="pos-btn"
                         type="button"
                         disabled={
                           busy ||
                           cart.length === 0 ||
+                          !Number.isFinite(cartSubtotal) ||
                           cartSubtotal <= 0 ||
-                          (paymentMethod === "cash" &&
+                          (needsPromoApproval && !approvalValid) ||
+                          invalidMixedPayment ||
+                          (!mixedPayment && paymentMethod === "cash" &&
                             cashReceivedAmount < cartSubtotal)
                         }
                         onClick={checkoutSale}
