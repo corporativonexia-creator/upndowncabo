@@ -383,6 +383,10 @@ export default function PosPage() {
   const [refundReason, setRefundReason] = useState("");
   const [refundMethod, setRefundMethod] =
     useState<ShiftPayment["method"]>("cash");
+  const [refundConfirmed, setRefundConfirmed] = useState(false);
+  const [refundReferences, setRefundReferences] = useState<Record<ShiftPayment["method"],string>>({
+    cash: "", card_terminal: "", transfer: "", other: ""
+  });
   const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
   const [cashIn, setCashIn] = useState(0);
   const [cashOut, setCashOut] = useState(0);
@@ -960,6 +964,8 @@ export default function PosPage() {
     setLookupBusy(true);
     setMessage("");
     setLookupSale(null);
+    setRefundConfirmed(false);
+    setRefundReferences({cash:"",card_terminal:"",transfer:"",other:""});
 
     try {
       const { data, error } = await supabase.rpc("pos_lookup_sale", {
@@ -1042,6 +1048,8 @@ export default function PosPage() {
     setLookupNumber("");
     setRefundReason("");
     setRefundMethod("cash");
+    setRefundConfirmed(false);
+    setRefundReferences({cash:"",card_terminal:"",transfer:"",other:""});
     setMessage("");
   }
 
@@ -1064,12 +1072,36 @@ export default function PosPage() {
     setMessage("");
 
     try {
-      const { data, error } = await supabase.rpc("pos_refund_sale", {
-        p_device_token: deviceToken,
-        p_sale_id: lookupSale.id,
-        p_method: refundMethod,
-        p_reason: reason,
-      });
+      const refundMethods=paymentMethods.map(method=>({
+        method,
+        amount:roundMoney((lookupSale.payments||[])
+          .filter(payment=>payment.method===method)
+          .reduce((sum,payment)=>sum+numeric(payment.amount),0))
+      })).filter(part=>part.amount>0);
+      const mixedRefund=refundMethods.length>1;
+      if(mixedRefund && (!refundConfirmed ||
+          roundMoney(refundMethods.reduce((sum,part)=>sum+part.amount,0))!==roundMoney(numeric(lookupSale.total)))){
+        setMessage("Verifica la distribución original y confirma los reembolsos realizados.");
+        setBusy(false);
+        return;
+      }
+      // Recording the refund never triggers a card/bank reversal.
+      // Operators must first complete it through the appropriate provider.
+      const request=mixedRefund
+        ? supabase.rpc("pos_refund_sale_v21", {
+            p_device_token:deviceToken,p_sale_id:lookupSale.id,
+            p_allocations:refundMethods.map(part=>({
+              method:part.method,amount:part.amount,
+              ...(refundReferences[part.method].trim()
+                ? {reference:refundReferences[part.method].trim()}: {})
+            })),
+            p_reason:reason
+          })
+        : supabase.rpc("pos_refund_sale", {
+            p_device_token:deviceToken,p_sale_id:lookupSale.id,
+            p_method:refundMethod,p_reason:reason
+          });
+      const {data,error}=await request;
 
       if (error) throw error;
 
@@ -1084,13 +1116,17 @@ export default function PosPage() {
       setRefundSearchResults([]);
       setRefundReason("");
       setRefundMethod("cash");
+      setRefundConfirmed(false);
+      setRefundReferences({cash:"",card_terminal:"",transfer:"",other:""});
 
       await Promise.all([loadProducts(), loadShiftSales(), loadAccess(deviceToken)]);
 
       setMessage(
-        `Devolución #${result?.refund_number ?? "—"} aplicada a venta #${
+        `Devolución #${result?.refund_number ?? "—"} registrada en venta #${
           result?.sale_number ?? "—"
-        } por ${money(numeric(result?.amount))}. Stock repuesto.`,
+        } por ${money(numeric(result?.amount))}.` +
+        (mixedRefund ? " Desglose original por método registrado en bitácora." : "") +
+        " Inventario restituido.",
       );
     } catch (error) {
       setMessage(`REFUND_ERROR: ${readableError(error)}`);
@@ -1549,6 +1585,18 @@ export default function PosPage() {
   const canReverseSales =
     access?.employee_role === "supervisor" ||
     access?.employee_role === "pos_admin";
+
+  const refundOriginalMethods = lookupSale
+    ? paymentMethods.map(method=>({
+        method,
+        amount:roundMoney((lookupSale.payments||[])
+          .filter(payment=>payment.method===method)
+          .reduce((sum,payment)=>sum+numeric(payment.amount),0))
+      })).filter(part=>part.amount>0)
+    : [];
+  const refundIsMixed=refundOriginalMethods.length>1;
+  const refundTotalsMatch=roundMoney(refundOriginalMethods.reduce((sum,part)=>sum+part.amount,0))===
+    roundMoney(numeric(lookupSale?.total));
 
   const roleLabel =
     access?.employee_role === "cashier"
@@ -2509,22 +2557,68 @@ export default function PosPage() {
 
                         {lookupSale.status === "completed" ? (
                           <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
-                            <div className="pos-field">
-                              <label>Método de devolución</label>
-                              <select
-                                value={refundMethod}
-                                onChange={(event) =>
-                                  setRefundMethod(
-                                    event.target.value as ShiftPayment["method"],
-                                  )
-                                }
-                              >
-                                <option value="cash">Efectivo</option>
-                                <option value="card_terminal">Terminal</option>
-                                <option value="transfer">Transferencia</option>
-                                <option value="other">Otro</option>
-                              </select>
-                            </div>
+                            {refundIsMixed ? (
+                              <div style={{display:"grid",gap:10,padding:14,borderRadius:12,
+                                background:"#f0f6f1",border:"1px solid #cde1d1"}}>
+                                <strong style={{color:"#143e35",fontSize:14}}>
+                                  Devolución mixta · Distribución original
+                                </strong>
+                                <small>
+                                  Estos importes se obtienen de la venta y no pueden
+                                  cambiarse desde el POS. Ejecuta las devoluciones
+                                  manualmente en terminal, banco o efectivo antes
+                                  de registrarlas aquí.
+                                </small>
+                                {refundOriginalMethods.map(part=>(
+                                  <div key={part.method} style={{display:"grid",gap:5,
+                                    padding:"10px 12px",borderRadius:10,background:"#fff"}}>
+                                    <div style={{display:"flex",justifyContent:"space-between",
+                                      alignItems:"center",gap:8}}>
+                                      <span>{paymentLabel(part.method)}</span>
+                                      <strong>{money(part.amount)}</strong>
+                                    </div>
+                                    {part.method!=="cash" && (
+                                      <input type="text"
+                                        aria-label={"Referencia de devolución "+paymentLabel(part.method)}
+                                        placeholder="Referencia del reembolso (opcional)"
+                                        value={refundReferences[part.method]}
+                                        onChange={event=>setRefundReferences(current=>({
+                                          ...current,[part.method]:event.target.value
+                                        }))}
+                                        maxLength={150}/>
+                                    )}
+                                  </div>
+                                ))}
+                                <div style={{display:"flex",justifyContent:"space-between",
+                                  gap:8,fontSize:12,fontWeight:700,
+                                  color:refundTotalsMatch?"#175a36":"#a22d27"}}>
+                                  <span>Total de devolución</span>
+                                  <strong>{money(refundOriginalMethods.reduce(
+                                    (sum,part)=>sum+part.amount,0))}</strong>
+                                </div>
+                                <label style={{display:"flex",gap:10,alignItems:"flex-start",
+                                  padding:"10px 0",fontWeight:650,fontSize:12}}>
+                                  <input type="checkbox" checked={refundConfirmed}
+                                    onChange={event=>setRefundConfirmed(event.target.checked)}
+                                    style={{width:17,height:17,flexShrink:0}}/>
+                                  Confirmo que ya se realizaron los reembolsos
+                                  por los métodos e importes indicados.
+                                </label>
+                              </div>
+                            ) : (
+                              <div className="pos-field">
+                                <label>Método de devolución</label>
+                                <select value={refundMethod}
+                                  onChange={event=>setRefundMethod(
+                                    event.target.value as ShiftPayment["method"])}>
+                                  <option value="cash">Efectivo</option>
+                                  <option value="card_terminal">Terminal</option>
+                                  <option value="transfer">Transferencia</option>
+                                  <option value="other">Otro</option>
+                                </select>
+                                <small>Registra el reembolso después de entregarlo al cliente.</small>
+                              </div>
+                            )}
 
                             <div className="pos-field">
                               <label>Motivo de devolución</label>
@@ -2539,10 +2633,12 @@ export default function PosPage() {
                             <button
                               className="pos-link-danger"
                               type="button"
-                              disabled={busy || refundReason.trim().length < 4}
+                              disabled={busy || refundReason.trim().length < 4 ||
+                                (refundIsMixed && (!refundConfirmed || !refundTotalsMatch))}
                               onClick={refundSale}
                             >
-                              Procesar devolución completa
+                              {refundIsMixed ? "Registrar devolución mixta confirmada" :
+                                "Procesar devolución completa"}
                             </button>
                           </div>
                         ) : (
