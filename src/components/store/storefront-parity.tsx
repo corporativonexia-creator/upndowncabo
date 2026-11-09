@@ -50,6 +50,31 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
+// Stage 9: only check DOM text that actually changed. The previous observer
+// rescanned every product card after each badge, filter and cart update.
+function repairChangedStoreText(records: MutationRecord[]) {
+  const seen = new Set<Node>();
+  const repairNode = (node: Node) => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    if (node.nodeType === Node.TEXT_NODE) {
+      const value = node.nodeValue || "";
+      if (!/[ÃÂâ]/.test(value)) return;
+      const fixed = repairMojibake(value);
+      if (fixed !== value) node.nodeValue = fixed;
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    let textNode: Node | null;
+    while ((textNode = walker.nextNode())) repairNode(textNode);
+  };
+  for (const record of records) {
+    if (record.type === "characterData") repairNode(record.target);
+    for (const added of Array.from(record.addedNodes)) repairNode(added);
+  }
+}
+
 function cartUnitsFromStorage() {
   try {
     const cart = JSON.parse(localStorage.getItem("upDownCart") || "[]");
@@ -151,7 +176,10 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     if (!deviceMode) return;
     const root = document.getElementById("updown-store");
     if (root) { root.dataset.deviceMode = deviceMode; repairStoreText(root); }
-    const observer = root ? new MutationObserver(() => repairStoreText(root)) : null;
+    const observer = root ? new MutationObserver((records) => {
+      if (previewMode) repairChangedStoreText(records);
+      else repairStoreText(root);
+    }) : null;
     observer?.observe(root!, { childList: true, subtree: true, characterData: true });
     document.querySelectorAll<HTMLScriptElement>('script[data-updown-parity="true"], script[data-updown-home-h60="true"]').forEach((node) => node.remove());
     document.getElementById("updown-h60-styles")?.remove();
