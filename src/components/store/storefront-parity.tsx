@@ -199,7 +199,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
         previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
         document.body.appendChild(previewServicesScript);
         previewLocationScript = document.createElement("script");
-        previewLocationScript.src = "/updown-preview-location-stage8.js?v=location-stage8-v2-20261108";
+        previewLocationScript.src = "/updown-preview-location-stage8.js?v=location-stage8-v3-directions-20261108";
         previewLocationScript.dataset.updownPreviewLocation = "stage8";
         previewLocationScript.async = false;
         previewLocationScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Ubicación · Etapa 8.");
