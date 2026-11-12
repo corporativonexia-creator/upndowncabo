@@ -26,6 +26,7 @@ type CartItem = {
   product: Product;
   quantity: number;
   promotion?: { mode: PromotionMode; value: string };
+  servicePrice?: string;
 };
 
 type ShiftPayment = {
@@ -125,38 +126,84 @@ function numeric(value: number | string | null | undefined) {
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
-function discountedUnitPrice(item: CartItem) {
-  const base = productPrice(item.product);
-  if (!item.promotion) return base;
-  const value = Number(item.promotion.value);
-  if (item.promotion.value.trim() === "" || !Number.isFinite(value) || value < 0) return NaN;
-  let price: number;
-  switch (item.promotion.mode) {
-    case "percent":
-      if (value > 100) return NaN;
-      price = roundMoney(base * (1 - value / 100));
-      break;
-    case "amount":
-      price = roundMoney(base - value);
-      break;
-    case "final":
-      price = roundMoney(value);
-      break;
-    default:
-      return NaN;
-  }
-  return price >= 0 && price <= base ? price : NaN;
+function cartUnitPrice(item: CartItem) {
+  if (!item.product.is_service) return productPrice(item.product);
+  if (!item.servicePrice?.trim()) return NaN;
+  const amount = Number(item.servicePrice);
+  return Number.isFinite(amount) && amount>0 && amount<=99999999 ? roundMoney(amount) : NaN;
 }
-function pos21Items(cart: CartItem[]) {
-  return cart.map(item => ({
+function manuallyDiscountedUnitPrice(item: CartItem) {
+  const base=cartUnitPrice(item);
+  if(!Number.isFinite(base)) return NaN;
+  if (!item.promotion) return base;
+  const value=Number(item.promotion.value);
+  if (item.promotion.value.trim()===""||!Number.isFinite(value)||value<0) return NaN;
+  let price:number;
+  switch(item.promotion.mode) {
+    case "percent": if(value>100)return NaN; price=roundMoney(base*(1-value/100));break;
+    case "amount": price=roundMoney(base-value);break;
+    case "final": price=roundMoney(value);break;
+    default:return NaN;
+  }
+  return price>=0 && price<=base ? price : NaN;
+}
+function discountedUnitPrice(item: CartItem) {
+  const base=cartUnitPrice(item);
+  const manual=manuallyDiscountedUnitPrice(item);
+  const percent=item.product.automaticPromotion?.percent||0;
+  const automated=roundMoney(base*percent/100);
+  const final=roundMoney(manual-automated);
+  return Number.isFinite(final)&&final>=0&&final<=base ? final : NaN;
+}
+function globalDiscountAmount(original:number, enabled:boolean, mode:PromotionMode, value:string) {
+  if(!enabled)return 0;
+  if(!Number.isFinite(original)||original<=0||value.trim()==="")return NaN;
+  const v=Number(value);
+  if(!Number.isFinite(v)||v<0)return NaN;
+  let amount:number;
+  switch(mode) {
+    case "percent": amount=v<=100?roundMoney(original*v/100):NaN;break;
+    case "amount": amount=roundMoney(v);break;
+    case "final": amount=roundMoney(original-v);break;
+    default:amount=NaN;
+  }
+  return amount>=0&&amount<=original?amount:NaN;
+}
+function pos21Items(cart: CartItem[], global?:{mode:PromotionMode;value:string}) {
+  return cart.map((item,index) => ({
     product_id: item.product.parent_id || item.product.id,
-    ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
-    quantity: item.quantity,
+    ...(item.product.variant_id ? { variant_id:item.product.variant_id } : {}),
+    quantity:item.quantity,
+    ...(item.product.is_service ? { service_unit_price:cartUnitPrice(item) } : {}),
     ...(item.promotion ? {
-      promotion_mode: item.promotion.mode,
-      promotion_value: Number(item.promotion.value),
+      promotion_mode:item.promotion.mode,
+      promotion_value:Number(item.promotion.value)
     } : {}),
+    ...(index===0&&global ? {
+      global_promotion_mode:global.mode,
+      global_promotion_value:Number(global.value)
+    }:{})
   }));
+}
+function caboLocalDate() {
+  return new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Mazatlan",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+}
+type ScheduledPromotion = {
+  id:string;title:string;target_type:"category"|"sku"|"barcode";
+  target_value:string;discount_percent:number|string;
+  starts_on:string;ends_on:string;enabled:boolean;
+};
+function bestPromotion(product:Product, promotions:ScheduledPromotion[]) {
+  const active=promotions.filter(p=>{
+    const match=p.target_type==="category"
+      ? product.category_id===p.target_value
+      : p.target_type==="sku"
+        ? [product.sku].some(code=>String(code||"").toUpperCase()===p.target_value.trim().toUpperCase())
+        : product.barcode===p.target_value.trim();
+    return p.enabled && match;
+  }).sort((a,b)=>Number(b.discount_percent)-Number(a.discount_percent) || a.id.localeCompare(b.id));
+  const winner=active[0];
+  return winner ? {id:winner.id,title:winner.title,percent:Number(winner.discount_percent)} : undefined;
 }
 const paymentMethods = ["cash", "card_terminal", "transfer", "other"] as const;
 function allowedDiscountFraction(role?: string | null) {
@@ -351,6 +398,9 @@ export default function PosPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productQuery, setProductQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [globalPromotionEnabled,setGlobalPromotionEnabled]=useState(false);
+  const [globalPromotionMode,setGlobalPromotionMode]=useState<PromotionMode>("percent");
+  const [globalPromotionValue,setGlobalPromotionValue]=useState("");
   const [paymentMethod, setPaymentMethod] =
     useState<ShiftPayment["method"]>("cash");
   const [paymentReference, setPaymentReference] = useState("");
@@ -410,7 +460,7 @@ export default function PosPage() {
     try {
       const parents = await readAllPages<Product>((from, to) => supabase
         .from("products")
-        .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible")
+        .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible,category_id,is_service")
         .eq("status", "active").eq("pos_visible", true)
         .order("id").range(from, to));
       const variants: PosVariant[] = [];
@@ -423,7 +473,21 @@ export default function PosPage() {
           .in("product_id", ids).order("id").range(from, to));
         variants.push(...page);
       }
-      setProducts(buildPosCatalog(parents, variants).sort((a, b) => a.name.localeCompare(b.name, "es")));
+      const today=caboLocalDate();
+      const {data:promotionRows,error:promotionError}=await supabase
+        .from("pos22_promotions")
+        .select("id,title,target_type,target_value,discount_percent,starts_on,ends_on,enabled")
+        .eq("enabled",true).lte("starts_on",today).gte("ends_on",today);
+      if(promotionError)throw promotionError;
+      const campaigns=(promotionRows||[]) as ScheduledPromotion[];
+      const catalog=buildPosCatalog(parents,variants).map(product=>({
+        ...product,automaticPromotion:bestPromotion(product,campaigns)
+      })).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+      setProducts(catalog);
+      setCart(current=>current.map(item=>{
+        const latest=catalog.find(p=>p.id===item.product.id);
+        return latest?{...item,product:latest}:item;
+      }));
     } catch (error) {
       setMessage(`PRODUCTS_ERROR: ${readableError(error)}`);
     } finally {
