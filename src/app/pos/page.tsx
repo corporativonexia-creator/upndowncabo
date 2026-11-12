@@ -198,8 +198,8 @@ function bestPromotion(product:Product, promotions:ScheduledPromotion[]) {
     const match=p.target_type==="category"
       ? product.category_id===p.target_value
       : p.target_type==="sku"
-        ? [product.sku].some(code=>String(code||"").toUpperCase()===p.target_value.trim().toUpperCase())
-        : product.barcode===p.target_value.trim();
+        ? [product.sku,product.parent_sku].some(code=>String(code||"").toUpperCase()===p.target_value.trim().toUpperCase())
+       : [product.barcode,product.parent_barcode].some(code=>code===p.target_value.trim());
     return p.enabled && match;
   }).sort((a,b)=>Number(b.discount_percent)-Number(a.discount_percent) || a.id.localeCompare(b.id));
   const winner=active[0];
