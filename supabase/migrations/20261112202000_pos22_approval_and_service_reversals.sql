@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.pos22_issue_promotion_approval(p_cashier_emplo
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare admin_employee public.pos_employees%rowtype;
 declare cashier_employee public.pos_employees%rowtype;
 declare item jsonb;
@@ -108,7 +108,7 @@ CREATE OR REPLACE FUNCTION public.pos_void_sale(p_device_token text, p_sale_id u
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
@@ -307,7 +307,7 @@ CREATE OR REPLACE FUNCTION public.pos_refund_sale(p_device_token text, p_sale_id
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
@@ -573,7 +573,7 @@ CREATE OR REPLACE FUNCTION public.pos_refund_sale_v21(p_device_token text, p_sal
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
