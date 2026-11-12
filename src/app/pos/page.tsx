@@ -1198,7 +1198,7 @@ export default function PosPage() {
           result?.sale_number ?? "—"
         } por ${money(numeric(result?.amount))}.` +
         (mixedRefund ? " Desglose original por método registrado en bitácora." : "") +
-        " Inventario restituido.",
+        " Inventario físico restituido cuando corresponde.",
       );
     } catch (error) {
       setMessage(`REFUND_ERROR: ${readableError(error)}`);
@@ -1930,16 +1930,16 @@ export default function PosPage() {
                               <div className="pos-product-row">
                                 <div>
                                   <div className="pos-product-price">
-                                    {product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
+                                    {product.is_service ? "Precio libre al cobrar" : product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
                                   </div>
                                   <div className={`pos-stock ${stock <= 0 ? "zero" : ""}`}>
-                                    {stock > 0 ? `Stock: ${stock}` : "Agotado"}
+                                    {product.is_service ? "SERVICIO · sin inventario" : stock > 0 ? `Stock: ${stock}` : "Agotado"}
                                   </div>
                                 </div>
                                 <button
                                   className="pos-add"
                                   type="button"
-                                  disabled={busy || stock <= 0}
+                                  disabled={busy || (!product.is_service && stock <= 0)}
                                   onClick={() => addToCart(product)}
                                   aria-label={`Agregar ${product.name}`}
                                 >
@@ -1987,6 +1987,20 @@ export default function PosPage() {
                                 Quitar
                               </button>
                             </div>
+                            {item.product.is_service && (
+                              <div className="pos-field" style={{margin:"10px 0 6px",background:"#eef6f0",padding:10,borderRadius:10}}>
+                                <label>Precio libre del servicio (MXN)</label>
+                                <input type="number" inputMode="decimal" min="0.01" max="99999999" step="0.01"
+                                  placeholder="Captura el importe"
+                                  value={item.servicePrice??""}
+                                  onChange={event=>{
+                                    setPromoApproval(null);
+                                    setCart(current=>current.map(row=>row.product.id===item.product.id
+                                      ? {...row,servicePrice:event.target.value}:row));
+                                  }}
+                                />
+                              </div>
+                            )}
                             <div className="pos-qty">
                               <div className="pos-qty-controls">
                                 <button
@@ -2004,7 +2018,7 @@ export default function PosPage() {
                                 <button
                                   type="button"
                                   disabled={
-                                    item.quantity >= numeric(item.product.stock)
+                                    item.quantity >= (item.product.is_service?100:numeric(item.product.stock))
                                   }
                                   onClick={() =>
                                     setCartQuantity(
@@ -2022,6 +2036,13 @@ export default function PosPage() {
                                   : "Promoción inválida"}
                               </div>
                             </div>
+                            {item.product.automaticPromotion && (
+                              <div style={{display:"flex",justifyContent:"space-between",gap:8,padding:10,marginTop:8,
+                                background:"#eaf6eb",borderRadius:10,color:"#185b38",fontSize:12}}>
+                                <span>✓ Campaña automática: {item.product.automaticPromotion.title}</span>
+                                <strong>−{item.product.automaticPromotion.percent}%</strong>
+                              </div>
+                            )}
                             <div style={{display:"grid",gap:8,marginTop:10,padding:"12px",background:"#f5f8f5",borderRadius:12}}>
                               <label style={{fontSize:12,fontWeight:750,color:"#143e35"}}>Promoción para este artículo</label>
                               <select
@@ -2041,15 +2062,15 @@ export default function PosPage() {
                                   </label>
                                   <input
                                     inputMode="decimal" type="number" min="0" step="0.01"
-                                    max={item.promotion.mode==="percent"?"100":String(productPrice(item.product))}
+                                    max={item.promotion.mode==="percent"?"100":String(cartUnitPrice(item))}
                                     value={item.promotion.value}
                                     onChange={event=>setItemPromotion(item.product.id,item.promotion!.mode,event.target.value)}
                                   />
                                   <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12}}>
-                                    <span>Precio original: {money(productPrice(item.product))} c/u</span>
+                                    <span>Precio original: {money(cartUnitPrice(item))} c/u</span>
                                     <strong style={{color:"#24724c"}}>
                                       Ahorro: {Number.isFinite(discountedUnitPrice(item))
-                                        ? money(roundMoney((productPrice(item.product)-discountedUnitPrice(item))*item.quantity))
+                                        ? money(roundMoney((cartUnitPrice(item)-discountedUnitPrice(item))*item.quantity))
                                         : "Valor inválido"}
                                     </strong>
                                   </div>
@@ -2067,9 +2088,36 @@ export default function PosPage() {
                     )}
 
                     <div className="pos-checkout">
+                      <label style={{display:"flex",gap:10,alignItems:"center",marginBottom:10,fontWeight:800,fontSize:13}}>
+                        <input type="checkbox" checked={globalPromotionEnabled} style={{width:19,height:19}}
+                          onChange={e=>{
+                            setPromoApproval(null);setGlobalPromotionEnabled(e.target.checked);
+                            if(!e.target.checked)setGlobalPromotionValue("");
+                          }}/>
+                        Descuento GENERAL para toda la cuenta
+                      </label>
+                      {globalPromotionEnabled && (
+                        <div style={{background:"#f0f5f1",border:"1px solid #c8ddcf",padding:12,
+                          borderRadius:12,display:"grid",gap:8,marginBottom:12}}>
+                          <label style={{fontSize:12,fontWeight:800}}>Tipo de promoción general</label>
+                          <select aria-label="Tipo de descuento general" value={globalPromotionMode}
+                            onChange={e=>{setPromoApproval(null);setGlobalPromotionMode(e.target.value as PromotionMode);}}>
+                            <option value="percent">% Descuento general</option>
+                            <option value="amount">$ Descuento general</option>
+                            <option value="final">$ Precio final de la cuenta</option>
+                          </select>
+                          <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Escribe el descuento"
+                            aria-label="Valor de descuento general" value={globalPromotionValue}
+                            onChange={e=>{setPromoApproval(null);setGlobalPromotionValue(e.target.value);}}/>
+                          <small>Se suma a las promociones por artículo, sobre el total original de {money(cartOriginalSubtotal)}.</small>
+                          <strong style={{color:"#175a37"}}>
+                            Ahorro general: {Number.isFinite(generalDiscount)?money(generalDiscount):"Revisa el valor"}
+                          </strong>
+                        </div>
+                      )}
                       <div className="pos-total-row">
                         <span>Total</span>
-                        <strong>{money(cartSubtotal)}</strong>
+                        <strong>{Number.isFinite(cartSubtotal)?money(cartSubtotal):"Importe inválido"}</strong>
                       </div>
 
                       {cartTotalDiscount>0 && (
@@ -2078,7 +2126,16 @@ export default function PosPage() {
                             <span>Precio original</span><strong>{money(cartOriginalSubtotal)}</strong>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
-                            <span>Ahorro total por promociones</span><strong>−{money(cartTotalDiscount)}</strong>
+                            <span>Campañas automáticas</span><strong>−{money(autoDiscountTotal)}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
+                            <span>Descuentos por artículo</span><strong>−{money(manualDiscountTotal)}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
+                            <span>Descuento general</span><strong>−{Number.isFinite(generalDiscount)?money(generalDiscount):"Inválido"}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,fontWeight:800,color:"#21543a"}}>
+                            <span>Ahorro total</span><strong>−{Number.isFinite(cartTotalDiscount)?money(cartTotalDiscount):"Inválido"}</strong>
                           </div>
                         </div>
                       )}
