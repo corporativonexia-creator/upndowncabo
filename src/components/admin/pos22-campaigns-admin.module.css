@@ -1,0 +1,43 @@
+.page{min-height:100vh;background:#f5f7f4;color:#153d33;font-family:Arial,Helvetica,sans-serif;padding:34px 20px 70px}
+.container{max-width:1220px;margin:auto}
+.header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:22px}
+.eyebrow{font-size:11px;letter-spacing:.12em;font-weight:850;color:#50766b}
+.header h1{font-size:clamp(30px,4vw,48px);margin:9px 0;letter-spacing:-.035em}
+.header p{color:#607169;margin:0;max-width:600px;line-height:1.5}
+.links{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.links a{border:1px solid #cad9ce;background:#fff;text-decoration:none;color:#164633;padding:10px 13px;border-radius:12px;font-weight:750;font-size:13px}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.card{border:1px solid #dee7df;background:#fff;padding:24px;border-radius:22px;box-shadow:0 4px 20px rgba(22,59,43,.04)}
+.card h2{font-size:24px;margin:10px 0 6px;letter-spacing:-.02em}
+.card h3{font-size:16px;margin:24px 0 12px}
+.card p{color:#64766a;line-height:1.5;margin:0 0 17px;font-size:14px}
+.form{display:grid;gap:14px}
+.form label{display:grid;gap:7px;color:#244c3e;font-weight:750;font-size:13px}
+.form input,.form select{width:100%;min-width:0;border-radius:11px;border:1px solid #ccdacf;background:#fff;padding:12px 13px;font:inherit;font-size:14px;color:#173b2b;min-height:44px}
+.form input:focus,.form select:focus{outline:2px solid #7ab798;outline-offset:2px}
+.form small{font-size:12px;line-height:1.55;color:#657a70}
+.dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.percent{display:flex;align-items:center;position:relative}
+.percent input{padding-right:40px}
+.percent span{position:absolute;right:15px;font-weight:900}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.actions button,.sectionHead button,.listRow button{cursor:pointer;border-radius:10px;padding:9px 12px;border:1px solid #d3dfd8;background:#fff;color:#214c3e;font-weight:750;font-size:12px}
+.primary{background:#154b37!important;color:#fff!important;border:1px solid #154b37!important;padding:13px 17px!important;border-radius:12px!important;font-weight:800!important;cursor:pointer}
+.primary:disabled,.actions button:disabled,.listRow button:disabled{opacity:.55;cursor:not-allowed}
+.notice{padding:12px;background:#eef5f0;border-radius:12px;border:1px solid #d6e7da}
+.error,.success{padding:12px 15px;border-radius:12px;margin:0 0 16px;word-break:break-word;font-size:14px}
+.error{background:#fff0ed;color:#8c302b;border:1px solid #edc8c0}
+.success{background:#e8f6ed;color:#1f6943;border:1px solid #b8dfc6}
+.items{display:grid;gap:8px;max-height:520px;overflow:auto}
+.listRow{display:flex;gap:12px;justify-content:space-between;align-items:center;border:1px solid #e2eae4;background:#fafcfa;padding:12px;border-radius:12px}
+.listRow strong,.campaignRow strong{display:block;line-height:1.4}
+.listRow small,.campaignRow small{display:block;color:#6e8074;font-size:12px;margin-top:3px;overflow-wrap:anywhere}
+.campaignRow{display:grid;grid-template-columns:minmax(220px,1fr) auto 85px auto;gap:14px;align-items:center;padding:15px;border:1px solid #e2eae4;border-radius:13px;background:#fefefe}
+.status{padding:6px 10px;border-radius:99px;background:#e8f5ee;color:#2d7149;font-size:11px;font-weight:900;white-space:nowrap;text-align:center}
+.status[data-status="Pausada"]{background:#f0efee;color:#78736d}
+.status[data-status="Programada"]{background:#e9f0fd;color:#355bb2}
+.status[data-status="Terminada"]{background:#fff3e5;color:#976133}
+.discount{font-size:19px;color:#1b754c;text-align:right}
+.sectionHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+@media(max-width:860px){.columns{grid-template-columns:1fr}.header{flex-direction:column}.campaignRow{grid-template-columns:1fr auto}.campaignRow .actions{grid-column:1/-1}}
+@media(max-width:520px){.page{padding:20px 12px}.card{padding:16px}.dates{grid-template-columns:1fr}.campaignRow{gap:9px}}
