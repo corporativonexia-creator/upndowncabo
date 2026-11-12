@@ -547,7 +547,7 @@ export default function PosPage() {
     }
 
     const stock = numeric(product.stock);
-    if (stock <= 0) {
+    if (!product.is_service && stock <= 0) {
       setMessage(`${product.name} está agotado.`);
       setProductQuery("");
       return false;
@@ -556,7 +556,7 @@ export default function PosPage() {
     const currentQuantity =
       cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
 
-    if (currentQuantity >= stock) {
+    if (!product.is_service && currentQuantity >= stock) {
       setMessage(
         `${product.name}: ya tienes en el carrito todo el stock disponible (${stock}).`,
       );
@@ -647,17 +647,17 @@ export default function PosPage() {
       return;
     }
     const stock = numeric(product.stock);
-    if (stock <= 0) return;
+    if (!product.is_service && stock <= 0) return;
 
     setCart((current) => {
       const existing = current.find((item) => item.product.id === product.id);
-      if (!existing) return [...current, { product, quantity: 1 }];
+      if (!existing) return [...current, { product, quantity: 1, ...(product.is_service?{servicePrice:""}:{}) }];
 
       return current.map((item) =>
         item.product.id === product.id
           ? {
               ...item,
-              quantity: Math.min(item.quantity + 1, stock),
+              quantity: Math.min(item.quantity + 1, product.is_service?100:stock),
             }
           : item,
       );
@@ -673,7 +673,7 @@ export default function PosPage() {
           const stock = numeric(item.product.stock);
           return {
             ...item,
-            quantity: Math.max(0, Math.min(nextQuantity, stock)),
+            quantity: Math.max(0, Math.min(nextQuantity, item.product.is_service?100:stock)),
           };
         })
         .filter((item) => item.quantity > 0),
@@ -691,7 +691,7 @@ export default function PosPage() {
     setPromoApproval(null);
     setCart(current=>current.map(item=>item.product.id===productId
       ? {...item,promotion:mode==="none" ? undefined : {mode,value:value??(
-          mode==="percent"?"10":mode==="amount"?"100":String(roundMoney(productPrice(item.product)*0.9))
+          mode==="percent"?"10":mode==="amount"?"100":String(roundMoney(cartUnitPrice(item)*0.9))
         )}}
       : item));
   }
@@ -701,7 +701,8 @@ export default function PosPage() {
       setMessage("Ingresa correo, contraseña administrativa y motivo de al menos 6 caracteres.");
       return;
     }
-    const items=pos21Items(cart);
+    const global=globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined;
+    const items=pos21Items(cart,global);
     setApprovalBusy(true);
     try{
       // Isolated authentication: do not replace the cashier's POS session.
@@ -716,7 +717,7 @@ export default function PosPage() {
       });
       if(signError)throw signError;
       try{
-        const {data,error}=await adminClient.rpc("pos21_issue_promotion_approval",{
+        const {data,error}=await adminClient.rpc("pos22_issue_promotion_approval",{
           p_cashier_employee_id:access.employee_id,p_items:items,p_reason:approvalReason.trim()
         });
         if(error)throw error;
@@ -741,18 +742,22 @@ export default function PosPage() {
       return;
     }
 
-    const original = roundMoney(cart.reduce((sum,item)=>sum+productPrice(item.product)*item.quantity,0));
-    const total = roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+    const original=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
+    const lineFinal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+    const global=globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined;
+    const generalAmount=globalDiscountAmount(original,globalPromotionEnabled,globalPromotionMode,globalPromotionValue);
+    const total=roundMoney(lineFinal-generalAmount);
     if(!Number.isFinite(total)||total<=0){
-      setMessage("Precio promocional inválido. Revisa los descuentos de cada artículo.");return;
+      setMessage("Importe o descuento inválido. Revisa precio de servicios y promociones.");return;
     }
-    const saved = roundMoney(original-total);
-    const allowed = roundMoney(original*allowedDiscountFraction(access.employee_role));
-    const items = pos21Items(cart);
-    const fingerprintItems = JSON.stringify(items);
-    if(saved > allowed && (!promoApproval || promoApproval.itemsFingerprint!==fingerprintItems)){
-      setMessage("Esta promoción supera el límite del empleado. Solicita autorización del administrador.");
-      return;
+    const manualSaved=roundMoney(cart.reduce((sum,item)=>
+      sum+(cartUnitPrice(item)-manuallyDiscountedUnitPrice(item))*item.quantity,0));
+    const humanDiscount=roundMoney(manualSaved+generalAmount);
+    const allowed=roundMoney(original*allowedDiscountFraction(access.employee_role));
+    const items=pos21Items(cart,global);
+    const fingerprintItems=JSON.stringify(items);
+    if(humanDiscount>allowed && (!promoApproval||promoApproval.itemsFingerprint!==fingerprintItems)){
+      setMessage("El descuento manual/general supera el límite del empleado. Solicita autorización.");return;
     }
     const payments:ShiftPayment[] = mixedPayment
       ? paymentMethods.filter(m=>parseMoneyText(mixedAmounts[m])>0)
@@ -768,7 +773,7 @@ export default function PosPage() {
     if(numeric(cashApplied)>0 && parseMoneyText(cashReceived)<numeric(cashApplied)){
       setMessage("Efectivo recibido insuficiente para cubrir la parte en efectivo.");return;
     }
-    const approvalToken=saved>allowed?promoApproval?.token:null;
+    const approvalToken=humanDiscount>allowed?promoApproval?.token:null;
     const paymentNote=payments.length>1
       ?"Pago mixto: "+payments.map(p=>paymentLabel(p.method)+" "+money(numeric(p.amount))).join("; ")
       :null;
@@ -782,14 +787,14 @@ export default function PosPage() {
       if (checkoutRequest.current?.fingerprint !== fingerprint) {
         checkoutRequest.current = { fingerprint, id: crypto.randomUUID() };
       }
-      const { data, error } = await supabase.rpc("pos_create_sale_v21", {
+      const { data, error } = await supabase.rpc("pos_create_sale_v22", {
         p_device_token: deviceToken,
         p_items: items,
         p_payments: payments.map((payment,index)=>({
           ...payment,
           ...(index===0?{metadata:{pos_request_id:checkoutRequest.current!.id}}:{})
         })),
-        p_discount_amount: 0,
+        p_discount_amount: generalAmount,
         p_notes: paymentNote,
         p_promo_approval_token:approvalToken
       });
@@ -805,6 +810,9 @@ export default function PosPage() {
 
       checkoutRequest.current = null;
       setCart([]);
+      setGlobalPromotionEnabled(false);
+      setGlobalPromotionMode("percent");
+      setGlobalPromotionValue("");
       setCashReceived("");
       setPaymentReference("");
       setPromoApproval(null);
@@ -1608,16 +1616,20 @@ export default function PosPage() {
       .some((value) => String(value).toLowerCase().includes(query));
   });
 
-  const cartOriginalSubtotal = roundMoney(cart.reduce(
-    (sum,item)=>sum+productPrice(item.product)*item.quantity,0
-  ));
-  const cartSubtotal = roundMoney(cart.reduce(
-    (sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0
-  ));
-  const cartTotalDiscount = roundMoney(cartOriginalSubtotal-cartSubtotal);
-  const maxAllowedDiscount = roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
-  const needsPromoApproval = cartTotalDiscount>maxAllowedDiscount;
-  const approvalValid = !!promoApproval && promoApproval.itemsFingerprint===JSON.stringify(pos21Items(cart));
+  const cartOriginalSubtotal=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
+  const itemDiscountedSubtotal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+  const autoDiscountTotal=roundMoney(cart.reduce((sum,item)=>
+    sum+roundMoney(cartUnitPrice(item)*(item.product.automaticPromotion?.percent||0)/100)*item.quantity,0));
+  const manualDiscountTotal=roundMoney(cart.reduce((sum,item)=>
+    sum+(cartUnitPrice(item)-manuallyDiscountedUnitPrice(item))*item.quantity,0));
+  const generalDiscount=globalDiscountAmount(cartOriginalSubtotal,globalPromotionEnabled,globalPromotionMode,globalPromotionValue);
+  const cartSubtotal=roundMoney(itemDiscountedSubtotal-generalDiscount);
+  const cartTotalDiscount=roundMoney(cartOriginalSubtotal-cartSubtotal);
+  const maxAllowedDiscount=roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
+  const needsPromoApproval=roundMoney(manualDiscountTotal+generalDiscount)>maxAllowedDiscount;
+  const approvalValid=!!promoApproval&&promoApproval.itemsFingerprint===JSON.stringify(
+    pos21Items(cart,globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined)
+  );
   const mixedAllocated = roundMoney(paymentMethods.reduce(
     (sum,m)=>sum+(parseMoneyText(mixedAmounts[m])||0),0
   ));
