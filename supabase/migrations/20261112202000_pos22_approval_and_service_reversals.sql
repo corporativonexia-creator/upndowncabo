@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.pos22_issue_promotion_approval(p_cashier_emplo
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare admin_employee public.pos_employees%rowtype;
 declare cashier_employee public.pos_employees%rowtype;
 declare item jsonb;
@@ -100,7 +100,7 @@ begin
  returning token into issued;
  return issued;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_void_sale(p_device_token text, p_sale_id uuid, p_reason text)
@@ -108,7 +108,7 @@ CREATE OR REPLACE FUNCTION public.pos_void_sale(p_device_token text, p_sale_id u
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
@@ -299,7 +299,7 @@ begin
     'status', 'voided'
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_refund_sale(p_device_token text, p_sale_id uuid, p_method text, p_reason text)
@@ -307,7 +307,7 @@ CREATE OR REPLACE FUNCTION public.pos_refund_sale(p_device_token text, p_sale_id
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
@@ -565,7 +565,7 @@ begin
     'status', 'refunded'
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.pos_refund_sale_v21(p_device_token text, p_sale_id uuid, p_allocations jsonb, p_reason text)
@@ -573,7 +573,7 @@ CREATE OR REPLACE FUNCTION public.pos_refund_sale_v21(p_device_token text, p_sal
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
@@ -882,8 +882,7 @@ begin
     'status', 'refunded'
   );
 end;
-$function$
-;
+$function$;
 revoke all on function public.pos22_issue_promotion_approval(uuid,jsonb,text) from PUBLIC,anon;
 grant execute on function public.pos22_issue_promotion_approval(uuid,jsonb,text) to authenticated;
 commit;
