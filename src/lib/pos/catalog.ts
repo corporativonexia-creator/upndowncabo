@@ -4,6 +4,8 @@ export type PosProduct = {
   sale_price: number | string | null; currency: string; stock: number | string | null;
   cover_image_url: string | null; status: string; pos_visible?: boolean;
   variant_id?: string | null; parent_id?: string | null;
+  category_id?: string | null; is_service?: boolean;
+  automaticPromotion?: { id: string; title: string; percent: number };
 };
 
 export type PosVariant = {
