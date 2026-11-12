@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.pos_create_sale_v22(p_device_token text, p_ite
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_employee public.pos_employees%rowtype;
   v_terminal public.pos_terminals%rowtype;
