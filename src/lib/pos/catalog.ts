@@ -5,6 +5,7 @@ export type PosProduct = {
   cover_image_url: string | null; status: string; pos_visible?: boolean;
   variant_id?: string | null; parent_id?: string | null;
   category_id?: string | null; is_service?: boolean;
+  parent_sku?: string | null; parent_barcode?: string | null;
   automaticPromotion?: { id: string; title: string; percent: number };
 };
 
@@ -40,6 +41,7 @@ export function buildPosCatalog(parents: PosProduct[], variants: PosVariant[]): 
       return {
         ...parent, id: variant.id, parent_id: parent.id, variant_id: variant.id,
         name: `${parent.name} · ${variantLabel(variant)}`, sku: variant.sku,
+        parent_sku: parent.sku, parent_barcode: parent.barcode,
         barcode: variant.barcode, price: variant.price ?? parent.price,
         sale_price: variant.sale_price ?? (variant.price != null ? null : parent.sale_price),
         stock: variant.stock,
