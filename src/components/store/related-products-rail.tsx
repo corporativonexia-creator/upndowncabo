@@ -21,7 +21,7 @@ function price(amount: number, currency: string) {
 }
 export default function RelatedProductsRail({ products, preview }: { products: RelatedProduct[]; preview: boolean }) {
   const [code, setCode] = useState<string | null>(null);
-  useEffect(() => { setCode(affiliateCode()); }, []);
+  useEffect(() => { void Promise.resolve().then(() => setCode(affiliateCode())); }, []);
   if (!products.length) return null;
   return <section className="ud-related" aria-label="Artículos relacionados">
     <div className="ud-related-heading">
