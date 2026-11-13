@@ -56,6 +56,25 @@ before(async()=>{
    throw Error('POS fixture schema failed near: '+schema.slice(Math.max(0,pos-110),pos+110)+'; '+error.message,{cause:error});
  }
  await migrate('20261104020000_pos_variant_sales');
+ // Disposable checkout V2 tables only; no production copies, orders or live sessions.
+ await sql(`create table public.checkout_v2_reservations(
+   id uuid primary key default gen_random_uuid(),
+   reservation_token uuid not null unique default gen_random_uuid(),
+   status text not null default 'active',
+   stripe_checkout_session_id text,
+   seller_ref text,expires_at timestamptz not null,
+   released_at timestamptz,consumed_at timestamptz,release_reason text,
+   metadata jsonb not null default '{}'::jsonb,created_at timestamptz not null default now()
+ );
+ create table public.checkout_v2_items(
+   id uuid primary key default gen_random_uuid(),
+   reservation_id uuid not null references public.checkout_v2_reservations(id),
+   product_id uuid not null references public.products(id),
+   variant_id uuid references public.product_variants(id),
+   sku text,product_name text not null,quantity integer not null,
+   currency text not null,unit_price numeric(12,2) not null,
+   stock_before integer not null,stock_after integer not null,image_url text
+ )`);
  // Minimal fixture-only support missing from the 2026-11-04 schema snapshot.
  await sql("alter table public.categories add column if not exists is_active boolean not null default true");
  await sql(`create or replace function public.is_admin() returns boolean language sql stable
@@ -88,6 +107,25 @@ test('migrations installed in strict order, functions and RLS are present',async
  assert.equal((await one("select count(*)::int n from pg_proc where pronamespace='public'::regnamespace and proname in ('pos_create_sale_v22','pos22_match_promotion','pos22_issue_promotion_approval','pos_refund_sale_v21')")).n,4);
  assert.equal((await one("select relrowsecurity enabled from pg_class where oid='public.pos22_promotions'::regclass")).enabled,true);
  assert.ok((await one("select count(*)::int n from pg_policies where tablename='pos22_promotions'")).n>=4);
+});
+test('public RPC exposes only active campaign targets in Cabo timezone',async()=>{
+ const id=await fixtureProduct({price:1000});
+ const sku=(await one('select sku from products where id=$1',[id])).sku;
+ await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA VISIBLE','sku',$1,20,current_date-1,current_date+1,true),('QA PRIVATE','sku',$1,70,current_date-7,current_date-2,true),('QA DISABLED','sku',$1,75,current_date-1,current_date+1,false)",[sku]);
+ const publicCampaigns=(await one('select public.pos22_public_active_promotions() result')).result;
+ assert.ok(publicCampaigns.some(p=>p.title==='QA VISIBLE'));
+ assert.ok(!publicCampaigns.some(p=>p.title==='QA PRIVATE'||p.title==='QA DISABLED'));
+ await sql("delete from pos22_promotions where title like 'QA VISIBLE' or title like 'QA PRIVATE' or title like 'QA DISABLED'");
+});
+test('checkout V2 reserves at special-price minus category campaign, never trusts browser price',async()=>{
+ const id=await fixtureProduct({price:1000,stock:5});
+ await sql('update products set sale_price=900 where id=$1',[id]);
+ await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA ONLINE CATEGORY','category',$1,20,current_date-1,current_date+1,true)",[category]);
+ const reserved=(await one('select public.reserve_checkout_inventory_v2($1::jsonb,null,30) result',[JSON.stringify([{id,quantity:1,price:1}])])).result;
+ assert.equal(money(reserved.items[0].unit_price),720);
+ assert.equal(money((await one('select unit_price from checkout_v2_items where reservation_id=$1',[reserved.reservation_id])).unit_price),720);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,4);
+ await sql("update pos22_promotions set enabled=false where title='QA ONLINE CATEGORY'");
 });
 test('automatic category campaign and manual item promotion stack without double stock deduction',async()=>{
  const id=await fixtureProduct({price:1000,stock:6});
