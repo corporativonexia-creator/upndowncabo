@@ -119,7 +119,8 @@ test('public RPC exposes only active campaign targets in Cabo timezone',async()=
 });
 test('checkout V2 reserves at special-price minus category campaign, never trusts browser price',async()=>{
  const id=await fixtureProduct({price:1000,stock:5});
- await sql('update products set sale_price=900 where id=$1',[id]);
+ // Online checkout must not reserve a POS-only product.
+ await sql('update products set sale_price=900,online_visible=true where id=$1',[id]);
  await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA ONLINE CATEGORY','category',$1,20,current_date-1,current_date+1,true)",[category]);
  const reserved=(await one('select public.reserve_checkout_inventory_v2($1::jsonb,null,30) result',[JSON.stringify([{id,quantity:1,price:1}])])).result;
  assert.equal(money(reserved.items[0].unit_price),720);
