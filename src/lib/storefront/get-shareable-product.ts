@@ -66,7 +66,8 @@ export const findShareableProduct = cache(async (key: string): Promise<Shareable
   const sale = variant ? (variant.sale_price ?? (variant.price == null ? parent.sale_price : null)) : parent.sale_price;
   const saleNumber = sale == null ? null : finiteNum(sale);
   const {data:campaigns,error:campaignError} = await campaignPromise;
-  if(campaignError)throw new Error("No se pudo verificar la promoción vigente del catálogo.");
+  if(campaignError&&!["PGRST202","42883"].includes(String(campaignError.code||"")))
+    throw new Error("No se pudo verificar la promoción vigente del catálogo.");
   const campaign=matchOnlineCampaign((Array.isArray(campaigns)?campaigns:[]) as PublicCampaign[],{
     categoryId:text(parent.category_id),sku:variant?text(variant.sku):text(parent.sku),parentSku:text(parent.sku),
     barcode:variant?text(variant.barcode):text(parent.barcode),parentBarcode:text(parent.barcode)
