@@ -81,3 +81,28 @@ test('POS Retail V8: original two-copy, two-cut and cash-drawer flow remains pre
   assert.match(bridge,/SendRaw \$DRAWER/);
   assert.match(bridge,/copies":2,"cuts":2,"drawer":1/);
 });
+
+test('POS Retail V8: local simulation invokes existing BuildBody without network or stock',()=>{
+ assert.match(bridge,/\[switch\]\$TestReceipt/);
+ assert.match(bridge,/\[switch\]\$TestDrawer/);
+ assert.match(bridge,/if\(\$TestReceipt\)\s*\{/);
+ assert.match(bridge,/is_test=\$true/);
+ assert.match(bridge,/sale_number='QA22-NO-VENTA'/);
+ assert.match(bridge,/PRUEBA POS 2\.2 - NO ES VENTA/);
+ assert.match(bridge,/NO EXISTE TRANSACCION REAL/);
+ assert.match(bridge,/SIN COBRO - SIN CAMBIO DE STOCK/);
+ assert.match(bridge,/BuildBody \$testSale \$null 'CLIENTE'/);
+ assert.match(bridge,/BuildBody \$testSale \$null 'COMERCIO'/);
+ assert.match(bridge,/if\(\$TestDrawer\)\{/);
+ const diagnostic=bridge.slice(bridge.indexOf('if($TestReceipt){'),bridge.indexOf('$l=New-Object Net.HttpListener;'));
+ assert.doesNotMatch(diagnostic,/fetch\(|supabase|https?:\/\/|pos_create_sale|inventory_movements/i);
+ assert.match(diagnostic,/exit 0/);
+ assert.equal((diagnostic.match(/SendRaw \$CUT/g)||[]).length,2);
+ assert.equal((diagnostic.match(/SendRaw \$DRAWER/g)||[]).length,1);
+});
+test('POS Retail V8: simulated fixture totals match item savings and global discount',()=>{
+ assert.match(bridge,/subtotal=5000\.00; discount_amount=1020\.00; total=3980\.00/);
+ assert.match(bridge,/line_total=180\.00;discount_amount=20\.00/);
+ assert.match(bridge,/line_total=4800\.00;discount_amount=0\.00/);
+ assert.equal(180+4800-(1020-20),3980);
+});
