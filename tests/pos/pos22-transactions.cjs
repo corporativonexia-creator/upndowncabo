@@ -88,6 +88,7 @@ test('automatic category campaign and manual item promotion stack without double
  assert.equal(money(result.subtotal),1000);assert.equal(money(result.discount_amount),150);assert.equal(money(result.total),850);
  assert.equal(money((await one('select stock from products where id=$1',[id])).stock),5);
  assert.equal((await one("select count(*)::int n from inventory_movements where pos_sale_id=$1 and movement_type='sale'",[result.sale_id])).n,1);
+ await sql("update pos22_promotions set enabled=false where title='QA CATEGORY'");
 });
 test('global percentage plus per-item discount use original subtotal and exact tender',async()=>{
  const id=await fixtureProduct({price:5000});
