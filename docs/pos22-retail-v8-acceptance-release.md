@@ -77,3 +77,53 @@ Registrar por escenario: fecha, cajero/rol, equipo/driver, folio ficticio, resul
 
 ## 5. Condición de cierre
 Ninguna aprobación de CI autoriza migración/despliegue por sí sola. Requiere confirmación de impresión física, respaldo restaurable, conciliación de caja y autorización expresa de publicación.
+
+## 6. Preflight contra producción (consulta de solo lectura, 13-nov-2026)
+Esta observación es **puntual, no un respaldo**, y debe repetirse en la ventana real de liberación. Se inspeccionaron solamente metadatos y conteos; no se exportaron clientes, cobros ni credenciales.
+
+| Comprobación | Resultado al inspeccionar |
+|---|---|
+| PostgreSQL | 17.6 |
+| Migraciones POS 2.2 instaladas | No: la tabla `pos22_promotions` y las funciones POS 2.2 aún no existen |
+| Tablas de reservas Stripe | Cuatro tablas V1/V2 presentes |
+| Inventario: tipo de movimiento | Admite `sale`, `refund`, `adjustment`, `restock`, `damage` y `supplier_return` |
+| Reserva y liberación de Stripe | RPC V1/V2 solo ejecutable con `service_role`; se reforzó esta regla en la migración |
+| Línea base: productos / variantes | 217 / 365 |
+| Línea base: ventas / renglones / pagos | 21 / 35 / 22 |
+| Línea base: movimientos de inventario | 442 |
+| Turnos abiertos / reservas V1 activas / V2 activas | 0 / 0 / 0 |
+
+**Advertencia:** cualquier conteo puede cambiar con ventas o altas de productos después de esta consulta. La diferencia histórica entre conteos de POS y catálogo no se diagnostica ni se considera resuelta con estos números.
+
+### 6.1. Repetir verificación antes de aplicar SQL (solo lectura)
+```sql
+select
+ (select count(*) from public.products) as products,
+ (select count(*) from public.product_variants) as variants,
+ (select count(*) from public.pos_sales) as sales,
+ (select count(*) from public.pos_sale_items) as sale_items,
+ (select count(*) from public.pos_payments) as payments,
+ (select count(*) from public.pos_shifts where status='open') as open_shifts,
+ (select count(*) from public.inventory_movements) as inventory_movements,
+ (select count(*) from public.checkout_inventory_reservations where status='active') as v1_active_reservations,
+ (select count(*) from public.checkout_v2_reservations where status='active') as v2_active_reservations;
+```
+
+### 6.2. Protección de funciones de reserva
+La migración `20261113093000_pos22_storefront_campaign_checkout.sql` declara explícitamente:
+- `reserve_checkout_inventory(jsonb,text,integer)`: solo `service_role`.
+- `reserve_checkout_inventory_v2(jsonb,text,integer)`: solo `service_role`.
+- `release_checkout_reservation(uuid,text)`: solo `service_role`.
+- `pos22_public_active_promotions()`: `anon`/`authenticated` pueden obtener únicamente campañas habilitadas y vigentes, no datos privados ni acceso directo a la tabla administrativa.
+
+En CI se comprueba que `anon` no tenga `EXECUTE` en las funciones que tocan inventario. La exposición pública de títulos/porcentajes de campañas es intencional.
+
+### 6.3. Respaldos y autorización
+No existe evidencia aún de un respaldo exportado y **restaurado satisfactoriamente** para esta liberación. No fusionar el PR ni ejecutar SQL hasta contar con:
+1. Respaldo consistente externo, restringido, cifrado y reciente, con operaciones/catálogo/variantes/stock/caja.
+2. Restauración **real** de esa copia en entorno aislado; verificar conteos, totales y muestra de folios.
+3. Aprobación expresa del responsable del negocio para publicación. Una vista previa Vercel satisfactoria o CI verde no cumple estas condiciones.
+4. Prueba física POS-80C Retail V8, cajón y flujo de reimpresión por folio.
+
+### 6.4. Seguridad adicional observada
+Los avisos actuales de Security Advisors incluyen funciones `SECURITY DEFINER` preexistentes públicamente ejecutables (fuera del alcance de este PR), así como algunas tablas con RLS sin políticas. Los avisos no constituyen por sí solos una fuga confirmada; requieren auditoría independiente antes de considerarlos corregidos. No se han modificado permisos productivos en esta inspección.
