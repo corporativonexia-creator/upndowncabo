@@ -64,6 +64,56 @@ test('online: storefront campaign priority also applies to parent SKU and varian
  [fixture,{id:'p',title:'Parent SKU',target_type:'sku',target_value:'WED-001',discount_percent:18}]);
  assert.equal(result.automaticPromotion.percent,20);
 });
+// Exercise the actual storefront card formatter in a sandboxed, fake-DOM-free runtime.
+const cardStart=runtime.indexOf('  function stockCopy(');
+const cardEnd=runtime.indexOf('  function markImageFallback(',cardStart);
+assert.ok(cardStart>=0&&cardEnd>cardStart,'Store card price renderer must exist');
+const cardCtx=vm.createContext({
+ currentLanguage:'es',conditionLabels:{new:'Nuevo'},conditionLabelsEn:{new:'New'},
+ normalizeSpecKey:x=>String(x).toLowerCase(),golfSpecChips:()=>[],
+ escapeHtml:x=>String(x),categoryLabel:()=> 'Wedges',
+ localizedProductText:()=>'',money:n=>'
+test('online: checkout V1 and V2 both calculate campaign on the server',()=>{
+ assert.match(sql,/function public.reserve_checkout_inventory\(/i);
+ assert.match(sql,/function public.reserve_checkout_inventory_v2\(/i);
+ assert.match(sql,/pos22_match_promotion\(v_product.id,null\)/);
+ assert.match(sql,/pos22_match_promotion\(v_parent_id,v_variant_id\)/);
+ assert.match(sql,/grant execute on function public.pos22_public_active_promotions\(\) to anon,authenticated/);
+});
++Number(n).toFixed(2),
+ siteText:()=> 'Envío no incluido',storefrontPricing:ctx.storefrontPricing
+});
+vm.runInContext(runtime.slice(cardStart,cardEnd),cardCtx);
+test('online: real card markup displays campaign badge, crossed regular and final price',()=>{
+ const html=cardCtx.cardHtml({
+  id:'qa-wedge',name:'Wedge 56',item_condition:'new',category_id:'wedges',stock:3,
+  currency:'MXN',price:1000,sale_price:900,automaticPromotion:{percent:20}
+ });
+ assert.match(html,/uds-campaign-badge[^>]*>-20%/);
+ assert.match(html,/uds-price[^>]*>\$720\.00/);
+ assert.match(html,/uds-old-price[^>]*>\$1000\.00/);
+});
+test('online: card without campaign retains special price and no campaign badge',()=>{
+ const html=cardCtx.cardHtml({name:'Wedge 52',stock:4,item_condition:'new',
+  price:1000,sale_price:900,currency:'MXN'});
+ assert.doesNotMatch(html,/uds-campaign-badge/);
+ assert.match(html,/uds-price[^>]*>\$900\.00/);
+});
+const addStart=runtime.indexOf('  function addToCart(');
+const addEnd=runtime.indexOf('  function changeQty(',addStart);
+assert.ok(addStart>=0&&addEnd>addStart,'Cart item pricing must exist');
+const cartCtx=vm.createContext({
+ cart:[],currentLanguage:'es',PREVIEW_CATEGORY_GROUPS:[{id:'qa'}],
+ showToast:()=>{},saveCart:()=>{},golfSummary:()=>'',storefrontPricing:ctx.storefrontPricing
+});
+vm.runInContext(runtime.slice(addStart,addEnd),cartCtx);
+test('online: Add-to-cart transfers exact discounted value into stored cart item',()=>{
+ cartCtx.addToCart({id:'qa-wedge',name:'Wedge 56',sku:'WED-QA',
+  currency:'MXN',stock:3,price:1000,sale_price:900,
+  automaticPromotion:{percent:20}});
+ assert.equal(cartCtx.cart[0].price,720);
+ assert.equal(cartCtx.cart[0].quantity,1);
+});
 const sql=fs.readFileSync('supabase/migrations/20261113093000_pos22_storefront_campaign_checkout.sql','utf8');
 test('online: checkout V1 and V2 both calculate campaign on the server',()=>{
  assert.match(sql,/function public.reserve_checkout_inventory\(/i);
