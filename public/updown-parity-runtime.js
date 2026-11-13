@@ -2162,6 +2162,15 @@
     return {data:result.flatMap(entry=>entry.data||[]),error:null};
   }
 
+  async function refreshCampaignsForCheckout(){
+    const {data,error}=await db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal());
+    const missing=error&&["PGRST202","42883"].includes(String(error.code||""));
+    if(error&&!missing)throw error;
+    storefrontPromotions=Array.isArray(data)?data:[];
+    products=applyStorefrontPromotions(products,storefrontPromotions);
+    renderCatalogState();
+  }
+
   async function loadStore(){
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
@@ -2396,7 +2405,7 @@
       return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
     const b=el("udsCheckoutButton");b.disabled=true;b.textContent=currentLanguage==="en"?"Validating inventory…":"Validando inventario…";
-    try{await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
+    try{await refreshCampaignsForCheckout();await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
       const {data,error}=await db.functions.invoke(PREVIEW_CATEGORY_GROUPS?.length?"create-checkout-session-v2":"create-checkout-session",{body:{items:cart.map(i=>({id:i.id,quantity:i.quantity})),seller_ref:getStoredAffiliate()?.code||null}});
       if(error){let msg=error.message||(currentLanguage==="en"?"We could not start the payment.":"No fue posible iniciar el pago.");try{if(error.context&&typeof error.context.json==="function"){const body=await error.context.json();msg=body?.error||msg}}catch(e){}try{await reconcileCart({silent:false})}catch(e){}throw new Error(msg)}
       if(!data?.url)throw new Error(currentLanguage==="en"?"Stripe did not return a payment URL.":"Stripe no devolvió una dirección de pago.");window.location.assign(data.url)
