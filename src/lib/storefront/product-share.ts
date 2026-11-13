@@ -53,6 +53,7 @@ export type ShareableProduct = {
   currency: string;
   price: number;
   comparePrice: number | null;
+  campaignPercent?: number;
   stock: number;
   images: string[];
   hasVariants: boolean;
