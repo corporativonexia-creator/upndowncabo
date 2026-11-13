@@ -106,8 +106,14 @@ test('global percentage plus per-item discount use original subtotal and exact t
 });
 test('final-price override is exact after line discounts, not deducted twice',async()=>{
  const id=await fixtureProduct({price:5000});
- const result=await sell(items(id,{promotion_mode:'amount',promotion_value:200}),3500,{mode:'final',value:3500,discount:1300});
+ const lines=items(id,{promotion_mode:'amount',promotion_value:200});
+ const authorizedLines=structuredClone(lines);
+ authorizedLines[0].global_promotion_mode='final';authorizedLines[0].global_promotion_value=3500;
+ const approval=(await one('select public.pos22_issue_promotion_approval($1,$2::jsonb,$3) token',
+  [adminEmployee,JSON.stringify(authorizedLines),'QA authorize final-price discount'])).token;
+ const result=await sell(lines,3500,{mode:'final',value:3500,discount:1300,approval});
  assert.equal(money(result.total),3500);
+ assert.equal((await one('select consumed_sale_id from pos21_promotion_approvals where token=$1',[approval])).consumed_sale_id,result.sale_id);
  await assert.rejects(sell(items(id,{promotion_mode:'amount',promotion_value:200}),4000,{mode:'final',value:5000,discount:0}),/INVALID_GLOBAL_DISCOUNT/);
 });
 test('free-price service sale, void and refund do not mutate physical inventory',async()=>{
