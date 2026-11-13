@@ -128,6 +128,21 @@ test('migrations installed in strict order, functions and RLS are present',async
  assert.equal((await one("select relrowsecurity enabled from pg_class where oid='public.pos22_promotions'::regclass")).enabled,true);
  assert.ok((await one("select count(*)::int n from pg_policies where tablename='pos22_promotions'")).n>=4);
 });
+test('anonymous shoppers can read active campaigns but cannot alter or reserve stock',async()=>{
+ const result=await one(`select
+   has_function_privilege('anon','public.pos22_public_active_promotions()','EXECUTE') as public_campaign,
+   has_table_privilege('anon','public.pos22_promotions','SELECT') as direct_campaign_table,
+   has_function_privilege('anon','public.reserve_checkout_inventory(jsonb,text,integer)','EXECUTE') as reserve_v1,
+   has_function_privilege('anon','public.reserve_checkout_inventory_v2(jsonb,text,integer)','EXECUTE') as reserve_v2,
+   has_function_privilege('anon','public.release_checkout_reservation(uuid,text)','EXECUTE') as release_v1,
+   has_function_privilege('service_role','public.reserve_checkout_inventory(jsonb,text,integer)','EXECUTE') as service_v1,
+   has_function_privilege('service_role','public.reserve_checkout_inventory_v2(jsonb,text,integer)','EXECUTE') as service_v2`);
+ assert.equal(result.public_campaign,true);
+ assert.equal(result.direct_campaign_table,false);
+ for(const field of ['reserve_v1','reserve_v2','release_v1'])assert.equal(result[field],false,field+' should never be public');
+ assert.equal(result.service_v1,true);
+ assert.equal(result.service_v2,true);
+});
 test('public RPC exposes only active campaign targets in Cabo timezone',async()=>{
  const id=await fixtureProduct({price:1000});
  const sku=(await one('select sku from products where id=$1',[id])).sku;
