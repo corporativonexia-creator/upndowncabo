@@ -57,7 +57,21 @@ function BuildBody($sale,$access,[string]$copy){
  $items=@($sale.items);$groups=$items|Group-Object {if($_.category_name){[string]$_.category_name}else{'OTROS'}}
  foreach($g in $groups){AddBytes $b $BOLDON;AddText $b (([string]$g.Name).ToUpper()+"`n");AddBytes $b $BOLDOFF;AddText $b "CANT ARTICULO                    IMPORTE`n";foreach($i in @($g.Group)){$qty=[int]$i.quantity;$amt=Money $i.line_total;$prefix=([string]$qty)+'  ';$name=[string]$i.product_name;$max=42-$prefix.Length-$amt.Length-1;if($max -lt 8){$max=8};if($name.Length -gt $max){$name=$name.Substring(0,$max)};$spaces=' '*[Math]::Max(1,42-$prefix.Length-$name.Length-$amt.Length);AddText $b ($prefix+$name+$spaces+$amt+"`n");if($qty -gt 1){AddText $b ("   "+(Money $i.unit_price)+" c/u`n")};if($i.sku){AddText $b ("   SKU: "+$i.sku+"`n")};if([double]$i.discount_amount -gt 0){$mode=[string]$i.promotion_mode;$label=switch($mode){'percent'{'% DESCUENTO'} 'amount'{'$ DESCUENTO'} 'final'{'$ PRECIO FINAL'} default{'PROMOCION'}};AddText $b ("   PRECIO ORIGINAL: "+(Money $i.unit_price)+" c/u`n");AddText $b ("   "+$label+": "+[string]$i.promotion_value+"`n");AddText $b ("   AHORRO: -"+(Money $i.discount_amount)+"`n")}};AddText $b (Line '-')}
  $total=[double]$sale.total;$net=[Math]::Round($total/1.16,2);$vat=[Math]::Round($total-$net,2);$articleCount=0;foreach($i in $items){$articleCount += [int]$i.quantity}
- if([double]$sale.discount_amount -gt 0){AddText $b (Pair 'PRECIO ORIGINAL' ([double]$sale.subtotal));AddText $b (Pair 'AHORRO TOTAL' (-[double]$sale.discount_amount))};AddText $b (Pair 'SUBTOTAL SIN IVA' $net);AddText $b (Pair 'IVA 16%' $vat);AddBytes $b $BOLDON;AddText $b (Pair 'TOTAL' $total);AddBytes $b $BOLDOFF;AddText $b (Line '=')
+ # Separate automatic/manual line savings from general cart savings.
+ # Both are reconciled with the persisted sale ledger, never live promotion settings.
+ [decimal]$itemSavings=0;foreach($i in $items){$itemSavings += [decimal]$i.discount_amount}
+ [decimal]$totalSavings=[decimal]$sale.discount_amount
+ [decimal]$generalSavings=$totalSavings-$itemSavings
+ if($itemSavings -lt 0 -or $generalSavings -lt 0 -or
+    [Math]::Round(([decimal]$sale.subtotal-$totalSavings),2) -ne [Math]::Round([decimal]$sale.total,2)){
+   throw 'RECEIPT_LEDGER_MISMATCH'
+ }
+ if($totalSavings -gt 0){
+   AddText $b (Pair 'PRECIO ORIGINAL' ([double]$sale.subtotal))
+   if($itemSavings -gt 0){AddText $b (Pair 'AHORRO ARTICULOS' (-[double]$itemSavings))}
+   if($generalSavings -gt 0){AddText $b (Pair 'DESCUENTO GENERAL' (-[double]$generalSavings))}
+   AddText $b (Pair 'AHORRO TOTAL' (-[double]$totalSavings))
+ };AddText $b (Pair 'SUBTOTAL SIN IVA' $net);AddText $b (Pair 'IVA 16%' $vat);AddBytes $b $BOLDON;AddText $b (Pair 'TOTAL' $total);AddBytes $b $BOLDOFF;AddText $b (Line '=')
  AddBytes $b $CENTER;AddText $b ((AmountWords $total)+"`n");AddBytes $b $LEFT;AddText $b ("ARTICULOS COMPRADOS: "+$articleCount+"`n");AddText $b (Line '-')
  if(@($sale.payments).Count -gt 1){AddBytes $b $BOLDON;AddText $b "PAGO MIXTO`n";AddBytes $b $BOLDOFF}
  foreach($p in @($sale.payments)){AddText $b (Pair (PayLabel $p.method) ([double]$p.amount));if($p.reference){AddText $b ("Ref: "+$p.reference+"`n")}}
