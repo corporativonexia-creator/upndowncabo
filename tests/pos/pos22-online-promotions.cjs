@@ -72,15 +72,7 @@ const cardCtx=vm.createContext({
  currentLanguage:'es',conditionLabels:{new:'Nuevo'},conditionLabelsEn:{new:'New'},
  normalizeSpecKey:x=>String(x).toLowerCase(),golfSpecChips:()=>[],
  escapeHtml:x=>String(x),categoryLabel:()=> 'Wedges',
- localizedProductText:()=>'',money:n=>'
-test('online: checkout V1 and V2 both calculate campaign on the server',()=>{
- assert.match(sql,/function public.reserve_checkout_inventory\(/i);
- assert.match(sql,/function public.reserve_checkout_inventory_v2\(/i);
- assert.match(sql,/pos22_match_promotion\(v_product.id,null\)/);
- assert.match(sql,/pos22_match_promotion\(v_parent_id,v_variant_id\)/);
- assert.match(sql,/grant execute on function public.pos22_public_active_promotions\(\) to anon,authenticated/);
-});
-+Number(n).toFixed(2),
+ localizedProductText:()=>'',money:n=>'\u0024'+Number(n).toFixed(2),
  siteText:()=> 'Envío no incluido',storefrontPricing:ctx.storefrontPricing
 });
 vm.runInContext(runtime.slice(cardStart,cardEnd),cardCtx);
