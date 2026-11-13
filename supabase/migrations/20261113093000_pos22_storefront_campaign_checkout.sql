@@ -114,7 +114,7 @@ begin
         v_quantity;
     end if;
 
-    v_price := round(coalesce(v_product.sale_price,v_product.price,0)::numeric,2);
+    v_price := round((case when v_product.sale_price is not null and v_product.sale_price >= 0 and v_product.sale_price < v_product.price then v_product.sale_price else v_product.price end)::numeric,2);
     v_price := round(v_price*(1-coalesce(
       (public.pos22_match_promotion(v_product.id,null)->>'percent')::numeric,0
     )/100),2);
@@ -276,9 +276,15 @@ begin
 
     if v_variant_id is not null then
       v_before := v_variant.stock;
-      v_price := round(coalesce(v_variant.sale_price,
-          case when v_variant.price is null then v_parent.sale_price else null end,
-          v_variant.price,v_parent.price)::numeric,2);
+      v_price := round((case when coalesce(v_variant.sale_price,
+          case when v_variant.price is null then v_parent.sale_price else null end) is not null
+          and coalesce(v_variant.sale_price,
+          case when v_variant.price is null then v_parent.sale_price else null end) >= 0
+          and coalesce(v_variant.sale_price,
+          case when v_variant.price is null then v_parent.sale_price else null end) < coalesce(v_variant.price,v_parent.price)
+          then coalesce(v_variant.sale_price,
+          case when v_variant.price is null then v_parent.sale_price else null end)
+          else coalesce(v_variant.price,v_parent.price) end)::numeric,2);
       v_sku := coalesce(nullif(v_variant.sku,''),v_parent.sku);
       v_name := v_parent.name;
       if btrim(coalesce(v_variant.title,'')) <> '' and lower(v_variant.title) not in ('unica','única','principal') then
@@ -288,7 +294,7 @@ begin
         nullif(v_variant.attributes->>'photo_url',''),v_parent.cover_image_url);
     else
       v_before := v_parent.stock;
-      v_price := round(coalesce(v_parent.sale_price,v_parent.price)::numeric,2);
+      v_price := round((case when v_parent.sale_price is not null and v_parent.sale_price >= 0 and v_parent.sale_price < v_parent.price then v_parent.sale_price else v_parent.price end)::numeric,2);
       v_sku := v_parent.sku;
       v_name := v_parent.name;
       v_image := v_parent.cover_image_url;
