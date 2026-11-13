@@ -154,7 +154,7 @@ begin
     )
     values(
       v_product.id,
-      'reservation',
+      'adjustment',
       -v_quantity,
       v_product.stock,
       v_product.stock - v_quantity,
@@ -329,4 +329,104 @@ begin
     'status','active','expires_at',v_expires,'items',v_results);
 end;
 $$;
+-- Legacy release must also use a movement type accepted by inventory_movements.
+CREATE OR REPLACE FUNCTION public.release_checkout_reservation(p_reservation_token uuid, p_reason text DEFAULT 'released'::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_reservation public.checkout_inventory_reservations%rowtype;
+  v_item public.checkout_inventory_reservation_items%rowtype;
+  v_product public.products%rowtype;
+  v_released integer := 0;
+begin
+  select *
+  into v_reservation
+  from public.checkout_inventory_reservations
+  where reservation_token = p_reservation_token
+  for update;
+
+  if not found then
+    raise exception 'RESERVATION_NOT_FOUND';
+  end if;
+
+  if v_reservation.status in ('released','expired') then
+    return jsonb_build_object(
+      'ok',true,
+      'already_released',true,
+      'reservation_token',v_reservation.reservation_token,
+      'status',v_reservation.status
+    );
+  end if;
+
+  if v_reservation.status = 'consumed' then
+    raise exception 'RESERVATION_ALREADY_CONSUMED';
+  end if;
+
+  for v_item in
+    select *
+    from public.checkout_inventory_reservation_items
+    where reservation_id = v_reservation.id
+    order by product_id
+  loop
+    select *
+    into v_product
+    from public.products
+    where id = v_item.product_id
+    for update;
+
+    if not found then
+      raise exception 'RESERVED_PRODUCT_NOT_FOUND:%',v_item.product_id;
+    end if;
+
+    insert into public.inventory_movements(
+      product_id,
+      movement_type,
+      quantity_change,
+      stock_before,
+      stock_after,
+      note
+    )
+    values(
+      v_product.id,
+      'adjustment',
+      v_item.quantity,
+      v_product.stock,
+      v_product.stock + v_item.quantity,
+      format(
+        'LIBERACIÓN RESERVA CHECKOUT %s · %s',
+        v_reservation.reservation_token,
+        coalesce(p_reason,'released')
+      )
+    );
+
+    update public.products
+    set
+      stock = stock + v_item.quantity,
+      updated_at = now()
+    where id = v_product.id;
+
+    v_released := v_released + v_item.quantity;
+  end loop;
+
+  update public.checkout_inventory_reservations
+  set
+    status = case
+      when expires_at <= now() then 'expired'
+      else 'released'
+    end,
+    released_at = now(),
+    release_reason = nullif(trim(coalesce(p_reason,'')),'')
+  where id = v_reservation.id;
+
+  return jsonb_build_object(
+    'ok',true,
+    'already_released',false,
+    'reservation_token',v_reservation.reservation_token,
+    'released_units',v_released
+  );
+end;
+$function$;
 commit;
