@@ -291,7 +291,7 @@
     if(!cart.length){renderCart();return {changed:false,adjustments:[]};}
     const variantIds=[...new Set(cart.filter(i=>i.variant_id||String(i.id).startsWith("variant:")).map(i=>String(i.variant_id||i.id).replace(/^variant:/,"")).filter(Boolean))];
     const parentIds=[...new Set(cart.filter(i=>!i.variant_id&&!String(i.id).startsWith("variant:")).map(i=>String(i.id)).filter(Boolean))];
-    const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,barcode,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
     if(variantRows.error)throw variantRows.error;
     const parentSet=[...new Set([...parentIds,...(variantRows.data||[]).map(v=>v.product_id)])];
     const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,barcode,category_id,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
