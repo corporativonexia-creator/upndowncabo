@@ -435,4 +435,13 @@ begin
   );
 end;
 $function$;
+-- Replacing an existing function retains its prior grants. Explicitly preserve
+-- service-only access in both old/new environments; public shoppers may only
+-- read the sanitized active-campaign RPC above.
+revoke all on function public.reserve_checkout_inventory(jsonb,text,integer) from public,anon,authenticated;
+grant execute on function public.reserve_checkout_inventory(jsonb,text,integer) to service_role;
+revoke all on function public.release_checkout_reservation(uuid,text) from public,anon,authenticated;
+grant execute on function public.release_checkout_reservation(uuid,text) to service_role;
+revoke all on function public.reserve_checkout_inventory_v2(jsonb,text,integer) from public,anon,authenticated;
+grant execute on function public.reserve_checkout_inventory_v2(jsonb,text,integer) to service_role;
 commit;
