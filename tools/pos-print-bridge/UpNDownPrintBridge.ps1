@@ -1,6 +1,6 @@
 # Up & Down POS - Local ESC/POS Print Bridge
 # Windows PowerShell 5.1+
-param([string]$PrinterName='POS-80C',[int]$Port=18181)
+param([string]$PrinterName='POS-80C',[int]$Port=18181,[switch]$TestReceipt,[switch]$TestDrawer)
 $ErrorActionPreference='Stop'
 Add-Type @"
 using System; using System.Runtime.InteropServices;
@@ -52,7 +52,7 @@ function AmountWords([double]$n){$whole=[int64][Math]::Floor($n);$cents=[int][Ma
 function BuildBody($sale,$access,[string]$copy){
  $b=New-Object 'System.Collections.Generic.List[byte]';AddBytes $b $INIT;AddLogo $b
  AddText $b "PLAZA ALBA - LOCAL 206`nEL TEZAL`nCABO SAN LUCAS, B.C.S.`nC.P. 23454`nupndowncabo.com`n";AddText $b (Line '=')
- AddBytes $b $BOLDON;AddText $b ("VENTA #"+$sale.sale_number+"`nCOPIA "+$copy+"`n");AddBytes $b $BOLDOFF;AddBytes $b $LEFT;AddText $b (Line '-');AddText $b ("Fecha: "+([datetime]$sale.created_at).ToLocalTime().ToString('dd/MM/yyyy HH:mm')+"`n")
+ if($sale.is_test){AddBytes $b $CENTER;AddBytes $b $BOLDON;AddText $b "PRUEBA POS 2.2 - NO ES VENTA`n";AddBytes $b $BOLDOFF;AddBytes $b $LEFT};AddBytes $b $BOLDON;AddText $b ($(if($sale.is_test){"SIMULACION #"}else{"VENTA #"})+$sale.sale_number+"`nCOPIA "+$copy+"`n");AddBytes $b $BOLDOFF;AddBytes $b $LEFT;AddText $b (Line '-');AddText $b ("Fecha: "+([datetime]$sale.created_at).ToLocalTime().ToString('dd/MM/yyyy HH:mm')+"`n")
  if($access){AddText $b ("Cajero: #"+$access.employee_number+" "+$access.full_name+"`nTerminal: "+$access.terminal_name+"`n")};AddText $b (Line '-')
  $items=@($sale.items);$groups=$items|Group-Object {if($_.category_name){[string]$_.category_name}else{'OTROS'}}
  foreach($g in $groups){AddBytes $b $BOLDON;AddText $b (([string]$g.Name).ToUpper()+"`n");AddBytes $b $BOLDOFF;AddText $b "CANT ARTICULO                    IMPORTE`n";foreach($i in @($g.Group)){$qty=[int]$i.quantity;$amt=Money $i.line_total;$prefix=([string]$qty)+'  ';$name=[string]$i.product_name;$max=42-$prefix.Length-$amt.Length-1;if($max -lt 8){$max=8};if($name.Length -gt $max){$name=$name.Substring(0,$max)};$spaces=' '*[Math]::Max(1,42-$prefix.Length-$name.Length-$amt.Length);AddText $b ($prefix+$name+$spaces+$amt+"`n");if($qty -gt 1){AddText $b ("   "+(Money $i.unit_price)+" c/u`n")};if($i.sku){AddText $b ("   SKU: "+$i.sku+"`n")};if([double]$i.discount_amount -gt 0){$mode=[string]$i.promotion_mode;$label=switch($mode){'percent'{'% DESCUENTO'} 'amount'{'$ DESCUENTO'} 'final'{'$ PRECIO FINAL'} default{'PROMOCION'}};AddText $b ("   PRECIO ORIGINAL: "+(Money $i.unit_price)+" c/u`n");AddText $b ("   "+$label+": "+[string]$i.promotion_value+"`n");AddText $b ("   AHORRO: -"+(Money $i.discount_amount)+"`n")}};AddText $b (Line '-')}
@@ -74,11 +74,33 @@ function BuildBody($sale,$access,[string]$copy){
  };AddText $b (Pair 'SUBTOTAL SIN IVA' $net);AddText $b (Pair 'IVA 16%' $vat);AddBytes $b $BOLDON;AddText $b (Pair 'TOTAL' $total);AddBytes $b $BOLDOFF;AddText $b (Line '=')
  AddBytes $b $CENTER;AddText $b ((AmountWords $total)+"`n");AddBytes $b $LEFT;AddText $b ("ARTICULOS COMPRADOS: "+$articleCount+"`n");AddText $b (Line '-')
  if(@($sale.payments).Count -gt 1){AddBytes $b $BOLDON;AddText $b "PAGO MIXTO`n";AddBytes $b $BOLDOFF}
- foreach($p in @($sale.payments)){AddText $b (Pair (PayLabel $p.method) ([double]$p.amount));if($p.reference){AddText $b ("Ref: "+$p.reference+"`n")}}
+ if($sale.is_test){AddBytes $b $BOLDON;AddText $b "SIN COBRO - SIN CAMBIO DE STOCK`n";AddBytes $b $BOLDOFF}else{foreach($p in @($sale.payments)){AddText $b (Pair (PayLabel $p.method) ([double]$p.amount));if($p.reference){AddText $b ("Ref: "+$p.reference+"`n")}}}
  if($copy -eq 'COMERCIO' -and (@($sale.payments)|Where-Object {$_.method -eq 'card_terminal'})){AddText $b "`nENGRAPAR VOUCHER DE TERMINAL A ESTA COPIA`n"}
- AddBytes $b $CENTER;AddText $b "`nESCANEA Y VISITANOS`n";AddQR $b;AddText $b "upndowncabo.com`nGRACIAS POR TU COMPRA`nConserva este comprobante para`ncualquier aclaracion.`n";AddBytes $b (B @(10,10,10,10,10));return $b.ToArray()
+ AddBytes $b $CENTER;if($sale.is_test){AddText $b "`n*** PRUEBA TECNICA ***`nNO ES UN COMPROBANTE DE VENTA`nNO EXISTE TRANSACCION REAL`n"}else{AddText $b "`nESCANEA Y VISITANOS`n";AddQR $b;AddText $b "upndowncabo.com`nGRACIAS POR TU COMPRA`nConserva este comprobante para`ncualquier aclaracion.`n"};AddBytes $b (B @(10,10,10,10,10));return $b.ToArray()
 }
 function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
+# Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
+# inventory changes or sale creation. The cash drawer is opt-in with -TestDrawer.
+if($TestDrawer -and -not $TestReceipt){throw '-TestDrawer requires -TestReceipt'}
+if($TestReceipt){
+ $testSale=[pscustomobject]@{
+   is_test=$true; sale_number='QA22-NO-VENTA'; created_at=[datetime]::Now
+   subtotal=5000.00; discount_amount=1020.00; total=3980.00
+   items=@(
+     [pscustomobject]@{category_name='PELOTAS';product_name='Pelotas de golf';sku='QA-PELOTA';quantity=1;unit_price=200.00;line_subtotal=200.00;line_total=180.00;discount_amount=20.00;promotion_mode='percent';promotion_value=10},
+     [pscustomobject]@{category_name='WEDGES';product_name='Wedge simulacion';sku='QA-WEDGE';quantity=1;unit_price=4800.00;line_subtotal=4800.00;line_total=4800.00;discount_amount=0.00;promotion_mode='none';promotion_value=0}
+   )
+   payments=@()
+ }
+ Write-Host 'TEST POS 2.2 (NO VENTA): 2 copias, 2 cortes; cajon solo con -TestDrawer.' -ForegroundColor Cyan
+ SendRaw (BuildBody $testSale $null 'CLIENTE') 'QA POS22 CLIENTE';Start-Sleep -Milliseconds 700
+ SendRaw $CUT 'QA POS22 CORTE CLIENTE';Start-Sleep -Milliseconds 700
+ SendRaw (BuildBody $testSale $null 'COMERCIO') 'QA POS22 COMERCIO';Start-Sleep -Milliseconds 700
+ SendRaw $CUT 'QA POS22 CORTE COMERCIO'
+ if($TestDrawer){Start-Sleep -Milliseconds 700;SendRaw $DRAWER 'QA POS22 CAJON'}
+ Write-Host 'Prueba enviada a la cola de impresion: verificar las 2 copias y ambos cortes.' -ForegroundColor Green
+ exit 0
+}
 $l=New-Object Net.HttpListener;$l.Prefixes.Add("http://127.0.0.1:$Port/");$l.Start();Write-Host "Up & Down Print Bridge listo -> $PrinterName @ 127.0.0.1:$Port" -ForegroundColor Green
 while($l.IsListening){$c=$l.GetContext();try{if($c.Request.HttpMethod -eq 'OPTIONS'){Reply $c 204 '{}';continue};if($c.Request.Url.AbsolutePath -eq '/health'){Reply $c 200 ('{"ok":true,"printer":"'+$PrinterName+'","receipt":"retail-v8"}');continue};if($c.Request.HttpMethod -ne 'POST' -or $c.Request.Url.AbsolutePath -ne '/print-sale'){Reply $c 404 '{"ok":false}';continue};$r=New-Object IO.StreamReader($c.Request.InputStream,$c.Request.ContentEncoding);$p=$r.ReadToEnd()|ConvertFrom-Json;$sale=$p.sale;$access=$p.access;if(-not $sale -or -not $sale.sale_number){throw 'Venta invalida'};SendRaw (BuildBody $sale $access 'CLIENTE') ("Venta "+$sale.sale_number+" CLIENTE");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE CLIENTE");Start-Sleep -Milliseconds 1200;SendRaw (BuildBody $sale $access 'COMERCIO') ("Venta "+$sale.sale_number+" COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $DRAWER ("Venta "+$sale.sale_number+" CAJON");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":1,"receipt":"retail-v8"}'}catch{Reply $c 500 ('{"ok":false,"error":'+(ConvertTo-Json $_.Exception.Message -Compress)+'}')}}
