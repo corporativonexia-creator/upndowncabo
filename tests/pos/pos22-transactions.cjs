@@ -47,7 +47,7 @@ before(async()=>{
  let schema=fs.readFileSync('tests/pos/schema.sql','utf8');
  // POS variant tests have already created the cluster roles in this workflow.
  // Ensure they exist when this test is invoked on its own.
- for(const role of ['anon','authenticated']){
+ for(const role of ['anon','authenticated','service_role']){
    try{await admin.query('CREATE ROLE '+role)}catch(error){if(error.code!=='42710')throw error}
  }
  schema=schema.replace('CREATE ROLE anon;','').replace('CREATE ROLE authenticated;','');
