@@ -25,6 +25,9 @@ test('online: existing special offer without category promotion remains valid',(
  assert.deepEqual(onlinePrice({price:1000,salePrice:900,campaignPercent:0}),
  {price:900,comparePrice:1000,campaignPercent:0});
 });
+test('online: an invalid special price above regular never increases checkout price',()=>{
+ assert.equal(onlinePrice({price:1000,salePrice:1200,campaignPercent:20}).price,800);
+});
 test('online: unchanged regular price has no strike-through',()=>{
  assert.deepEqual(onlinePrice({price:1000,campaignPercent:0}),
  {price:1000,comparePrice:null,campaignPercent:0});
