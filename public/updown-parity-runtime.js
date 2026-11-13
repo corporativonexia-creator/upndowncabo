@@ -8,6 +8,7 @@
   const el=id=>document.getElementById(id);
   window.__UPDOWN_SEARCH_STATUS__="loading";
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
+  let storefrontPromotions=[];
   let modalGalleryImages=[],modalGalleryIndex=0;
   let udsViewerScrollY=0;
   let udsViewerPreviousBodyStyle=null;
@@ -92,6 +93,8 @@
           name:displayName,
           sku:variant.sku||parent.sku,
           barcode:variant.barcode,
+          parent_sku:parent.sku,
+          parent_barcode:parent.barcode,
           price:variantPrice,
           sale_price:variantOffer,
           stock:Number(variant.stock??0),
@@ -191,6 +194,8 @@
     try{
       const cached=JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY)||"null");
       if(!Array.isArray(cached?.products)||!Array.isArray(cached?.categories))return false;
+      // Campaign pricing expires by Cabo date: never restore an unverified discounted snapshot.
+      if(cached.products.some(p=>p.automaticPromotion))return false;
       products=cached.products;
       categories=cached.categories;
       renderCatalogState();
@@ -255,6 +260,28 @@
     localStorage.setItem(AFFILIATE_STORAGE_KEY,JSON.stringify(ref));return ref
   }
 
+  // Public storefront pricing: product-specific offer first, scheduled campaign second.
+  // The original list price remains the strike-through comparator.
+  function storefrontPricing(product){
+    const regular=Number(product.price);
+    const special=product.sale_price==null?null:Number(product.sale_price);
+    const base=special!=null&&Number.isFinite(special)&&special>=0&&special<regular?special:regular;
+    const rate=Number(product.automaticPromotion?.percent||0);
+    const final=Math.round((base*(1-rate/100)+Number.EPSILON)*100)/100;
+    return {price:Math.max(0,final),comparePrice:final<regular?regular:null,percent:rate};
+  }
+  function applyStorefrontPromotions(rows,promotions){
+    return rows.map(p=>{
+      const matching=promotions.filter(pr=>{
+        const value=String(pr.target_value||'').trim();
+        if(pr.target_type==='category')return String(p.category_id)===value;
+        if(pr.target_type==='sku')return [p.sku,p.parent_sku].some(code=>String(code||'').toUpperCase()===value.toUpperCase());
+        if(pr.target_type==='barcode')return [p.barcode,p.parent_barcode].some(code=>String(code||'').trim()===value);
+        return false;
+      }).sort((a,b)=>Number(b.discount_percent)-Number(a.discount_percent)||String(a.id).localeCompare(String(b.id)));
+      return {...p,automaticPromotion:matching.length?{id:matching[0].id,title:matching[0].title,percent:Number(matching[0].discount_percent)}:null};
+    });
+  }
   function cartUnits(){return cart.reduce((s,i)=>s+Number(i.quantity||0),0)}
   function cartTotal(){return cart.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0)}
   function saveCart(){localStorage.setItem("upDownCart",JSON.stringify(cart));renderCart()}
@@ -264,10 +291,10 @@
     if(!cart.length){renderCart();return {changed:false,adjustments:[]};}
     const variantIds=[...new Set(cart.filter(i=>i.variant_id||String(i.id).startsWith("variant:")).map(i=>String(i.variant_id||i.id).replace(/^variant:/,"")).filter(Boolean))];
     const parentIds=[...new Set(cart.filter(i=>!i.variant_id&&!String(i.id).startsWith("variant:")).map(i=>String(i.id)).filter(Boolean))];
-    const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,barcode,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
     if(variantRows.error)throw variantRows.error;
     const parentSet=[...new Set([...parentIds,...(variantRows.data||[]).map(v=>v.product_id)])];
-    const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,barcode,category_id,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
     if(parents.error)throw parents.error;
     const pMap=new Map((parents.data||[]).map(p=>[p.id,p]));
     const vMap=new Map((variantRows.data||[]).map(v=>[v.id,v]));
@@ -287,7 +314,7 @@
       const name=isVariant&&label&&!isGeneric?parent.name+" · "+label:parent.name;
       const listPrice=isVariant?(variant.price??parent.price):parent.price;
       const sale=isVariant?(variant.sale_price??(variant.price==null?parent.sale_price:null)):parent.sale_price;
-      const price=Number(sale??listPrice);
+      const price=storefrontPricing(applyStorefrontPromotions([{...parent,price:listPrice,sale_price:sale,sku:variant?.sku||parent.sku,barcode:variant?.barcode||parent.barcode,parent_sku:parent.sku,parent_barcode:parent.barcode}],storefrontPromotions)[0]).price;
       const imageAttrs=variant?.attributes&&typeof variant.attributes==="object"?variant.attributes:{};
       const image=String(imageAttrs.image_url||imageAttrs.photo_url||parent.cover_image_url||"");
       const quantity=Math.min(Math.max(1,Number(item.quantity)||1),stock);
@@ -329,6 +356,9 @@
         id,
         name,
         slug,
+        category_id,
+        sku,
+        barcode,
         currency,
         price,
         sale_price,
@@ -386,9 +416,7 @@
         currentStock
       );
 
-      const currentPrice=Number(
-        current.sale_price??current.price
-      );
+      const currentPrice=storefrontPricing(applyStorefrontPromotions([current],storefrontPromotions)[0]).price;
 
       if(validQuantity!==previousQuantity){
         adjustments.push(
@@ -512,7 +540,7 @@
     if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
     const ex=cart.find(i=>i.id===product.id);
     if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -808,19 +836,20 @@
     return {text:currentLanguage==="en"?"Available":"Disponible",cls:""};
   }
   function cardHtml(product){
-    const price=product.sale_price??product.price;
-    const discount=product.sale_price!=null&&Number(product.sale_price)<Number(product.price);
+    const pricing=storefrontPricing(product);
+    const price=pricing.price;
+    const discount=pricing.comparePrice!=null;
     const stock=stockCopy(product.stock);
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span><span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
+    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
         ${specs.length?`<p class="uds-card-specs">${specs.map(escapeHtml).join(" · ")}</p>`:""}
         <p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||"")}</p>
-        <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}</div>
+        <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(pricing.comparePrice,product.currency,true)}</span>`:""}</div>
         <p class="uds-shipping-note" data-store-copy="product.shippingExcluded">${escapeHtml(siteText("product.shippingExcluded"))}</p>
 
       </div>`;
@@ -1240,7 +1269,7 @@
       const now=Date.now();
       const arrivals=products.filter(p=>previewIsNewArrival(p,now))
         .sort((a,b)=>Date.parse(b.new_arrival_at)-Date.parse(a.new_arrival_at)||String(a.id).localeCompare(String(b.id)));
-      const offers=products.filter(p=>p.sale_price!=null&&Number(p.sale_price)>0&&Number(p.sale_price)<Number(p.price))
+      const offers=products.filter(p=>storefrontPricing(p).comparePrice!=null)
         .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
       rail.replaceChildren();rail.classList.add("uds-preview-new-rails");
       previewNewArrivalCards(rail,arrivals,currentLanguage==="en"?"New arrivals":"Novedades","New");
@@ -1248,7 +1277,7 @@
       return;
     }
     const offers=[...products]
-      .filter(p=>p.sale_price!==null&&Number(p.sale_price)<Number(p.price))
+      .filter(p=>storefrontPricing(p).comparePrice!=null)
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     const latest=[...products].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     const seen=new Set();
@@ -1576,8 +1605,8 @@
     });
     if(activeCollection==="newest")filteredProducts=[...filteredProducts].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     if(sort==="newest")filteredProducts=[...filteredProducts].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-    if(sort==="price_asc")filteredProducts=[...filteredProducts].sort((a,b)=>Number(a.sale_price??a.price)-Number(b.sale_price??b.price));
-    if(sort==="price_desc")filteredProducts=[...filteredProducts].sort((a,b)=>Number(b.sale_price??b.price)-Number(a.sale_price??a.price));
+    if(sort==="price_asc")filteredProducts=[...filteredProducts].sort((a,b)=>storefrontPricing(a).price-storefrontPricing(b).price);
+    if(sort==="price_desc")filteredProducts=[...filteredProducts].sort((a,b)=>storefrontPricing(b).price-storefrontPricing(a).price);
     if(sort==="featured")filteredProducts=[...filteredProducts].sort((a,b)=>Number(Boolean(b.featured))-Number(Boolean(a.featured))||new Date(b.created_at)-new Date(a.created_at));
     syncFilterUi();
     updateFocusedSearchMode();
@@ -1617,7 +1646,7 @@
             `*${product.name}*`,
             `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuration: ${summary}`]:[]),
-            `Price: ${money(product.sale_price??product.price,product.currency)}`,
+            `Price: ${money(storefrontPricing(product).price,product.currency)}`,
             "",
             "Can you help me confirm whether this configuration is right for my game?"
           ]
@@ -1628,7 +1657,7 @@
             `*${product.name}*`,
             `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuración: ${summary}`]:[]),
-            `Precio: ${money(product.sale_price??product.price,product.currency)}`,
+            `Precio: ${money(storefrontPricing(product).price,product.currency)}`,
             "",
             "¿Me ayudas a confirmar si esta configuración es adecuada para mi juego?"
           ];
@@ -1642,7 +1671,7 @@
     if(product){
       lines.push("",currentLanguage==="en"?"I’m looking at this equipment:":"Estoy viendo este equipo:",`*${product.name}*`,`SKU: ${product.sku||"—"}`);
       const summary=golfSummary(product);if(summary)lines.push(currentLanguage==="en"?`Configuration: ${summary}`:`Configuración: ${summary}`);
-      lines.push(currentLanguage==="en"?`Price: ${money(product.sale_price??product.price,product.currency)}`:`Precio: ${money(product.sale_price??product.price,product.currency)}`);
+      lines.push(currentLanguage==="en"?`Price: ${money(storefrontPricing(product).price,product.currency)}`:`Precio: ${money(storefrontPricing(product).price,product.currency)}`);
     }
     lines.push("");
     if(purpose==="trade")lines.push(currentLanguage==="en"?"I have golf equipment I may want to trade in. Can you tell me how the in-store evaluation works?":"Tengo equipo de golf que podría dar a cuenta. ¿Me explican cómo funciona la valoración en tienda?");
@@ -1791,8 +1820,8 @@
     el("udsModalPick")?.classList.add("uds-hidden");
     el("udsModalCategory").innerHTML=`<span>${escapeHtml(categoryLabel(product.categories)||"Golf")} · ${escapeHtml((currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||"")}</span><span class="uds-modal-stock-tag ${stock.cls}">${escapeHtml(stock.text)}</span>`;
     el("udsModalTitle").textContent=product.name||"";
-    const hasDiscount=product.sale_price!==null&&Number(product.sale_price)<Number(product.price);
-    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(product.sale_price??product.price,product.currency,true)}</span>${hasDiscount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}`;
+    const modalPrice=storefrontPricing(product);
+    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(modalPrice.price,product.currency,true)}</span>${modalPrice.comparePrice!=null?`<span class="uds-old-price">${money(modalPrice.comparePrice,product.currency,true)}</span>`:""}${modalPrice.percent>0?`<span class="uds-campaign-badge">-${modalPrice.percent}%</span>`:""}`;
     renderProductDescription(product,savedDescriptionExpanded);
     el("udsModalImage").setAttribute("aria-label",siteText("product.expandImage"));
     const player=specs.player;
@@ -2092,7 +2121,7 @@
     const all=[];
     for(let offset=0;offset<10000;offset+=400){
       const query=await db.from("products")
-        .select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,new_arrival_enabled,new_arrival_at,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
+        .select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,new_arrival_enabled,new_arrival_at,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
         .eq("status","active").eq("online_visible",true)
         .order("featured",{ascending:false})
         .order("created_at",{ascending:false})
@@ -2133,12 +2162,22 @@
     return {data:result.flatMap(entry=>entry.data||[]),error:null};
   }
 
+  async function refreshCampaignsForCheckout(){
+    const {data,error}=await db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal());
+    const missing=error&&["PGRST202","42883"].includes(String(error.code||""));
+    if(error&&!missing)throw error;
+    storefrontPromotions=Array.isArray(data)?data:[];
+    products=applyStorefrontPromotions(products,storefrontPromotions);
+    renderCatalogState();
+  }
+
   async function loadStore(){
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
-    const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
+    const [{data:cats,error:ce},{data:prods,error:pe},{data:activeCampaigns,error:campaignError}]=await Promise.all([
       db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
-      PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
+      PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal()),
+      db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal())
     ]);
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
@@ -2159,8 +2198,11 @@
         }
       }
     }
-    if(ce||pe||variantError){
-      const error=ce||pe||variantError;
+    // Preview may still target the POS 2.1 database until the additive SQL deploy.
+    // An absent new RPC means no campaign prices, not a broken product catalog.
+    const missingCampaignRpc=campaignError&&["PGRST202","42883"].includes(String(campaignError.code||""));
+    if(ce||pe||variantError||(campaignError&&!missingCampaignRpc)){
+      const error=ce||pe||variantError||campaignError;
       if(restoredFromCache){
         console.warn("[UPDOWN catalog refresh]",error);
         showToast(currentLanguage==="en"?"Showing the latest saved catalog while the connection recovers.":"Mostramos el último catálogo guardado mientras se recupera la conexión.");
@@ -2172,7 +2214,8 @@
       return;
     }
     categories=cats||[];
-    products=expandPublicVariants(prods||[],variantRows);
+    storefrontPromotions=Array.isArray(activeCampaigns)?activeCampaigns:[];
+    products=applyStorefrontPromotions(expandPublicVariants(prods||[],variantRows),storefrontPromotions);
     renderCatalogState();
     saveCatalogCache();
     revealCatalog();
@@ -2213,7 +2256,7 @@
     return products.filter(p=>{
       const hay=normalizeSearch([p.name,p.brand,p.model,p.categories?.name,p.categories?.slug,categoryLabel(p.categories),p.short_description,p.short_description_en,...Object.values(p.specifications||{}).map(displaySpecValue)].filter(Boolean).join(" "));
       return terms.every(term=>(aliases[term]||[term]).some(word=>hay.includes(word)));
-    }).map(p=>({id:p.id,name:p.name,category:categoryLabel(p.categories),image:productGallery(p)[0]||"",price:money(p.sale_price??p.price,p.currency,true)}));
+    }).map(p=>({id:p.id,name:p.name,category:categoryLabel(p.categories),image:productGallery(p)[0]||"",price:money(storefrontPricing(p).price,p.currency,true)}));
   };
   window.__UPDOWN_OPEN_SEARCH_PRODUCT__=id=>{
     const product=products.find(p=>p.id===id);
@@ -2362,7 +2405,7 @@
       return showToast(currentLanguage==="en"?"Checkout is disabled in this migration preview.":"El pago está desactivado en esta vista de migración.");
     }
     const b=el("udsCheckoutButton");b.disabled=true;b.textContent=currentLanguage==="en"?"Validating inventory…":"Validando inventario…";
-    try{await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
+    try{await refreshCampaignsForCheckout();await reconcileCart({silent:false});if(!cart.length)return showToast(currentLanguage==="en"?"No products remain available.":"No quedaron productos disponibles.");b.textContent=currentLanguage==="en"?"Preparing secure checkout…":"Preparando pago seguro…";
       const {data,error}=await db.functions.invoke(PREVIEW_CATEGORY_GROUPS?.length?"create-checkout-session-v2":"create-checkout-session",{body:{items:cart.map(i=>({id:i.id,quantity:i.quantity})),seller_ref:getStoredAffiliate()?.code||null}});
       if(error){let msg=error.message||(currentLanguage==="en"?"We could not start the payment.":"No fue posible iniciar el pago.");try{if(error.context&&typeof error.context.json==="function"){const body=await error.context.json();msg=body?.error||msg}}catch(e){}try{await reconcileCart({silent:false})}catch(e){}throw new Error(msg)}
       if(!data?.url)throw new Error(currentLanguage==="en"?"Stripe did not return a payment URL.":"Stripe no devolvió una dirección de pago.");window.location.assign(data.url)

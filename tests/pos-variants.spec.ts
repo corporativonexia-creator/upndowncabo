@@ -29,9 +29,11 @@ test('search, scan twice, charge exact variant and refresh its stock',async({pag
   await page.getByRole('button',{name:/COBRAR/}).click();
   await expect(page.getByText(/Venta #1 cobrada/)).toBeVisible();
   const events=await (await request.get('http://127.0.0.1:4319/__events')).json();
-  const calls=events.filter((e:{path:string})=>e.path.endsWith('/pos_create_sale'));
+  const calls=events.filter((e:{path:string})=>e.path.endsWith('/pos_create_sale_v22'));
   expect(calls).toHaveLength(1);expect(calls[0].body.p_items).toEqual([{product_id:'p1',variant_id:'v2',quantity:2}]);
   expect(calls[0].body.p_payments[0].amount).toBe(950);
+  expect(calls[0].body.p_discount_amount).toBe(0);
+  expect(calls[0].body.p_promo_approval_token).toBeNull();
   expect(calls[0].body.p_payments[0].metadata.pos_request_id).toMatch(/^[\da-f-]{36}$/);
   await expect(variant).toContainText('Stock: 3');
   await expect(page.locator('.pos-product').filter({hasText:'ROP-001-XS'})).toContainText('Stock: 5');

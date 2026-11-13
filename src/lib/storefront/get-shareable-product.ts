@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
 import { lookupFromProductKey, productKeyFor, type ShareableProduct } from "./product-share";
+import { onlinePrice, matchOnlineCampaign, type PublicCampaign } from "./online-pricing";
 
 function httpImage(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw.trim()) return null;
@@ -36,13 +37,14 @@ export const findShareableProduct = cache(async (key: string): Promise<Shareable
   if (!parentId) return null;
   // Parent details and active-variant existence can be requested concurrently.
   // A resolved variant is already known to be active; do not count again.
+  const campaignPromise = db.rpc("pos22_public_active_promotions");
   const activeVariantsPromise = variant
     ? Promise.resolve(true)
     : db.from("product_variants").select("id",{ count:"exact",head:true })
         .eq("product_id",parentId).eq("is_active",true)
         .then(({count,error})=>!error&&(count||0)>0);
   const result = await db.from("products")
-    .select("id,name,slug,sku,brand,model,category_id,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
+    .select("id,name,slug,sku,barcode,brand,model,category_id,short_description,description,item_condition,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible,categories(name,slug,image_url),product_images(image_url,is_primary,sort_order)")
     .eq("id", parentId).eq("status", "active").eq("online_visible", true).maybeSingle();
   if (result.error || !result.data) return null;
   const parent = result.data as Record<string, unknown>;
@@ -63,7 +65,14 @@ export const findShareableProduct = cache(async (key: string): Promise<Shareable
   const price = variant ? finiteNum(variant.price ?? parent.price) : finiteNum(parent.price);
   const sale = variant ? (variant.sale_price ?? (variant.price == null ? parent.sale_price : null)) : parent.sale_price;
   const saleNumber = sale == null ? null : finiteNum(sale);
-  const hasSale = saleNumber != null && saleNumber < price;
+  const {data:campaigns,error:campaignError} = await campaignPromise;
+  if(campaignError&&!["PGRST202","42883"].includes(String(campaignError.code||"")))
+    throw new Error("No se pudo verificar la promoción vigente del catálogo.");
+  const campaign=matchOnlineCampaign((Array.isArray(campaigns)?campaigns:[]) as PublicCampaign[],{
+    categoryId:text(parent.category_id),sku:variant?text(variant.sku):text(parent.sku),parentSku:text(parent.sku),
+    barcode:variant?text(variant.barcode):text(parent.barcode),parentBarcode:text(parent.barcode)
+  });
+  const calculated=onlinePrice({price,salePrice:saleNumber,campaignPercent:Number(campaign?.discount_percent||0)});
   const hasVariants = await activeVariantsPromise;
   const keyStable = productKeyFor({ id: parentId, variant_id: variant ? text(variant.id) : null, name: displayName });
   return {
@@ -81,8 +90,9 @@ export const findShareableProduct = cache(async (key: string): Promise<Shareable
     condition: text(parent.item_condition),
     category: text(category.name),
     currency: text(parent.currency) || "MXN",
-    price: hasSale ? saleNumber! : price,
-    comparePrice: hasSale ? price : null,
+    price: calculated.price,
+    comparePrice: calculated.comparePrice,
+    campaignPercent:calculated.campaignPercent,
     stock: Math.max(0, variant ? finiteNum(variant.stock) : finiteNum(parent.stock)),
     images: [...new Set(images)].slice(0, 10),
     hasVariants,
