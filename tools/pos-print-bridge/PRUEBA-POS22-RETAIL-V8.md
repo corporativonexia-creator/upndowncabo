@@ -45,3 +45,8 @@ Anotar fecha/hora, nombre de impresora en Windows, versión de PowerShell, núme
 **Nunca usar la opción normal `/print-sale` con una venta inventada como método de prueba**: evita el etiquetado de seguridad y podría generar un comprobante engañoso.
 
 Si algo falla, conservar el puente instalado y la impresora tal como estaban; no reinstalar drivers, modificar ventas, alterar el registro ni fusionar el PR. Documentar el error exacto para corregir la rama.
+
+## Resultado de ejecución en campo (13-nov-2026)
+**Confirmado por el operador en conversación:** se imprimieron **dos tickets completos**, se realizaron **dos cortes**, y el total simulado fue **$3,980.00**. La prueba se ejecutó mediante `-TestReceipt`, sin habilitar `-TestDrawer`. Esto valida los resultados físicos reportados de impresión y cortes, **no** constituye evidencia independiente ni acredita que el cajón se haya abierto. No se reportó foto de tickets ni se registraron datos reales de clientes.
+
+**Estado de aceptación:** salida térmica y conciliación visible del total: **APROBADO POR CONFIRMACIÓN DEL USUARIO**. Apertura del cajón: **NO ENSAYADA EN ESTE MODO**. Respaldo y restauración de Supabase: **PENDIENTE**. Producción, PR y migraciones: **SIN DESPLIEGUE**.
