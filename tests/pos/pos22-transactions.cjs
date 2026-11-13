@@ -45,9 +45,16 @@ before(async()=>{
  await admin.query('CREATE DATABASE pos22_qa');
  db=new Client({connectionString:qaUrl.toString()});await db.connect();
  let schema=fs.readFileSync('tests/pos/schema.sql','utf8');
- schema=schema.replace('CREATE ROLE anon;', "DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END $$;");
- schema=schema.replace('CREATE ROLE authenticated;', "DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;");
- await sql(schema);
+ // POS variant tests have already created the cluster roles in this workflow.
+ // Ensure they exist when this test is invoked on its own.
+ for(const role of ['anon','authenticated']){
+   try{await admin.query('CREATE ROLE '+role)}catch(error){if(error.code!=='42710')throw error}
+ }
+ schema=schema.replace('CREATE ROLE anon;','').replace('CREATE ROLE authenticated;','');
+ try { await sql(schema); } catch(error){
+   const pos=Number(error.position||0);
+   throw Error('POS fixture schema failed near: '+schema.slice(Math.max(0,pos-110),pos+110)+'; '+error.message,{cause:error});
+ }
  await migrate('20261104020000_pos_variant_sales');
  // Minimal fixture-only support missing from the 2026-11-04 schema snapshot.
  await sql("alter table public.categories add column if not exists is_active boolean not null default true");
