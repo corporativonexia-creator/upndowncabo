@@ -106,3 +106,11 @@ test('POS Retail V8: simulated fixture totals match item savings and global disc
  assert.match(bridge,/line_total=4800\.00;discount_amount=0\.00/);
  assert.equal(180+4800-(1020-20),3980);
 });
+
+test('POS Retail V8: PowerShell grammar parses on runners with pwsh available',t=>{
+ const {spawnSync}=require('node:child_process');
+ const cmd='$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile("tools/pos-print-bridge/UpNDownPrintBridge.ps1",[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count -gt 0){$errors|ForEach-Object {Write-Output $_.Message};exit 1}';
+ const result=spawnSync('pwsh',['-NoProfile','-NonInteractive','-Command',cmd],{encoding:'utf8',timeout:20000});
+ if(result.error?.code==='ENOENT'){t.skip('PowerShell is unavailable on this runner');return;}
+ assert.equal(result.status,0,[result.stdout,result.stderr,result.error?.message].filter(Boolean).join('\n'));
+});
