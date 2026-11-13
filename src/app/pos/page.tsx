@@ -155,7 +155,7 @@ function discountedUnitPrice(item: CartItem) {
   const final=roundMoney(manual-automated);
   return Number.isFinite(final)&&final>=0&&final<=base ? final : NaN;
 }
-function globalDiscountAmount(original:number, enabled:boolean, mode:PromotionMode, value:string) {
+function globalDiscountAmount(original:number, enabled:boolean, mode:PromotionMode, value:string, discountedSubtotal=original) {
   if(!enabled)return 0;
   if(!Number.isFinite(original)||original<=0||value.trim()==="")return NaN;
   const v=Number(value);
@@ -164,10 +164,10 @@ function globalDiscountAmount(original:number, enabled:boolean, mode:PromotionMo
   switch(mode) {
     case "percent": amount=v<=100?roundMoney(original*v/100):NaN;break;
     case "amount": amount=roundMoney(v);break;
-    case "final": amount=roundMoney(original-v);break;
+    case "final": amount=roundMoney(discountedSubtotal-v);break;
     default:amount=NaN;
   }
-  return amount>=0&&amount<=original?amount:NaN;
+  return amount>=0&&amount<=discountedSubtotal?amount:NaN;
 }
 function pos21Items(cart: CartItem[], global?:{mode:PromotionMode;value:string}) {
   return cart.map((item,index) => ({
@@ -745,7 +745,7 @@ export default function PosPage() {
     const original=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
     const lineFinal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
     const global=globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined;
-    const generalAmount=globalDiscountAmount(original,globalPromotionEnabled,globalPromotionMode,globalPromotionValue);
+    const generalAmount=globalDiscountAmount(original,globalPromotionEnabled,globalPromotionMode,globalPromotionValue,lineFinal);
     const total=roundMoney(lineFinal-generalAmount);
     if(!Number.isFinite(total)||total<=0){
       setMessage("Importe o descuento inválido. Revisa precio de servicios y promociones.");return;
@@ -1622,7 +1622,7 @@ export default function PosPage() {
     sum+roundMoney(cartUnitPrice(item)*(item.product.automaticPromotion?.percent||0)/100)*item.quantity,0));
   const manualDiscountTotal=roundMoney(cart.reduce((sum,item)=>
     sum+(cartUnitPrice(item)-manuallyDiscountedUnitPrice(item))*item.quantity,0));
-  const generalDiscount=globalDiscountAmount(cartOriginalSubtotal,globalPromotionEnabled,globalPromotionMode,globalPromotionValue);
+  const generalDiscount=globalDiscountAmount(cartOriginalSubtotal,globalPromotionEnabled,globalPromotionMode,globalPromotionValue,itemDiscountedSubtotal);
   const cartSubtotal=roundMoney(itemDiscountedSubtotal-generalDiscount);
   const cartTotalDiscount=roundMoney(cartOriginalSubtotal-cartSubtotal);
   const maxAllowedDiscount=roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
@@ -2109,7 +2109,7 @@ export default function PosPage() {
                           <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Escribe el descuento"
                             aria-label="Valor de descuento general" value={globalPromotionValue}
                             onChange={e=>{setPromoApproval(null);setGlobalPromotionValue(e.target.value);}}/>
-                          <small>Se suma a las promociones por artículo, sobre el total original de {money(cartOriginalSubtotal)}.</small>
+                          <small>{globalPromotionMode==="final" ? "El total a cobrar será exactamente el importe indicado, después de los descuentos por artículo." : "El descuento general se acumula con las promociones por artículo y se calcula sobre el total original de "+money(cartOriginalSubtotal)+"."}</small>
                           <strong style={{color:"#175a37"}}>
                             Ahorro general: {Number.isFinite(generalDiscount)?money(generalDiscount):"Revisa el valor"}
                           </strong>
