@@ -137,6 +137,41 @@ test('invalid price override, underpayment and lack of stock are atomic',async()
  await assert.rejects(sell([{product_id:id,quantity:2}],200),/INSUFFICIENT_STOCK/);
  assert.equal((await one('select stock from products where id=$1',[id])).stock,1);
 });
+test('mixed payments refund exactly original allocations, restoring stock once',async()=>{
+ const id=await fixtureProduct({price:250,stock:3});
+ const tender=[
+  {method:'cash',amount:100,metadata:{pos_request_id:randomUUID()}},
+  {method:'card_terminal',amount:150,reference:'QA22-TERMINAL'}
+ ];
+ const s=await sell(items(id),250,{payments:tender});
+ assert.equal(money(s.total),250);
+ assert.equal((await one('select count(*)::int n from pos_payments where sale_id=$1',[s.sale_id])).n,2);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,2);
+ const allocations=[{method:'cash',amount:100},{method:'card_terminal',amount:150,reference:'QA22-REFUND'}];
+ await assert.rejects(one('select public.pos_refund_sale_v21($1,$2,$3::jsonb,$4) result',
+   [token,s.sale_id,JSON.stringify([{method:'cash',amount:150},{method:'card_terminal',amount:100}]),'QA invalid split']),/REFUND_ORIGINAL_PAYMENT_MISMATCH/);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,2);
+ const refunded=(await one('select public.pos_refund_sale_v21($1,$2,$3::jsonb,$4) result',
+   [token,s.sale_id,JSON.stringify(allocations),'QA controlled mixed refund'])).result;
+ assert.equal(money(refunded.amount),250);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,3);
+ assert.equal((await one('select count(*)::int n from pos21_refund_allocations where refund_id=$1',[refunded.refund_id])).n,2);
+ await assert.rejects(one('select public.pos_refund_sale_v21($1,$2,$3::jsonb,$4) result',
+   [token,s.sale_id,JSON.stringify(allocations),'QA repeated refund']),/SALE_NOT_REFUNDABLE/);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,3);
+});
+test('higher SKU campaign takes precedence over category campaign and respects date window',async()=>{
+ const id=await fixtureProduct({price:1000,stock:4});
+ const sku=(await one('select sku from products where id=$1',[id])).sku;
+ await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA CATEGORY PRIORITY','category',$1,10,current_date-1,current_date+1,true),('QA SKU PRIORITY','sku',$2,15,current_date-1,current_date+1,true),('QA EXPIRED','sku',$2,75,current_date-20,current_date-10,true)",[category,sku]);
+ const s=await sell(items(id),850);
+ assert.equal(money(s.total),850);
+ const line=await one('select discount_amount,product_snapshot from pos_sale_items where sale_id=$1',[s.sale_id]);
+ assert.equal(money(line.discount_amount),150);
+ assert.equal(money(line.product_snapshot.automatic_discount),150);
+ assert.equal(line.product_snapshot.automatic_promotion_title,'QA SKU PRIORITY');
+ await sql("update pos22_promotions set enabled=false where title like 'QA % PRIORITY' or title='QA EXPIRED'");
+});
 test('cashier manual discount needs valid administrative approval',async()=>{
  const id=await fixtureProduct({price:100});
  await sql("update pos_shifts set employee_id=$1 where id=$2",[cashierEmployee,shift]);await auth(cashierUser);
