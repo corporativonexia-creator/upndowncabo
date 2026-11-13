@@ -8,6 +8,7 @@
   const el=id=>document.getElementById(id);
   window.__UPDOWN_SEARCH_STATUS__="loading";
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
+  let storefrontPromotions=[];
   let modalGalleryImages=[],modalGalleryIndex=0;
   let udsViewerScrollY=0;
   let udsViewerPreviousBodyStyle=null;
@@ -92,6 +93,8 @@
           name:displayName,
           sku:variant.sku||parent.sku,
           barcode:variant.barcode,
+          parent_sku:parent.sku,
+          parent_barcode:parent.barcode,
           price:variantPrice,
           sale_price:variantOffer,
           stock:Number(variant.stock??0),
@@ -255,6 +258,28 @@
     localStorage.setItem(AFFILIATE_STORAGE_KEY,JSON.stringify(ref));return ref
   }
 
+  // Public storefront pricing: product-specific offer first, scheduled campaign second.
+  // The original list price remains the strike-through comparator.
+  function storefrontPricing(product){
+    const regular=Number(product.price);
+    const special=product.sale_price==null?null:Number(product.sale_price);
+    const base=special!=null&&Number.isFinite(special)&&special>=0&&special<regular?special:regular;
+    const rate=Number(product.automaticPromotion?.percent||0);
+    const final=Math.round((base*(1-rate/100)+Number.EPSILON)*100)/100;
+    return {price:Math.max(0,final),comparePrice:final<regular?regular:null,percent:rate};
+  }
+  function applyStorefrontPromotions(rows,promotions){
+    return rows.map(p=>{
+      const matching=promotions.filter(pr=>{
+        const value=String(pr.target_value||'').trim();
+        if(pr.target_type==='category')return String(p.category_id)===value;
+        if(pr.target_type==='sku')return [p.sku,p.parent_sku].some(code=>String(code||'').toUpperCase()===value.toUpperCase());
+        if(pr.target_type==='barcode')return [p.barcode,p.parent_barcode].some(code=>String(code||'').trim()===value);
+        return false;
+      }).sort((a,b)=>Number(b.discount_percent)-Number(a.discount_percent)||String(a.id).localeCompare(String(b.id)));
+      return {...p,automaticPromotion:matching.length?{id:matching[0].id,title:matching[0].title,percent:Number(matching[0].discount_percent)}:null};
+    });
+  }
   function cartUnits(){return cart.reduce((s,i)=>s+Number(i.quantity||0),0)}
   function cartTotal(){return cart.reduce((s,i)=>s+Number(i.price||0)*Number(i.quantity||0),0)}
   function saveCart(){localStorage.setItem("upDownCart",JSON.stringify(cart));renderCart()}
@@ -267,7 +292,7 @@
     const variantRows=variantIds.length?await db.from("product_variants").select("id,product_id,title,sku,price,sale_price,stock,attributes,is_active").in("id",variantIds).eq("is_active",true).abortSignal(timeoutSignal()):{data:[],error:null};
     if(variantRows.error)throw variantRows.error;
     const parentSet=[...new Set([...parentIds,...(variantRows.data||[]).map(v=>v.product_id)])];
-    const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
+    const parents=parentSet.length?await db.from("products").select("id,name,slug,brand,model,sku,barcode,category_id,currency,price,sale_price,stock,cover_image_url,specifications,status,online_visible").in("id",parentSet).eq("status","active").eq("online_visible",true).abortSignal(timeoutSignal()):{data:[],error:null};
     if(parents.error)throw parents.error;
     const pMap=new Map((parents.data||[]).map(p=>[p.id,p]));
     const vMap=new Map((variantRows.data||[]).map(v=>[v.id,v]));
@@ -287,7 +312,7 @@
       const name=isVariant&&label&&!isGeneric?parent.name+" · "+label:parent.name;
       const listPrice=isVariant?(variant.price??parent.price):parent.price;
       const sale=isVariant?(variant.sale_price??(variant.price==null?parent.sale_price:null)):parent.sale_price;
-      const price=Number(sale??listPrice);
+      const price=storefrontPricing(applyStorefrontPromotions([{...parent,price:listPrice,sale_price:sale,sku:variant?.sku||parent.sku,barcode:variant?.barcode||parent.barcode,parent_sku:parent.sku,parent_barcode:parent.barcode}],storefrontPromotions)[0]).price;
       const imageAttrs=variant?.attributes&&typeof variant.attributes==="object"?variant.attributes:{};
       const image=String(imageAttrs.image_url||imageAttrs.photo_url||parent.cover_image_url||"");
       const quantity=Math.min(Math.max(1,Number(item.quantity)||1),stock);
