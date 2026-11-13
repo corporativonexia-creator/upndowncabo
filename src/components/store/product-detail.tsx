@@ -47,7 +47,8 @@ export default function ProductDetail({ product, preview }: { product: Shareable
 
   useEffect(() => {
     const saved = existingAffiliate();
-    setAffiliate(saved);
+    // Defer browser-storage hydration to avoid a synchronous effect update.
+    void Promise.resolve().then(() => setAffiliate(saved));
     const code = normalizedCode(new URLSearchParams(window.location.search).get("ref"));
     if (!code || code === saved?.code) return;
     const endpoint = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -92,7 +93,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
     try {
       const stored = sessionStorage.getItem("upDownPreviewCatalogReturnUrl");
       if (preview && stored && /^\/vista-previa(?:[?#]|$)/.test(stored) && !stored.includes("/producto/")) {
-        setReturnCatalogUrl(stored);
+        void Promise.resolve().then(() => setReturnCatalogUrl(stored));
       }
     } catch { /* private browsing may block storage */ }
     const syncCart=()=>{
