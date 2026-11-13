@@ -236,10 +236,10 @@ begin
       if v_global_value>100 then raise exception 'INVALID_GLOBAL_PERCENT';end if;
       v_global_discount:=round(v_subtotal*v_global_value/100,2);
     when 'amount' then v_global_discount:=round(v_global_value,2);
-    when 'final' then v_global_discount:=round(v_subtotal-v_global_value,2);
+    when 'final' then v_global_discount:=round(v_subtotal-v_auto_discount-v_manual_discount-v_global_value,2);
     else raise exception 'INVALID_GLOBAL_MODE';
   end case;
-  if v_global_discount<0 or v_global_discount>v_subtotal then raise exception 'INVALID_GLOBAL_DISCOUNT';end if;
+  if v_global_discount<0 or v_global_discount>round(v_subtotal-v_auto_discount-v_manual_discount,2) then raise exception 'INVALID_GLOBAL_DISCOUNT';end if;
   if round(coalesce(p_discount_amount,0),2)<>v_global_discount then raise exception 'GLOBAL_DISCOUNT_MISMATCH';end if;
   v_authorization_discount:=round(v_manual_discount+v_global_discount,2);
   v_discount:=round(v_discount+v_global_discount,2);
