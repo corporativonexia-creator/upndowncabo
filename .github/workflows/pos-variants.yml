@@ -34,6 +34,7 @@ jobs:
       - run: npm run lint
       - run: npm run test:pos
       - run: node --test tests/pos/pos22-transactions.cjs
+      - run: node --test tests/pos/pos22-receipt.cjs
       - run: npm run build
       - run: npx tsc --noEmit
       - run: npx playwright install --with-deps chromium
