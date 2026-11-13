@@ -35,7 +35,7 @@ Opcionalmente, **solo con autorización del supervisor y cuando el cajón esté 
 - Pelotas de golf $200 y descuento del artículo 10% = **$20**.
 - Descuento general en cuenta = **$1,000**.
 - Ahorro total = **$1,020**; importe simulado final = **$3,980**.
-- Sin pagos reales, sin folios válidos, sin IVA ficticio desglosado como operación real, sin registro de inventario.
+- Sin pagos reales, sin folios válidos y sin registro de inventario. El desglose de IVA es **solo ilustrativo** y el ticket debe quedar claramente marcado como prueba.
 - El cajón permanece cerrado por defecto; con `-TestDrawer`, debe recibir un único pulso de apertura.
 - La prueba genera trabajos RAW con los mismos comandos ESC/POS. Que el programa reporte «enviado» solo confirma su entrega a la cola de Windows: **el encargado debe verificar visualmente papel y cortes**.
 
