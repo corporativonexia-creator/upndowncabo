@@ -88,10 +88,10 @@ begin
      if v_global_value>100 then raise exception 'INVALID_GLOBAL_PERCENT';end if;
      v_global_discount:=round(sub_total*v_global_value/100,2);
    when 'amount' then v_global_discount:=round(v_global_value,2);
-   when 'final' then v_global_discount:=round(sub_total-v_global_value,2);
+   when 'final' then v_global_discount:=round(sub_total-v_auto_discount-total_discount-v_global_value,2);
    else raise exception 'INVALID_GLOBAL_MODE';
  end case;
- if v_global_discount<0 or v_global_discount>sub_total then raise exception 'INVALID_GLOBAL_DISCOUNT';end if;
+ if v_global_discount<0 or v_global_discount>round(sub_total-v_auto_discount-total_discount,2) then raise exception 'INVALID_GLOBAL_DISCOUNT';end if;
  total_discount:=round(total_discount+v_global_discount,2);
  if total_discount<=0 then raise exception 'NO_PROMOTION_TO_APPROVE';end if;
  if total_discount+v_auto_discount>=sub_total then raise exception 'ZERO_OR_NEGATIVE_TOTAL_NOT_ALLOWED';end if;
