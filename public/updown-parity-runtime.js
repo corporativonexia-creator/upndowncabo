@@ -411,9 +411,7 @@
         currentStock
       );
 
-      const currentPrice=Number(
-        current.sale_price??current.price
-      );
+      const currentPrice=storefrontPricing(applyStorefrontPromotions([current],storefrontPromotions)[0]).price;
 
       if(validQuantity!==previousQuantity){
         adjustments.push(
@@ -537,7 +535,7 @@
     if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
     const ex=cart.find(i=>i.id===product.id);
     if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:Number(product.sale_price??product.price),currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -833,19 +831,20 @@
     return {text:currentLanguage==="en"?"Available":"Disponible",cls:""};
   }
   function cardHtml(product){
-    const price=product.sale_price??product.price;
-    const discount=product.sale_price!=null&&Number(product.sale_price)<Number(product.price);
+    const pricing=storefrontPricing(product);
+    const price=pricing.price;
+    const discount=pricing.comparePrice!=null;
     const stock=stockCopy(product.stock);
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span><span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
+    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
         ${specs.length?`<p class="uds-card-specs">${specs.map(escapeHtml).join(" · ")}</p>`:""}
         <p class="uds-description">${escapeHtml(localizedProductText(product,"short_description")||product.model||"")}</p>
-        <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}</div>
+        <div class="uds-price-row"><span class="uds-price">${money(price,product.currency,true)}</span>${discount?`<span class="uds-old-price">${money(pricing.comparePrice,product.currency,true)}</span>`:""}</div>
         <p class="uds-shipping-note" data-store-copy="product.shippingExcluded">${escapeHtml(siteText("product.shippingExcluded"))}</p>
 
       </div>`;
@@ -1265,7 +1264,7 @@
       const now=Date.now();
       const arrivals=products.filter(p=>previewIsNewArrival(p,now))
         .sort((a,b)=>Date.parse(b.new_arrival_at)-Date.parse(a.new_arrival_at)||String(a.id).localeCompare(String(b.id)));
-      const offers=products.filter(p=>p.sale_price!=null&&Number(p.sale_price)>0&&Number(p.sale_price)<Number(p.price))
+      const offers=products.filter(p=>storefrontPricing(p).comparePrice!=null)
         .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
       rail.replaceChildren();rail.classList.add("uds-preview-new-rails");
       previewNewArrivalCards(rail,arrivals,currentLanguage==="en"?"New arrivals":"Novedades","New");
@@ -1273,7 +1272,7 @@
       return;
     }
     const offers=[...products]
-      .filter(p=>p.sale_price!==null&&Number(p.sale_price)<Number(p.price))
+      .filter(p=>storefrontPricing(p).comparePrice!=null)
       .sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     const latest=[...products].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     const seen=new Set();
@@ -1601,8 +1600,8 @@
     });
     if(activeCollection==="newest")filteredProducts=[...filteredProducts].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     if(sort==="newest")filteredProducts=[...filteredProducts].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-    if(sort==="price_asc")filteredProducts=[...filteredProducts].sort((a,b)=>Number(a.sale_price??a.price)-Number(b.sale_price??b.price));
-    if(sort==="price_desc")filteredProducts=[...filteredProducts].sort((a,b)=>Number(b.sale_price??b.price)-Number(a.sale_price??a.price));
+    if(sort==="price_asc")filteredProducts=[...filteredProducts].sort((a,b)=>storefrontPricing(a).price-storefrontPricing(b).price);
+    if(sort==="price_desc")filteredProducts=[...filteredProducts].sort((a,b)=>storefrontPricing(b).price-storefrontPricing(a).price);
     if(sort==="featured")filteredProducts=[...filteredProducts].sort((a,b)=>Number(Boolean(b.featured))-Number(Boolean(a.featured))||new Date(b.created_at)-new Date(a.created_at));
     syncFilterUi();
     updateFocusedSearchMode();
@@ -1642,7 +1641,7 @@
             `*${product.name}*`,
             `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuration: ${summary}`]:[]),
-            `Price: ${money(product.sale_price??product.price,product.currency)}`,
+            `Price: ${money(storefrontPricing(product).price,product.currency)}`,
             "",
             "Can you help me confirm whether this configuration is right for my game?"
           ]
@@ -1653,7 +1652,7 @@
             `*${product.name}*`,
             `SKU: ${product.sku||"—"}`,
             ...(summary?[`Configuración: ${summary}`]:[]),
-            `Precio: ${money(product.sale_price??product.price,product.currency)}`,
+            `Precio: ${money(storefrontPricing(product).price,product.currency)}`,
             "",
             "¿Me ayudas a confirmar si esta configuración es adecuada para mi juego?"
           ];
@@ -1667,7 +1666,7 @@
     if(product){
       lines.push("",currentLanguage==="en"?"I’m looking at this equipment:":"Estoy viendo este equipo:",`*${product.name}*`,`SKU: ${product.sku||"—"}`);
       const summary=golfSummary(product);if(summary)lines.push(currentLanguage==="en"?`Configuration: ${summary}`:`Configuración: ${summary}`);
-      lines.push(currentLanguage==="en"?`Price: ${money(product.sale_price??product.price,product.currency)}`:`Precio: ${money(product.sale_price??product.price,product.currency)}`);
+      lines.push(currentLanguage==="en"?`Price: ${money(storefrontPricing(product).price,product.currency)}`:`Precio: ${money(storefrontPricing(product).price,product.currency)}`);
     }
     lines.push("");
     if(purpose==="trade")lines.push(currentLanguage==="en"?"I have golf equipment I may want to trade in. Can you tell me how the in-store evaluation works?":"Tengo equipo de golf que podría dar a cuenta. ¿Me explican cómo funciona la valoración en tienda?");
@@ -1816,8 +1815,8 @@
     el("udsModalPick")?.classList.add("uds-hidden");
     el("udsModalCategory").innerHTML=`<span>${escapeHtml(categoryLabel(product.categories)||"Golf")} · ${escapeHtml((currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||"")}</span><span class="uds-modal-stock-tag ${stock.cls}">${escapeHtml(stock.text)}</span>`;
     el("udsModalTitle").textContent=product.name||"";
-    const hasDiscount=product.sale_price!==null&&Number(product.sale_price)<Number(product.price);
-    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(product.sale_price??product.price,product.currency,true)}</span>${hasDiscount?`<span class="uds-old-price">${money(product.price,product.currency,true)}</span>`:""}`;
+    const modalPrice=storefrontPricing(product);
+    el("udsModalPrice").innerHTML=`<span class="uds-price">${money(modalPrice.price,product.currency,true)}</span>${modalPrice.comparePrice!=null?`<span class="uds-old-price">${money(modalPrice.comparePrice,product.currency,true)}</span>`:""}${modalPrice.percent>0?`<span class="uds-campaign-badge">-${modalPrice.percent}%</span>`:""}`;
     renderProductDescription(product,savedDescriptionExpanded);
     el("udsModalImage").setAttribute("aria-label",siteText("product.expandImage"));
     const player=specs.player;
@@ -2117,7 +2116,7 @@
     const all=[];
     for(let offset=0;offset<10000;offset+=400){
       const query=await db.from("products")
-        .select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,new_arrival_enabled,new_arrival_at,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
+        .select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,new_arrival_enabled,new_arrival_at,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`)
         .eq("status","active").eq("online_visible",true)
         .order("featured",{ascending:false})
         .order("created_at",{ascending:false})
@@ -2161,9 +2160,10 @@
   async function loadStore(){
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
-    const [{data:cats,error:ce},{data:prods,error:pe}]=await Promise.all([
+    const [{data:cats,error:ce},{data:prods,error:pe},{data:activeCampaigns,error:campaignError}]=await Promise.all([
       db.from("categories").select("id,name,slug,image_url,sort_order").eq("is_active",true).order("sort_order",{ascending:true}).abortSignal(timeoutSignal()),
-      PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal())
+      PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal()),
+      db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal())
     ]);
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
@@ -2184,8 +2184,8 @@
         }
       }
     }
-    if(ce||pe||variantError){
-      const error=ce||pe||variantError;
+    if(ce||pe||variantError||campaignError){
+      const error=ce||pe||variantError||campaignError;
       if(restoredFromCache){
         console.warn("[UPDOWN catalog refresh]",error);
         showToast(currentLanguage==="en"?"Showing the latest saved catalog while the connection recovers.":"Mostramos el último catálogo guardado mientras se recupera la conexión.");
@@ -2197,7 +2197,8 @@
       return;
     }
     categories=cats||[];
-    products=expandPublicVariants(prods||[],variantRows);
+    storefrontPromotions=Array.isArray(activeCampaigns)?activeCampaigns:[];
+    products=applyStorefrontPromotions(expandPublicVariants(prods||[],variantRows),storefrontPromotions);
     renderCatalogState();
     saveCatalogCache();
     revealCatalog();
@@ -2238,7 +2239,7 @@
     return products.filter(p=>{
       const hay=normalizeSearch([p.name,p.brand,p.model,p.categories?.name,p.categories?.slug,categoryLabel(p.categories),p.short_description,p.short_description_en,...Object.values(p.specifications||{}).map(displaySpecValue)].filter(Boolean).join(" "));
       return terms.every(term=>(aliases[term]||[term]).some(word=>hay.includes(word)));
-    }).map(p=>({id:p.id,name:p.name,category:categoryLabel(p.categories),image:productGallery(p)[0]||"",price:money(p.sale_price??p.price,p.currency,true)}));
+    }).map(p=>({id:p.id,name:p.name,category:categoryLabel(p.categories),image:productGallery(p)[0]||"",price:money(storefrontPricing(p).price,p.currency,true)}));
   };
   window.__UPDOWN_OPEN_SEARCH_PRODUCT__=id=>{
     const product=products.find(p=>p.id===id);
