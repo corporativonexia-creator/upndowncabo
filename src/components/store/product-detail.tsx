@@ -321,6 +321,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
           <h1>{product.name}</h1>
           <div className="ud-product-price">
             <strong>{amount(product.price, product.currency)}</strong>
+            {Boolean(product.campaignPercent) && <span className="ud-product-campaign-badge">-{product.campaignPercent}%</span>}
             {product.comparePrice != null && <del>{amount(product.comparePrice, product.currency)}</del>}
           </div>
           <p className="ud-product-shipping">Envío no incluido</p>
