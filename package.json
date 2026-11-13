@@ -11,6 +11,7 @@
     "prebuild": "npm run check:admin-scripts",
     "test:admin": "playwright test",
     "test:pos": "node --test tests/pos/variants.cjs",
+    "test:pos22": "node --test tests/pos/pos22-pricing.cjs",
     "test:pos:browser": "playwright test --config playwright.pos.config.ts"
   },
   "dependencies": {
