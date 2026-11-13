@@ -194,6 +194,8 @@
     try{
       const cached=JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY)||"null");
       if(!Array.isArray(cached?.products)||!Array.isArray(cached?.categories))return false;
+      // Campaign pricing expires by Cabo date: never restore an unverified discounted snapshot.
+      if(cached.products.some(p=>p.automaticPromotion))return false;
       products=cached.products;
       categories=cached.categories;
       renderCatalogState();
@@ -2187,7 +2189,10 @@
         }
       }
     }
-    if(ce||pe||variantError||campaignError){
+    // Preview may still target the POS 2.1 database until the additive SQL deploy.
+    // An absent new RPC means no campaign prices, not a broken product catalog.
+    const missingCampaignRpc=campaignError&&["PGRST202","42883"].includes(String(campaignError.code||""));
+    if(ce||pe||variantError||(campaignError&&!missingCampaignRpc)){
       const error=ce||pe||variantError||campaignError;
       if(restoredFromCache){
         console.warn("[UPDOWN catalog refresh]",error);
