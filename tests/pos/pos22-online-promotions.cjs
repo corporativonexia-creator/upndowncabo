@@ -6,9 +6,9 @@ const vm=require('node:vm');
 const ts=require('typescript');
 const file=fs.readFileSync('src/lib/storefront/online-pricing.ts','utf8');
 const compiled=ts.transpileModule(file,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
-const module={exports:{}};
-new Function('module','exports','require',compiled)(module,module.exports,require);
-const {onlinePrice,matchOnlineCampaign}=module.exports;
+const loaded={exports:{}};
+new Function('module','exports','require',compiled)(loaded,loaded.exports,require);
+const {onlinePrice,matchOnlineCampaign}=loaded.exports;
 const fixture={
  id:'c1',title:'Wedges noviembre',target_type:'category',
  target_value:'wedges',discount_percent:20
