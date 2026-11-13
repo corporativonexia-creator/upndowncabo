@@ -4,6 +4,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
+import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
 
 type Access = {
@@ -242,6 +243,7 @@ function receiptAmountWords(value: number) {
 }
 function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
   const items=sale.items||[],total=numeric(sale.total),net=Math.round((total/1.16)*100)/100,vat=Math.round((total-net)*100)/100,articleCount=items.reduce((sum,item)=>sum+Number(item.quantity||0),0);
+  const savings=receiptDiscountBreakdown(sale);
   const doc=new jsPDF({orientation:"portrait",unit:"mm",format:[80,Math.max(210,130+items.length*30+(sale.payments||[]).length*10)]}),width=80,margin=5,right=75;let y=8;
   const line=(kind="-")=>{doc.setDrawColor(kind==="="?70:155);doc.setLineWidth(kind==="="?0.45:0.2);doc.line(margin,y,right,y);y+=4;}; const pair=(label:string,value:string,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(bold?9:8);doc.text(label,margin,y);doc.text(value,right,y,{align:"right"});y+=4.2;}; const centered=(text:string,size=7,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);doc.text(text,width/2,y,{align:"center"});y+=size*.48+1.2;};
   doc.setFont("times","bold");doc.setFontSize(18);doc.text("UP AND DOWN",width/2,y,{align:"center"});y+=6;centered("PLAZA ALBA - LOCAL 206",7,true);centered("EL TEZAL",7);centered("CABO SAN LUCAS, B.C.S.",7);centered("C.P. 23454",7);centered("upndowncabo.com",7,true);y+=1;line("=");doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(`VENTA #${sale.sale_number}`,margin,y);y+=4.5;doc.setFontSize(8);doc.text("COMPROBANTE DIGITAL",margin,y);y+=4;line();doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.text(`Fecha: ${new Date(sale.created_at).toLocaleString("es-MX",{dateStyle:"short",timeStyle:"short"})}`,margin,y);y+=4;if(access){doc.text(`Cajero: #${access.employee_number} ${access.full_name}`,margin,y);y+=4;doc.text(`Terminal: ${access.terminal_name||"POS"}`,margin,y);y+=4;}line();
@@ -258,8 +260,10 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
   }
   line();
   if(numeric(sale.discount_amount)>0){
-    pair("PRECIO ORIGINAL",money(numeric(sale.subtotal)));
-    pair("AHORRO TOTAL", "-"+money(numeric(sale.discount_amount)),true);
+    pair("PRECIO ORIGINAL",money(savings.original));
+    if(savings.itemSavings>0)pair("AHORRO ARTICULOS","-"+money(savings.itemSavings));
+    if(savings.generalSavings>0)pair("DESCUENTO GENERAL","-"+money(savings.generalSavings));
+    pair("AHORRO TOTAL", "-"+money(savings.totalSavings),true);
   }
   pair("SUBTOTAL SIN IVA",money(net));pair("IVA 16%",money(vat));pair("TOTAL",money(total),true);y+=1;doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text("TOTAL CON LETRA:",margin,y);y+=3.5;doc.setFont("helvetica","normal");doc.setFontSize(6.7);const wordLines=doc.splitTextToSize(receiptAmountWords(total),70);doc.text(wordLines,margin,y);y+=wordLines.length*3.1+1;pair("ARTICULOS COMPRADOS",String(articleCount),true);line();doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text((sale.payments||[]).length>1?"PAGO MIXTO":"PAGO",margin,y);y+=4;for(const payment of sale.payments||[]){pair(paymentLabel(payment.method),money(numeric(payment.amount)));if(payment.reference){doc.setFont("helvetica","normal");doc.setFontSize(7);doc.text(`Ref: ${payment.reference}`,margin,y);y+=3.5;}}line("=");centered("upndowncabo.com",8,true);centered("Gracias por tu compra.",7);centered("Conserva este comprobante para cualquier aclaracion.",6.5);return doc;
 }
