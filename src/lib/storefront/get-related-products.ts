@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { productKeyFor, type ShareableProduct } from "./product-share";
+import { onlinePrice,matchOnlineCampaign,type PublicCampaign } from "./online-pricing";
 
 /** Visible, purchasable relations. Each card is a product or an exact live variant. */
 export type RelatedProduct = {
@@ -8,6 +9,8 @@ export type RelatedProduct = {
   name: string;
   brand: string | null;
   price: number;
+  comparePrice?: number|null;
+  campaignPercent?: number;
   currency: string;
   stock: number;
   image: string | null;
@@ -15,13 +18,13 @@ export type RelatedProduct = {
 };
 
 type ProductRow = {
-  id: string; name: string; category_id: string | null; brand: string | null;
+  id: string; name: string; category_id: string | null; brand: string | null; sku:string|null;barcode:string|null;
   model: string | null; price: number | null; sale_price: number | null;
   currency: string | null; stock: number | null; cover_image_url: string | null;
   product_images: Array<{ image_url: string; is_primary: boolean; sort_order: number }> | null;
 };
 type VariantRow = {
-  id: string; product_id: string; title: string | null; sku: string | null;
+  id: string; product_id: string; title: string | null; sku: string | null; barcode:string|null;
   price: number | null; sale_price: number | null; stock: number | null;
   attributes: Record<string, unknown> | null;
 };
@@ -47,9 +50,9 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
   const categoryId = current.categoryId;
   const brand = current.brand;
 
-  const projection = "id,name,category_id,brand,model,price,sale_price,currency,stock,cover_image_url,product_images(image_url,is_primary,sort_order)";
+  const projection = "id,name,category_id,brand,model,sku,barcode,price,sale_price,currency,stock,cover_image_url,product_images(image_url,is_primary,sort_order)";
   const empty = {data: [] as ProductRow[], error: null};
-  const [inCategory, byBrand] = await Promise.all([
+  const [inCategory, byBrand, campaignsResult] = await Promise.all([
     categoryId
       ? db.from("products").select(projection).eq("status","active").eq("online_visible",true)
           .eq("category_id",categoryId).order("created_at",{ascending:false}).limit(90)
@@ -58,7 +61,10 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
       ? db.from("products").select(projection).eq("status","active").eq("online_visible",true)
           .ilike("brand",brand).order("created_at",{ascending:false}).limit(35)
       : Promise.resolve(empty),
+    db.rpc("pos22_public_active_promotions"),
   ]);
+  if (campaignsResult.error)throw new Error("No se pudieron validar las promociones activas.");
+  const campaigns=(Array.isArray(campaignsResult.data)?campaignsResult.data:[]) as PublicCampaign[];
   if (inCategory.error && byBrand.error) return [];
 
   const parents = new Map<string,ProductRow>();
@@ -83,7 +89,7 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
   for(let i=0;i<batches.length;i+=3){
     const results=await Promise.all(batches.slice(i,i+3).map(ids=>
       db.from("product_variants")
-        .select("id,product_id,title,sku,price,sale_price,stock,attributes")
+        .select("id,product_id,title,sku,barcode,price,sale_price,stock,attributes")
         .in("product_id",ids).eq("is_active",true).order("id",{ascending:true}).limit(700)
     ));
     for(const result of results){
@@ -117,13 +123,15 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
           ? parent.name+" · "+title : parent.name;
         const list=amount(variant.price,parent.price ?? 0);
         const special=variant.sale_price ?? (variant.price==null?parent.sale_price:null);
-        const price=special!=null&&amount(special)<list ? amount(special) : list;
+        const campaign=matchOnlineCampaign(campaigns,{categoryId:parent.category_id,sku:variant.sku,parentSku:parent.sku,barcode:variant.barcode,parentBarcode:parent.barcode});
+        const pricing=onlinePrice({price:list,salePrice:special,campaignPercent:Number(campaign?.discount_percent||0)});
+        const price=pricing.price;
         if(price<=0) continue;
         const attrs=variant.attributes||{};
         rows.push({score,product:{
           id:"variant:"+variant.id,
           key:productKeyFor({id:parent.id,variant_id:variant.id,name:displayName}),
-          name:displayName,brand:parent.brand,price,currency:parent.currency||"MXN",
+          name:displayName,brand:parent.brand,price,comparePrice:pricing.comparePrice,campaignPercent:pricing.campaignPercent,currency:parent.currency||"MXN",
           stock:Math.max(0,amount(variant.stock)),relation,
           image:photo(attrs.image_url)||photo(attrs.photo_url)||mainImage,
         }});
@@ -131,11 +139,13 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
     } else if(parent.id!==current.parentId){
       const list=amount(parent.price);
       const special=parent.sale_price;
-      const price=special!=null&&amount(special)<list ? amount(special) : list;
+      const campaign=matchOnlineCampaign(campaigns,{categoryId:parent.category_id,sku:parent.sku,barcode:parent.barcode});
+      const pricing=onlinePrice({price:list,salePrice:special,campaignPercent:Number(campaign?.discount_percent||0)});
+      const price=pricing.price;
       if(price<=0)continue;
       rows.push({score,product:{
         id:parent.id,key:productKeyFor({id:parent.id,name:parent.name}),
-        name:parent.name,brand:parent.brand,price,currency:parent.currency||"MXN",
+        name:parent.name,brand:parent.brand,price,comparePrice:pricing.comparePrice,campaignPercent:pricing.campaignPercent,currency:parent.currency||"MXN",
         stock:Math.max(0,amount(parent.stock)),relation,image:mainImage,
       }});
     }
