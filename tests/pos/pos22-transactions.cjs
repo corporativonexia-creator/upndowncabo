@@ -72,7 +72,8 @@ before(async()=>{
   '20261109030000_pos21_split_refunds_and_cash_closing',
   '20261112200000_pos22_services_scheduled_promotions',
   '20261112201000_pos22_sale_engine',
-  '20261112202000_pos22_approval_and_service_reversals'
+  '20261112202000_pos22_approval_and_service_reversals',
+  '20261113093000_pos22_storefront_campaign_checkout'
  ])await migrate(migration);
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
