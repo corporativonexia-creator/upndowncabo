@@ -161,6 +161,19 @@ test('checkout V2 reserves at special-price minus category campaign, never trust
  assert.equal((await one('select stock from products where id=$1',[id])).stock,4);
  await sql("update pos22_promotions set enabled=false where title='QA ONLINE CATEGORY'");
 });
+test('checkout V2 applies a SKU campaign on the exact variant offer',async()=>{
+ const id=await fixtureProduct({price:1000,stock:2});
+ await sql('update products set online_visible=true where id=$1',[id]);
+ const variantId=randomUUID(),variantSku='QA22-V-'+variantId.slice(0,10);
+ await sql("insert into product_variants(id,product_id,sku,title,attributes,price,sale_price,stock,is_default) values($1,$2,$3,'Talla 27','{}'::jsonb,1000,900,2,true)",[variantId,id,variantSku]);
+ await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA V2 VARIANT','sku',$1,20,current_date-1,current_date+1,true)",[variantSku]);
+ const reserve=(await one('select public.reserve_checkout_inventory_v2($1::jsonb,null,30) result',[JSON.stringify([{id:'variant:'+variantId,quantity:1}])])).result;
+ assert.equal(money(reserve.items[0].unit_price),720);
+ assert.equal(reserve.items[0].variant_id,variantId);
+ assert.equal((await one('select stock from product_variants where id=$1',[variantId])).stock,1);
+ assert.equal((await one('select count(*)::int n from inventory_movements where variant_id=$1 and quantity_change=-1',[variantId])).n,1);
+ await sql("update pos22_promotions set enabled=false where title='QA V2 VARIANT'");
+});
 test('automatic category campaign and manual item promotion stack without double stock deduction',async()=>{
  const id=await fixtureProduct({price:1000,stock:6});
  await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA CATEGORY','category',$1,10,current_date-1,current_date+1,true)",[category]);
