@@ -194,7 +194,7 @@ begin
     'items',v_items_result
   );
 end;
-$function$
+$function$;
 -- Variant checkout: idem, with parent/category and variant SKU/barcode matching.
 create or replace function public.reserve_checkout_inventory_v2(
   p_items jsonb, p_seller_ref text default null, p_ttl_minutes int default 30
