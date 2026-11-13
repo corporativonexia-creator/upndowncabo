@@ -148,6 +148,11 @@ test('legacy checkout V1 reserves and releases at the campaign price without inv
  assert.equal(reversed.released_units,1);
  assert.equal((await one('select stock from products where id=$1',[id])).stock,4);
  assert.equal((await one("select count(*)::int n from inventory_movements where product_id=$1 and movement_type='adjustment'",[id])).n,2);
+ await sql('update products set sale_price=1200 where id=$1',[id]);
+ const standard=(await one('select public.reserve_checkout_inventory($1::jsonb,null,30) result',[JSON.stringify([{id,quantity:1}])])).result;
+ assert.equal(money(standard.items[0].unit_price),800);
+ await one('select public.release_checkout_reservation($1,$2) result',[standard.reservation_token,'QA reversed invalid special']);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,4);
  await sql("update pos22_promotions set enabled=false where title='QA V1 CATEGORY'");
 });
 test('checkout V2 reserves at special-price minus category campaign, never trusts browser price',async()=>{
