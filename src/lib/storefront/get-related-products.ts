@@ -63,7 +63,8 @@ export async function findRelatedProducts(current: ShareableProduct): Promise<Re
       : Promise.resolve(empty),
     db.rpc("pos22_public_active_promotions"),
   ]);
-  if (campaignsResult.error)throw new Error("No se pudieron validar las promociones activas.");
+  if (campaignsResult.error&&!["PGRST202","42883"].includes(String(campaignsResult.error.code||"")))
+    throw new Error("No se pudieron validar las promociones activas.");
   const campaigns=(Array.isArray(campaignsResult.data)?campaignsResult.data:[]) as PublicCampaign[];
   if (inCategory.error && byBrand.error) return [];
 
