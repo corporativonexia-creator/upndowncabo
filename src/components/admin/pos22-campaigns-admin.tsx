@@ -59,7 +59,7 @@ export default function Pos22CampaignsAdmin() {
   },[db]);
   useEffect(()=>{
     let cancelled=false;
-    void refresh().catch(e=>{if(!cancelled)setError(messageFor(e))})
+    void Promise.resolve().then(refresh).catch(e=>{if(!cancelled)setError(messageFor(e))})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return ()=>{cancelled=true};
   },[refresh]);
