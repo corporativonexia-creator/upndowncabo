@@ -49,10 +49,11 @@ export default function RelatedProductsRail({ products, preview }: { products: R
                 }
               }} />
             {item.stock <= 0 && <span className="ud-related-sold">Agotado</span>}
+            {Boolean(item.campaignPercent) && <span className="ud-related-campaign">-{item.campaignPercent}%</span>}
           </div>
           <div className="ud-related-caption">
             <small>{item.relation}</small><strong>{item.name}</strong>
-            <span>{price(item.price, item.currency)}</span>
+            <span>{price(item.price, item.currency)}{item.comparePrice != null && <del className="ud-related-before">{price(item.comparePrice,item.currency)}</del>}</span>
           </div>
         </Link>)}
     </div>
