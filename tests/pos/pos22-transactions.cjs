@@ -75,6 +75,26 @@ before(async()=>{
    currency text not null,unit_price numeric(12,2) not null,
    stock_before integer not null,stock_after integer not null,image_url text
  )`);
+ // The legacy V1 reservation and release path is also tested against the real
+ // inventory movement constraint, not a permissive substitute.
+ await sql(`create table public.checkout_inventory_reservations(
+  id uuid primary key default gen_random_uuid(),
+  reservation_token uuid not null unique default gen_random_uuid(),
+  status text not null default 'active',
+  stripe_checkout_session_id text,seller_ref text,expires_at timestamptz not null,
+  consumed_at timestamptz,released_at timestamptz,release_reason text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),updated_at timestamptz not null default now()
+ );
+ create table public.checkout_inventory_reservation_items(
+  id uuid primary key default gen_random_uuid(),
+  reservation_id uuid not null references public.checkout_inventory_reservations(id),
+  product_id uuid not null references public.products(id),
+  sku text,product_name text not null,quantity integer not null,
+  currency text not null default 'MXN',unit_price numeric(12,2) not null,
+  stock_before integer not null,stock_after integer not null,
+  created_at timestamptz not null default now()
+ )`);
  // Minimal fixture-only support missing from the 2026-11-04 schema snapshot.
  await sql("alter table public.categories add column if not exists is_active boolean not null default true");
  await sql(`create or replace function public.is_admin() returns boolean language sql stable
@@ -116,6 +136,19 @@ test('public RPC exposes only active campaign targets in Cabo timezone',async()=
  assert.ok(publicCampaigns.some(p=>p.title==='QA VISIBLE'));
  assert.ok(!publicCampaigns.some(p=>p.title==='QA PRIVATE'||p.title==='QA DISABLED'));
  await sql("delete from pos22_promotions where title like 'QA VISIBLE' or title like 'QA PRIVATE' or title like 'QA DISABLED'");
+});
+test('legacy checkout V1 reserves and releases at the campaign price without invalid movement types',async()=>{
+ const id=await fixtureProduct({price:1000,stock:4});
+ await sql('update products set online_visible=true,sale_price=900 where id=$1',[id]);
+ await sql("insert into pos22_promotions(title,target_type,target_value,discount_percent,starts_on,ends_on,enabled) values('QA V1 CATEGORY','category',$1,20,current_date-1,current_date+1,true)",[category]);
+ const reserve=(await one('select public.reserve_checkout_inventory($1::jsonb,null,30) result',[JSON.stringify([{id,quantity:1,price:1}])])).result;
+ assert.equal(money(reserve.items[0].unit_price),720);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,3);
+ const reversed=(await one('select public.release_checkout_reservation($1,$2) result',[reserve.reservation_token,'QA cancelled session'])).result;
+ assert.equal(reversed.released_units,1);
+ assert.equal((await one('select stock from products where id=$1',[id])).stock,4);
+ assert.equal((await one("select count(*)::int n from inventory_movements where product_id=$1 and movement_type='adjustment'",[id])).n,2);
+ await sql("update pos22_promotions set enabled=false where title='QA V1 CATEGORY'");
 });
 test('checkout V2 reserves at special-price minus category campaign, never trusts browser price',async()=>{
  const id=await fixtureProduct({price:1000,stock:5});
