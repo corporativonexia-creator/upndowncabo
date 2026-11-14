@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "offline-premium-white-20261114": false
+    }
+  },
+  "ignoreCommand": "node -e \"process.exit(0)\""
+}
