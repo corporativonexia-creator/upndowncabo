@@ -115,7 +115,7 @@ before(async()=>{
   '20261113093000_pos22_storefront_campaign_checkout'
  ])await migrate(migration);
  // The disposable fixture predates real auth.sessions; only local tests use this stub.
- await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as $ select auth.uid() is not null $");
+ await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as 'select auth.uid() is not null'");
  await migrate('20261114215000_pos_service_receptions');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
