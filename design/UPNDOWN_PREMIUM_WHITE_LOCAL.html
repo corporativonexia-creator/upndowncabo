@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>UP AND DOWN — Premium White · Demo local</title>
+<style>
+:root{--green:#123d32;--deep:#0b2f27;--lime:#b7de45;--ink:#16382f;--text:#273a34;--muted:#63736c;--line:#e6ebe7;--soft:#f3f5f2;--paper:#fff;--gold:#c8ad71;--radius:17px;--sans:Inter,"Segoe UI",Arial,sans-serif;--serif:Georgia,"Times New Roman",serif}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0;color:var(--text);background:var(--paper);font:15px/1.58 var(--sans);-webkit-font-smoothing:antialiased}
+body:has(dialog[open]){overflow:hidden}
+button,input,select{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--lime);outline-offset:3px}
+img,svg{max-width:100%}
+.wrap{width:min(1200px,calc(100% - 64px));margin-inline:auto}
+.demo-banner{background:#eaf1eb;border-bottom:1px solid #dce7dd;color:#35634b;text-align:center;padding:7px 12px;font-size:10px;font-weight:800;letter-spacing:.1em}
+.site-header{position:sticky;top:0;z-index:60;background:#ffffffed;backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.header-inner{min-height:76px;display:flex;align-items:center;gap:27px}
+.brand{display:flex;align-items:center;gap:9px;min-width:max-content;color:var(--green)}
+.brand-icon{display:flex;width:37px;align-items:center}.brand-icon svg{width:37px}
+.brand-name{font:600 17px/1 var(--serif);letter-spacing:.035em}
+.brand-kicker{display:block;font-size:8px;font-weight:700;letter-spacing:.15em;margin-top:5px}
+.main-nav{display:flex;align-items:center;justify-content:center;gap:24px;margin:auto}
+.main-nav a{font-size:12px;font-weight:700;color:#30483e;white-space:nowrap;transition:color .15s}
+.main-nav a:hover{color:#288342}
+.header-tools{display:flex;align-items:center;gap:7px;margin-left:auto}
+.lang-toggle{display:flex;border:1px solid #dde5df;border-radius:999px;padding:3px;background:#f8faf8}
+.lang-toggle button{border:0;background:none;border-radius:999px;font-size:10px;font-weight:800;color:var(--green);padding:8px 9px;min-height:29px}
+.lang-toggle button[aria-pressed=true]{background:var(--green);color:#fff}
+.icon-btn{border:1px solid var(--line);border-radius:50%;background:#fff;width:37px;height:37px;display:grid;place-items:center;color:var(--green);transition:background .15s}
+.icon-btn:hover{background:#edf3ef}
+.icon-btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.menu-btn{display:none}
+.preview-chip{display:inline-flex;align-items:center;gap:7px;font-size:10px;color:#3d6748;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.preview-chip:before{content:"";width:6px;height:6px;border-radius:50%;background:#6eac51}
+h1,h2,h3,p{margin-top:0}
+h1,h2,.serif{font-family:var(--serif);font-weight:400;letter-spacing:-.038em}
+h2{font-size:clamp(30px,3.5vw,45px);line-height:1.11;color:var(--green);margin-bottom:12px}
+.eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:800;color:#67826f}
+.section{padding:74px 0}
+.section-heading{display:flex;justify-content:space-between;align-items:end;gap:24px;margin-bottom:30px}
+.section-heading p{color:var(--muted);max-width:460px;font-size:13px;margin:0}
+.link-text{font-size:12px;font-weight:800;color:var(--green);border-bottom:1px solid #9aaea1;padding-bottom:6px;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;border:1px solid transparent;border-radius:999px;font-size:12px;font-weight:800;padding:15px 24px;min-height:46px;transition:background .18s,transform .18s}
+.btn:hover{transform:translateY(-1px)}.btn-primary{background:var(--green);color:#fff}.btn-primary:hover{background:#205d49}
+.btn-light{background:#f1f6ef;color:var(--green);border-color:#e5eee6}.btn-light:hover{background:#e2ecdf}
+.btn-lime{background:var(--lime);color:var(--deep)}.btn-lime:hover{background:#a4d52f}
+.hero{padding:22px 0 0}
+.hero-panel{display:grid;grid-template-columns:.95fr 1.05fr;background:#f1f4ef;min-height:480px;border-radius:23px;overflow:hidden}
+.hero-copy{padding:70px clamp(25px,5vw,84px);display:flex;flex-direction:column;justify-content:center}
+.hero-copy h1{font-size:clamp(42px,5.8vw,80px);line-height:1.06;color:var(--green);max-width:630px;margin:20px 0}
+.hero-copy h1 em{font-weight:400;color:#638374}
+.hero-copy p{max-width:400px;color:#607168;font-size:14px;line-height:1.8}
+.hero-actions{display:flex;flex-wrap:wrap;align-items:center;gap:17px;margin-top:18px}
+.hero-scene{min-height:400px;position:relative;overflow:hidden;background:#b8d3cb}
+.hero-scene svg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero-label{position:absolute;bottom:24px;right:24px;left:24px;color:#fff;text-align:right;text-shadow:0 2px 6px #123d32b0;font-size:10px;letter-spacing:.17em;font-weight:800;text-transform:uppercase}
+.brand-strip{display:flex;gap:10px;justify-content:space-around;align-items:center;flex-wrap:wrap;padding:23px 12px;border-bottom:1px solid var(--line);color:#3e5348}
+.brand-strip span{font-size:clamp(11px,1.4vw,17px);font-weight:850;letter-spacing:.03em}
+.brand-strip span:nth-child(2){letter-spacing:.12em}.brand-strip span:nth-child(3){font-weight:900;letter-spacing:.04em}
+.category-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.category-card{border:1px solid var(--line);background:#fff;padding:0;border-radius:var(--radius);overflow:hidden;text-align:left;min-width:0;transition:box-shadow .2s,transform .2s}
+.category-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px #113c3011}
+.art-box{background:linear-gradient(145deg,#f5f7f4,#dfe8e1);height:190px;display:grid;place-items:center;overflow:hidden;position:relative}
+.art-box:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 25%,#ffffffb8,transparent 52%)}
+.art-box svg{width:86%;height:86%;position:relative;filter:drop-shadow(0 12px 9px #1c433222)}
+.category-name{padding:13px 15px;display:flex;justify-content:space-between;gap:7px;align-items:center;font-weight:750;color:var(--green);font-size:13px}
+.circle-arrow{display:grid;place-items:center;width:25px;height:25px;background:#edf3ed;border-radius:50%;font-size:16px;color:var(--green);flex-shrink:0}
+.category-card:nth-child(1),.category-card:nth-child(2),.category-card:nth-child(3),.category-card:nth-child(4){grid-column:span 1}
+.soft-section{background:#fafbf9}
+.product-rail,.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+.product-card{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:white;min-width:0;transition:transform .2s,box-shadow .2s}
+.product-card:hover{transform:translateY(-2px);box-shadow:0 14px 35px #092b2412}
+.product-art{height:205px;background:#eff3ef;position:relative;display:grid;place-items:center}
+.product-art svg{height:80%;width:82%;filter:drop-shadow(0 12px 7px #1a4a3325)}
+.product-tag{position:absolute;top:12px;left:12px;z-index:1;color:#49725b;background:#fffdf8;border-radius:999px;font-size:9px;padding:5px 9px;letter-spacing:.02em;font-weight:800}
+.product-body{padding:16px}
+.product-brand{color:#7f8a82;font-size:9px;font-weight:800;letter-spacing:.12em;margin-bottom:6px}
+.product-body h3{font:700 14px/1.4 var(--sans);min-height:39px;color:var(--green);margin:0 0 12px}
+.product-price{font-size:18px;font-weight:850;color:var(--green);letter-spacing:-.03em}
+.product-note{color:#8b948d;font-size:10px;margin-top:5px}
+.product-body button{display:inline-flex;gap:7px;align-items:center;margin-top:13px;border:0;color:var(--green);background:transparent;padding:4px 0;font-size:11px;font-weight:800}
+.rail-actions{display:flex;gap:7px}
+.rail-actions button{border:1px solid var(--line);background:#fff;border-radius:50%;height:35px;width:35px;font-size:21px;color:var(--green)}
+.service-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px}
+.service-card{border-radius:var(--radius);position:relative;min-height:238px;overflow:hidden;background:linear-gradient(160deg,#e5ede6 0%,#bdcdc1 54%,#315646 100%);display:flex;align-items:end;color:white}
+.service-card:nth-child(2){background:linear-gradient(155deg,#e7eeec,#a6bdb0 52%,#244c3e)}
+.service-card:nth-child(3){background:linear-gradient(155deg,#f3f4f1,#e5ebe4 50%,#b9cbb9)}
+.service-card:nth-child(4){background:linear-gradient(150deg,#afcfb6,#76b0a0 55%,#194e3b)}
+.service-card:nth-child(5){background:linear-gradient(150deg,#e5edf2,#a6c4d3 55%,#315b72)}
+.service-card:nth-child(6){background:linear-gradient(145deg,#0c1c1a,#203e31 54%,#6ab644)}
+.service-card svg{position:absolute;inset:15px 25px auto auto;width:66%;height:66%;stroke:#ffffffab;stroke-width:2;fill:none}
+.service-card:nth-child(3) svg{stroke:#7c947d}
+.service-card:after{content:"";position:absolute;inset:35% 0 0;background:linear-gradient(transparent,#0d332acc)}
+.service-card:nth-child(3):after{background:linear-gradient(transparent,#819d856e)}
+.service-content{position:relative;z-index:1;padding:23px;display:block;width:100%}
+.service-content small{display:block;font-weight:900;font-size:9px;letter-spacing:.11em;color:#d9e6be;margin-bottom:7px}
+.service-content h3{font:400 26px/1.07 var(--serif);max-width:270px;margin:0}
+.service-plus{position:absolute;right:15px;top:15px;background:#fff;width:30px;height:30px;display:grid;place-items:center;border-radius:50%;z-index:2;color:var(--green);font-size:20px}
+.service-card:nth-child(3) .service-content{color:var(--green)}
+.catalog{padding:70px 0}
+.catalog-box{border:1px solid var(--line);border-radius:24px;padding:32px;background:#fff}
+.catalog-toolbar{border-top:1px solid var(--line);margin-top:23px;padding-top:22px;display:grid;grid-template-columns:2fr 1.1fr 1.1fr 1.1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:10px;font-weight:800;color:#586d60;letter-spacing:.02em}
+.field input,.field select{border:1px solid #dce6df;border-radius:10px;background:#fafbf9;color:var(--green);padding:12px 13px;min-width:0;width:100%;outline:none;min-height:44px}
+.field input:focus,.field select:focus{border-color:#7da98b;box-shadow:0 0 0 3px #d9ebd9}
+.catalog-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:21px 0}
+.catalog-meta strong{color:var(--green);font-size:12px}
+.catalog-meta-actions{display:flex;align-items:center;gap:9px}
+.text-reset{border:0;background:transparent;text-decoration:underline;color:#5c7867;font-size:11px;font-weight:800}
+.view-btn{border:1px solid var(--line);border-radius:8px;background:#fff;padding:8px 11px;color:var(--green)}
+.view-btn[aria-pressed=true]{background:var(--green);color:white}
+.product-grid.list-view{grid-template-columns:repeat(2,minmax(0,1fr))}
+.product-grid.list-view .product-card{display:flex}
+.product-grid.list-view .product-art{width:38%;height:auto;min-height:175px;flex-shrink:0}
+.catalog-footer{display:flex;justify-content:center;margin-top:26px}
+.empty{border:1px dashed #cedacf;border-radius:15px;text-align:center;padding:35px;color:#69796e}
+.los-cabos{background:var(--green);color:#fff;padding:78px 0}
+.cabos-layout{display:grid;grid-template-columns:1fr 1.1fr;align-items:center;gap:55px}
+.los-cabos h2{color:#fff;font-size:clamp(36px,4.5vw,60px)}
+.los-cabos p{color:#c6ddd0;font-size:14px;max-width:480px}
+.cabos-scene{min-height:310px;border-radius:20px;overflow:hidden;background:linear-gradient(#8cc4d5 0 50%,#0a7e8c 50% 62%,#84aa69 62%);position:relative}
+.cabos-scene:before{content:"";position:absolute;inset:56% -5% -30%;background:radial-gradient(ellipse at 30% 40%,#a5c879,#679952 65%);transform:rotate(-10deg);border-radius:50%}
+.cabos-scene:after{content:"";position:absolute;inset:20% 16% 31% auto;width:32%;background:#536c73;clip-path:polygon(0 100%,18% 54%,36% 75%,65% 25%,87% 57%,100% 95%);opacity:.8}
+.cabos-scene .pin{position:absolute;bottom:23px;left:24px;z-index:2;color:#fff;font-size:10px;letter-spacing:.1em;font-weight:800;text-shadow:0 1px 6px #174338}
+.news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.news-card{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff}
+.news-art{height:165px;position:relative;background:linear-gradient(140deg,#9cb864,#d0d6a3 65%,#698e57)}
+.news-card:nth-child(2) .news-art{background:linear-gradient(140deg,#9abcc2,#e1ecf1 55%,#648e62)}
+.news-card:nth-child(3) .news-art{background:linear-gradient(140deg,#c4d07f,#719f4e 65%,#2e6443)}
+.news-art svg{position:absolute;inset:0;width:100%;height:100%}
+.news-index{position:absolute;top:12px;left:12px;width:29px;height:29px;display:grid;place-items:center;border-radius:50%;background:#ffffffce;color:var(--green);font-size:11px;font-weight:800}
+.news-body{padding:20px}.news-body small{font-size:9px;color:#8a7044;font-weight:850;letter-spacing:.07em}
+.news-body h3{font:400 23px/1.2 var(--serif);color:var(--green);margin:10px 0}
+.news-body p{font-size:12px;color:var(--muted);min-height:58px}
+.news-body button{border:0;border-top:1px solid var(--line);background:none;width:100%;text-align:left;padding:12px 0 0;color:var(--green);font-weight:800;font-size:11px}
+.about{background:#fafbf9}
+.about-layout{display:grid;grid-template-columns:.95fr 1.05fr;gap:70px;align-items:center}
+.about-copy p{color:var(--muted)}
+.benefits{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.benefit{border:1px solid #e0e9e1;border-radius:15px;padding:25px;background:#fff;min-height:148px}
+.benefit-icon{font-size:22px;color:#317253;margin-bottom:10px}.benefit strong{display:block;font-size:11px;letter-spacing:.06em;color:var(--green)}.benefit span{font-size:11px;color:var(--muted)}
+.visit{padding:72px 0}
+.visit-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:20px}
+.visit-card{background:var(--green);color:#fff;border-radius:20px;padding:37px}
+.visit-card h2{color:#fff;font-size:clamp(31px,4vw,49px)}
+.visit-card p,.visit-card small{color:#d1e2d6}
+.visit-card .btn{background:#d5bb7c;color:#163d2d;margin-top:20px}
+.visit-info{display:grid;gap:14px}
+.info-card{border:1px solid var(--line);border-radius:17px;padding:23px}
+.info-card small{display:block;color:#789185;font-size:10px;font-weight:850;margin-bottom:7px}
+.info-card strong{color:var(--green);font-size:17px}
+.info-card p{font-size:12px;color:var(--muted);margin:8px 0 0}
+.site-footer{background:var(--deep);color:#dce8dd;padding:60px 0 25px}
+.footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.25fr;gap:40px}
+.footer-brand{color:#fff}.footer-brand svg{width:130px;display:block;margin-bottom:16px}
+.footer-grid h4{color:#d9bf80;font-size:10px;letter-spacing:.15em}
+.footer-grid a{display:block;margin:7px 0;font-size:12px;color:#ccdbd0}
+.footer-grid p{font-size:12px;color:#a7bcb0}
+.footer-bottom{border-top:1px solid #366054;margin-top:36px;padding-top:20px;font-size:10px;color:#88a294}
+.modal{border:0;border-radius:19px;width:min(520px,calc(100% - 25px));max-height:90vh;padding:0;color:var(--green);box-shadow:0 30px 100px #0004}
+.modal::backdrop{background:#06261cc4;backdrop-filter:blur(4px)}
+.modal-inner{padding:29px}.modal h2{font-size:32px}.modal p{color:var(--muted);font-size:13px}
+.modal-close{float:right;border:1px solid var(--line);background:#fff;border-radius:50%;width:33px;height:33px}
+.modal-visual{height:210px;background:linear-gradient(130deg,#f5f7f4,#dee9df);border-radius:13px;display:grid;place-items:center;margin-bottom:18px}
+.modal-visual svg{height:94%;width:94%}
+.mobile-panel{display:none}
+.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,25px);z-index:100;max-width:calc(100vw - 30px);background:var(--green);color:#fff;padding:13px 18px;border-radius:999px;font-size:12px;font-weight:700;box-shadow:0 15px 35px #153a2a4d;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:1120px){.main-nav{gap:13px}.main-nav a{font-size:11px}.preview-chip{display:none}.header-inner{gap:15px}}
+@media(max-width:900px){.wrap{width:min(100% - 36px,1200px)}.header-inner{min-height:63px}.main-nav{display:none}.menu-btn{display:grid}.hero-panel{grid-template-columns:1fr 1fr;min-height:390px}.hero-copy{padding:39px 29px}.hero-copy h1{font-size:46px}.hero-scene{min-height:365px}.category-grid{grid-template-columns:repeat(3,1fr)}.product-rail,.product-grid{grid-template-columns:repeat(2,1fr)}.service-grid{grid-template-columns:repeat(2,1fr)}.catalog-toolbar{grid-template-columns:1fr 1fr}.field:first-child{grid-column:1/-1}.news-grid{grid-template-columns:repeat(2,1fr)}.about-layout{gap:30px}.footer-grid{grid-template-columns:repeat(2,1fr)}.mobile-panel{display:block;position:fixed;z-index:70;top:0;right:0;bottom:0;width:min(340px,90vw);background:#fff;box-shadow:-8px 0 45px #122f2740;padding:25px;transform:translateX(110%);transition:transform .22s;overflow:auto}.mobile-panel.open{transform:translateX(0)}.mobile-panel a{display:block;padding:14px 0;border-bottom:1px solid var(--line);color:var(--green);font-weight:750}.panel-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.panel-shade{position:fixed;inset:0;background:#07271b80;z-index:65;display:none}.panel-shade.open{display:block}}
+@media(max-width:600px){html{scroll-padding-top:76px}.wrap{width:calc(100% - 28px)}.demo-banner{font-size:9px;letter-spacing:.04em}.header-inner{gap:7px;min-height:60px}.brand-icon,.brand-icon svg{width:26px}.brand-name{font-size:12px}.brand-kicker{font-size:6px;margin-top:3px}.header-tools{gap:4px}.icon-btn{width:34px;height:34px}.icon-btn svg{width:16px}.lang-toggle{padding:2px}.lang-toggle button{padding:7px 6px;font-size:9px}.hero{padding-top:10px}.hero-panel{display:flex;flex-direction:column-reverse;border-radius:15px;min-height:0}.hero-scene{min-height:245px}.hero-copy{padding:26px 22px 30px}.hero-copy h1{font-size:clamp(35px,9.7vw,51px);margin:11px 0}.hero-copy p{font-size:12px;line-height:1.6}.hero-actions{margin-top:12px}.btn{min-height:42px;padding:12px 16px;font-size:11px}.hero-label{bottom:12px;font-size:9px}.brand-strip{padding:17px 5px;gap:16px}.brand-strip span{font-size:13px}.section{padding:48px 0}.section-heading{align-items:start;gap:14px;margin-bottom:20px}.section-heading h2{font-size:32px}.section-heading p{font-size:12px}.link-text{font-size:10px}.category-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.art-box{height:149px}.category-name{padding:11px 12px;font-size:12px}.circle-arrow{width:23px;height:23px}.product-rail,.product-grid{gap:10px}.product-art{height:160px}.product-body{padding:12px}.product-body h3{font-size:12px;min-height:49px}.product-price{font-size:16px}.service-grid{gap:10px}.service-card{min-height:190px}.service-content{padding:13px}.service-content h3{font-size:21px}.service-content small{font-size:7px}.service-plus{width:25px;height:25px;right:10px;top:10px}.catalog{padding:48px 0}.catalog-box{padding:19px 13px}.catalog-toolbar{margin-top:15px;padding-top:16px;gap:8px}.field label{font-size:9px}.field select,.field input{font-size:11px;padding:11px 8px;min-height:40px}.catalog-meta{padding:14px 0}.catalog-meta-actions{gap:3px}.view-btn{padding:5px 8px}.product-grid.list-view{grid-template-columns:1fr}.product-grid.list-view .product-art{min-height:145px}.los-cabos{padding:54px 0}.cabos-layout{grid-template-columns:1fr;gap:25px}.cabos-scene{min-height:240px}.news-grid{grid-template-columns:1fr}.news-card{display:grid;grid-template-columns:39% 61%}.news-art{height:100%;min-height:205px}.news-body{padding:15px}.news-body h3{font-size:21px}.news-body p{font-size:11px;min-height:0}.news-body button{font-size:10px}.about-layout{grid-template-columns:1fr;gap:20px}.benefits{gap:8px}.benefit{min-height:142px;padding:17px}.visit{padding:51px 0}.visit-layout{grid-template-columns:1fr}.visit-card{padding:24px}.footer-grid{grid-template-columns:1fr 1fr;gap:26px}.footer-grid>div:first-child{grid-column:1/-1}.site-footer{padding-top:45px}}
+@media(max-width:370px){.brand-kicker{display:none}.header-tools .lang-toggle button{padding:7px 5px}.header-inner{gap:4px}.icon-btn{width:31px;height:31px}.hero-scene{min-height:210px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="demo-banner" data-es="DEMO LOCAL · DISEÑO VISUAL · SIN VENTAS NI DATOS EN VIVO" data-en="LOCAL DEMO · VISUAL DESIGN · NO SALES OR LIVE DATA">DEMO LOCAL · DISEÑO VISUAL · SIN VENTAS NI DATOS EN VIVO</div>
+<header class="site-header">
+ <div class="wrap header-inner">
+  <a class="brand" href="#inicio" aria-label="UP AND DOWN">
+   <span class="brand-icon"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841.89 292.21"><path fill="currentColor" d="M487.69,0c2.11,0,4.84.51,7.24.67,19.23,1.24,37.18,3.93,54.09,14.38l19.95,12.32c7.23,4.47,14.2,8.69,21.96,12.09,10.35,4.66,21.08,6.28,32.42,6.4l23.96.23-19.01,16.47c-3.62,3.13-7.52,5.51-11.66,7.98-17.32,10.34-35.07,8.55-54.04,3.73s-38.9-5.76-58.5-2.1c-7.43,1.39-14.49,2.98-21.75,5.63v131.14s54.16,17.53,54.16,17.53l68.64,21.12c13.32,3.67,26.34,6.32,39.98,8.62,57.26,9.69,111.58,7.83,166.77-10.79,2.46-.83,4.53,2.25,4.66,3.89.2,2.48-1.01,4.22-3.46,5.14-56.31,21.08-117.16,27.27-176.73,17.8-26.3-4.18-52.32-10.57-77.62-18.8l-91.08-29.62c-12.62-4.11-25.15-7.06-38.06-10.03-35.81-8.22-72.32-10.61-109.03-7.48-32.44,2.77-64.62,8.14-96.1,16.49l-128.11,34c-16.24,4.31-32.54,7.18-49.17,8.54l-14.51,1.18c-2.24.18-3.66-2.82-3.67-4.56s1.04-4.35,3.29-4.61c20.48-2.39,40.47-5.84,60.49-10.92,9.16-2.33,17.81-4.43,26.85-7.27l92.58-29.06c10.18-3.2,20.07-5.54,30.44-8.07,21.58-5.27,43.17-9.15,65.32-11.77,32.47-3.84,64.88-3.58,97.21.82,9.86,1.34,19.13,2.61,28.74,4.94l36.28,8.8.07-22.1.09-91.09-.14-91.6h17.45Z"/></svg></span>
+   <span><span class="brand-name">UP AND DOWN</span><span class="brand-kicker">CABO GOLF SHOP BY COQUE</span></span>
+  </a>
+  <nav class="main-nav" aria-label="Navegación">
+   <a href="#categorias" data-es="Categorías" data-en="Categories">Categorías</a><a href="#novedades" data-es="Novedades" data-en="New arrivals">Novedades</a><a href="#servicios" data-es="Servicios" data-en="Services">Servicios</a><a href="#catalogo" data-es="Colección" data-en="Collection">Colección</a><a href="#cabos">Los Cabos</a><a href="#contacto" data-es="Contacto" data-en="Contact">Contacto</a>
+  </nav>
+  <div class="header-tools">
+   <span class="preview-chip" data-es="Vista local" data-en="Local preview">Vista local</span>
+   <div class="lang-toggle" role="group" aria-label="Idioma"><button id="langEs" type="button" aria-pressed="true">ES</button><button id="langEn" type="button" aria-pressed="false">EN</button></div>
+   <button type="button" class="icon-btn" id="searchBtn" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="10.7" cy="10.7" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+   <button type="button" class="icon-btn" id="cartBtn" aria-label="Carrito"><svg viewBox="0 0 24 24"><path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L20 8H6.2"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg></button>
+   <button type="button" class="icon-btn menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+ </div>
+</header>
+<div class="panel-shade" id="panelShade"></div>
+<nav class="mobile-panel" id="mobilePanel" aria-label="Menú móvil" aria-hidden="true">
+ <div class="panel-top"><strong style="color:var(--green)">UP AND DOWN</strong><button type="button" class="icon-btn" id="closeMenu" aria-label="Cerrar menú">×</button></div>
+ <a href="#categorias" data-es="Categorías" data-en="Categories">Categorías</a><a href="#novedades" data-es="Novedades" data-en="New arrivals">Novedades</a><a href="#servicios" data-es="Servicios" data-en="Services">Servicios</a><a href="#catalogo" data-es="Colección completa" data-en="Complete collection">Colección completa</a><a href="#cabos">Golf en Los Cabos</a><a href="#noticias" data-es="Noticias" data-en="News">Noticias</a><a href="#nosotros" data-es="Nosotros" data-en="About us">Nosotros</a><a href="#contacto" data-es="Contacto" data-en="Contact">Contacto</a>
+</nav>
+<main>
+<section class="hero wrap" id="inicio"><div class="hero-panel">
+ <div class="hero-copy">
+  <span class="eyebrow">UP AND DOWN · LOS CABOS</span>
+  <h1 data-es="Todo para tu próxima <em>gran ronda.</em>" data-en="Everything for your next <em>great round.</em>">Todo para tu próxima <em>gran ronda.</em></h1>
+  <p data-es="Equipo de golf, asesoría personalizada y servicios especializados. Elegidos por golfistas, para golfistas." data-en="Golf equipment, personalized advice and specialized services. Chosen by golfers, for golfers.">Equipo de golf, asesoría personalizada y servicios especializados. Elegidos por golfistas, para golfistas.</p>
+  <div class="hero-actions"><a href="#categorias" class="btn btn-primary" data-es="Explorar categorías →" data-en="Browse categories →">Explorar categorías →</a><a class="link-text" href="#novedades" data-es="Ver novedades ↗" data-en="New arrivals ↗">Ver novedades ↗</a></div>
+ </div>
+ <div class="hero-scene" aria-label="Ilustración de campo de golf en Los Cabos">
+ <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Paisaje ilustrado de golf en Los Cabos"><defs>
+  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#69add2"/><stop offset=".9" stop-color="#d1e7ed"/></linearGradient>
+  <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#187a9b"/><stop offset="1" stop-color="#124e6c"/></linearGradient>
+  <linearGradient id="lawn" x2="0" y2="1"><stop stop-color="#a1c67b"/><stop offset="1" stop-color="#426c3b"/></linearGradient></defs>
+  <rect width="800" height="600" fill="url(#sky)"/><path d="M0 247Q110 240 220 247T450 245T800 241V420H0Z" fill="url(#sea)"/>
+  <path d="M270 248L321 192 368 229 418 171 467 245Z" fill="#536e79"/><path d="M430 250L501 169 558 200 594 233Z" fill="#587079"/>
+  <path d="M0 354Q140 316 250 339T570 328T800 349V610H0Z" fill="#83aa70"/>
+  <path d="M-20 465Q188 364 362 385T830 392V620H-20Z" fill="url(#lawn)"/>
+  <path d="M-40 555Q240 402 475 453T850 484V640H-40Z" fill="#649c50"/>
+  <path d="M-40 590Q250 444 440 501T850 520V640H-40Z" fill="#3f7842"/>
+  <ellipse cx="292" cy="400" rx="98" ry="21" fill="#e5d5af" transform="rotate(-7 292 400)"/>
+  <ellipse cx="621" cy="435" rx="67" ry="17" fill="#e1d1ae" transform="rotate(11 621 435)"/>
+  <path d="M540 322l0 107" stroke="#bcd3c0" stroke-width="3"/><path d="M540 322l40 12-40 11Z" fill="#fff"/>
+  <g stroke="#4a4b2b" stroke-width="5" stroke-linecap="round"><path d="M75 376q-6-60-19-104M116 372q-5-71 7-116M720 396q-2-82 14-124"/></g>
+  <g fill="#447943"><path d="M54 275q-58-18-65 2 37-1 57 12-46 9-44 30 37-25 54-29-7 38 8 52 17-31 7-55 32 12 46 34 5-30-37-49 29-8 57-3-20-25-69-16Z"/><path d="M124 256q-48-19-59 2 42 0 50 13-44 11-42 32 25-24 45-25-8 38 8 47 13-35 3-49 28 5 47 27 1-22-26-38 24-9 43-2-19-23-69-7Z"/><path d="M733 269q-55-18-62 4 40-4 56 10-40 11-40 31 30-24 45-25-9 39 7 47 14-31 8-49 29 12 39 30 2-28-30-43 29-7 41-2-15-22-64-3Z"/></g>
+  <path d="M0 0h800v600H0Z" fill="url(#shade)" opacity="0"/><g opacity=".25" stroke="#f4faf4" stroke-width="2"><path d="M0 277q290 9 560 0"/><path d="M0 296q380-7 800 4"/></g>
+ </svg>
+ <span class="hero-label">Cabo San Lucas · Baja California Sur</span>
+ </div>
+</div></section>
+<div class="wrap brand-strip"><span>TaylorMade</span><span>◩ PING</span><span>FootJoy</span><span>CALLAWAY</span><span>TITLEIST</span></div>
+<section id="categorias" class="section wrap">
+ <div class="section-heading"><div><span class="eyebrow" data-es="EXPLORA LA TIENDA" data-en="EXPLORE THE STORE">EXPLORA LA TIENDA</span><h2 data-es="Encuentra lo que necesitas" data-en="Find what you need">Encuentra lo que necesitas</h2><p data-es="Todo ordenado para encontrar rápido el equipo adecuado." data-en="Everything organized to help you find the right gear quickly.">Todo ordenado para encontrar rápido el equipo adecuado.</p></div></div>
+ <div class="category-grid" id="categoryGrid"></div>
+</section>
+<section class="section soft-section" id="novedades"><div class="wrap">
+ <div class="section-heading"><div><span class="eyebrow" data-es="SELECCIÓN DE LA TIENDA" data-en="STORE SELECTION">SELECCIÓN DE LA TIENDA</span><h2 data-es="Novedades y ofertas" data-en="New arrivals &amp; offers">Novedades y ofertas</h2><p data-es="Una muestra visual de cómo se destacarán los productos." data-en="A visual sample of how featured products will appear.">Una muestra visual de cómo se destacarán los productos.</p></div><div class="rail-actions"><button id="railPrev" type="button" aria-label="Anterior">‹</button><button id="railNext" type="button" aria-label="Siguiente">›</button></div></div>
+ <div class="product-rail" id="arrivalGrid"></div>
+ <div style="text-align:center;margin-top:28px"><a href="#catalogo" class="btn btn-light" data-es="Ver colección completa →" data-en="View full collection →">Ver colección completa →</a></div>
+</div></section>
+<section class="section wrap" id="servicios">
+ <div class="section-heading"><div><span class="eyebrow" data-es="MÁS QUE UNA TIENDA" data-en="MORE THAN A STORE">MÁS QUE UNA TIENDA</span><h2 data-es="Servicios" data-en="Services">Servicios</h2><p data-es="Cuidado de equipo, intercambios, consignación y asesoría en un mismo lugar." data-en="Equipment care, trade-ins, consignment and advice in one place.">Cuidado de equipo, intercambios, consignación y asesoría en un mismo lugar.</p></div></div>
+ <div class="service-grid" id="serviceGrid"></div>
+</section>
+<section id="catalogo" class="catalog soft-section"><div class="wrap"><div class="catalog-box">
+ <div class="section-heading"><div><span class="eyebrow" data-es="EXPLORA EL CATÁLOGO" data-en="EXPLORE THE CATALOG">EXPLORA EL CATÁLOGO</span><h2 data-es="Colección completa" data-en="Complete collection">Colección completa</h2><p data-es="Búsqueda y filtros funcionales sobre artículos de ejemplo; no refleja existencias reales." data-en="Search and filters work on sample items; this is not live inventory.">Búsqueda y filtros funcionales sobre artículos de ejemplo; no refleja existencias reales.</p></div></div>
+ <div class="catalog-toolbar">
+  <div class="field"><label for="productSearch" data-es="Buscar productos" data-en="Search products">Buscar productos</label><input id="productSearch" type="search" placeholder="Nombre, marca o categoría" autocomplete="off"></div>
+  <div class="field"><label for="categorySelect" data-es="Categoría" data-en="Category">Categoría</label><select id="categorySelect"></select></div>
+  <div class="field"><label for="sortSelect" data-es="Ordenar por" data-en="Sort by">Ordenar por</label><select id="sortSelect"><option value="featured" data-es="Destacados" data-en="Featured">Destacados</option><option value="asc" data-es="Precio: menor" data-en="Price: low to high">Precio: menor</option><option value="desc" data-es="Precio: mayor" data-en="Price: high to low">Precio: mayor</option><option value="name" data-es="Nombre A–Z" data-en="Name A–Z">Nombre A–Z</option></select></div>
+  <div class="field"><label for="pageSelect" data-es="Por página" data-en="Per page">Por página</label><select id="pageSelect"><option value="4">4</option><option value="8" selected>8</option><option value="16">16</option><option value="32">32</option><option value="64">64</option></select></div>
+ </div>
+ <div class="catalog-meta"><strong id="resultsLabel">0 productos</strong><div class="catalog-meta-actions"><button class="text-reset" type="button" id="resetFilters" data-es="Limpiar filtros" data-en="Clear filters">Limpiar filtros</button><button id="gridView" class="view-btn" aria-pressed="true" aria-label="Vista de cuadrícula" type="button">▦</button><button id="listView" class="view-btn" aria-pressed="false" aria-label="Vista de lista" type="button">☰</button></div></div>
+ <div class="product-grid" id="collectionGrid"></div><div id="emptyResults" class="empty" hidden></div><div class="catalog-footer"><button class="btn btn-light" id="moreBtn" type="button" hidden></button></div>
+ </div></div></section>
+<section class="los-cabos" id="cabos"><div class="wrap cabos-layout">
+ <div><span class="eyebrow" style="color:#b7de45">CABO GOLF EXPERIENCE</span><h2 data-es="Golf en Los Cabos" data-en="Golf in Los Cabos">Golf en Los Cabos</h2><p data-es="Mar, desierto y campos extraordinarios. Conoce la experiencia de golf que distingue a nuestro destino." data-en="Ocean, desert and extraordinary courses. Explore the golf experience that makes our destination special.">Mar, desierto y campos extraordinarios. Conoce la experiencia de golf que distingue a nuestro destino.</p><a class="btn btn-lime" href="#noticias" data-es="Explorar contenido →" data-en="Explore content →">Explorar contenido →</a></div>
+ <div class="cabos-scene"><span class="pin">LOS CABOS · MÉXICO</span></div>
+</div></section>
+<section class="section wrap" id="noticias">
+ <div class="section-heading"><div><span class="eyebrow" data-es="CONTENIDO Y CONSEJOS" data-en="GUIDES & STORIES">CONTENIDO Y CONSEJOS</span><h2 data-es="Noticias y guías" data-en="News & guides">Noticias y guías</h2><p data-es="Consejos de equipo y golf para disfrutar más cada ronda." data-en="Equipment tips and golf stories for every round.">Consejos de equipo y golf para disfrutar más cada ronda.</p></div></div><div class="news-grid" id="newsGrid"></div>
+</section>
+<section class="section about" id="nosotros"><div class="wrap about-layout">
+ <div class="about-copy"><span class="eyebrow">UP AND DOWN CABO</span><h2 data-es="Golf, experiencia y atención personal." data-en="Golf, expertise and personal service.">Golf, experiencia y atención personal.</h2><p data-es="Somos una tienda y punto de encuentro para golfistas que eligen con intención: equipo, servicios y conocimiento local en un solo lugar." data-en="We are a shop and meeting place for golfers who choose thoughtfully: equipment, service and local knowledge in one place.">Somos una tienda y punto de encuentro para golfistas que eligen con intención: equipo, servicios y conocimiento local en un solo lugar.</p><a href="#servicios" class="link-text" data-es="Conoce los servicios ↗" data-en="Explore services ↗">Conoce los servicios ↗</a></div>
+ <div class="benefits">
+ <div class="benefit"><div class="benefit-icon">↗</div><strong data-es="ENVÍOS COORDINADOS" data-en="COORDINATED SHIPPING">ENVÍOS COORDINADOS</strong><span data-es="Atención personalizada" data-en="Personal coordination">Atención personalizada</span></div>
+ <div class="benefit"><div class="benefit-icon">▣</div><strong data-es="PAGO SEGURO" data-en="SECURE PAYMENT">PAGO SEGURO</strong><span data-es="Procesado con Stripe" data-en="Processed with Stripe">Procesado con Stripe</span></div>
+ <div class="benefit"><div class="benefit-icon">◎</div><strong data-es="SERVICIO PERSONAL" data-en="PERSONAL SERVICE">SERVICIO PERSONAL</strong><span data-es="De golfistas, para golfistas" data-en="By golfers, for golfers">De golfistas, para golfistas</span></div>
+ <div class="benefit"><div class="benefit-icon">⟳</div><strong data-es="INVENTARIO ACTUALIZADO" data-en="UPDATED INVENTORY">INVENTARIO ACTUALIZADO</strong><span data-es="Validación antes del cobro" data-en="Verified before checkout">Validación antes del cobro</span></div>
+ </div>
+</div></section>
+<section class="visit" id="contacto"><div class="wrap visit-layout">
+ <div class="visit-card"><span class="eyebrow" style="color:#d9bf80" data-es="VISÍTANOS EN CABO SAN LUCAS" data-en="VISIT US IN CABO SAN LUCAS">VISÍTANOS EN CABO SAN LUCAS</span><h2 data-es="Visita UP AND DOWN" data-en="Visit UP AND DOWN">Visita UP AND DOWN</h2><p><strong style="color:#fff;font-family:var(--serif);font-size:22px">Plaza Alba 206, El Tezal, 23454<br>Cabo San Lucas, B.C.S.</strong></p><p data-es="En la vía lateral, entre Plaza Patio La Luna y Galerías El Triunfo. Frente a MASXMENOSCABO." data-en="On the frontage road, between Plaza Patio La Luna and Galerías El Triunfo. Across from MASXMENOSCABO.">En la vía lateral, entre Plaza Patio La Luna y Galerías El Triunfo. Frente a MASXMENOSCABO.</p><a class="btn" href="https://www.google.com/maps/search/?api=1&query=Plaza%20Alba%20206%20El%20Tezal%20Cabo%20San%20Lucas" target="_blank" rel="noopener noreferrer" data-es="Abrir Google Maps ↗" data-en="Open Google Maps ↗">Abrir Google Maps ↗</a></div>
+ <div class="visit-info"><div class="info-card"><small data-es="HORARIO TEMPORAL" data-en="TEMPORARY HOURS">HORARIO TEMPORAL</small><strong data-es="Lunes a domingo · 12:00 a 20:00" data-en="Monday–Sunday · 12:00 p.m.–8:00 p.m.">Lunes a domingo · 12:00 a 20:00</strong><p data-es="Asistencia por WhatsApp 24/7." data-en="WhatsApp assistance available 24/7.">Asistencia por WhatsApp 24/7.</p></div>
+ <div class="info-card"><small data-es="CONTACTO DIRECTO" data-en="DIRECT CONTACT">CONTACTO DIRECTO</small><strong>+52 624 355 4700</strong><p data-es="Atención personalizada en Los Cabos." data-en="Personalized assistance in Los Cabos.">Atención personalizada en Los Cabos.</p><a href="https://wa.me/526243554700" class="btn btn-primary" style="margin-top:15px" target="_blank" rel="noopener noreferrer" data-es="Escribir por WhatsApp ↗" data-en="Message on WhatsApp ↗">Escribir por WhatsApp ↗</a></div></div>
+</div></section>
+</main>
+<footer class="site-footer"><div class="wrap">
+ <div class="footer-grid">
+  <div class="footer-brand"><svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841.89 292.21"><path fill="currentColor" d="M487.69,0c2.11,0,4.84.51,7.24.67,19.23,1.24,37.18,3.93,54.09,14.38l19.95,12.32c7.23,4.47,14.2,8.69,21.96,12.09,10.35,4.66,21.08,6.28,32.42,6.4l23.96.23-19.01,16.47c-3.62,3.13-7.52,5.51-11.66,7.98-17.32,10.34-35.07,8.55-54.04,3.73s-38.9-5.76-58.5-2.1c-7.43,1.39-14.49,2.98-21.75,5.63v131.14s54.16,17.53,54.16,17.53l68.64,21.12c13.32,3.67,26.34,6.32,39.98,8.62,57.26,9.69,111.58,7.83,166.77-10.79,2.46-.83,4.53,2.25,4.66,3.89.2,2.48-1.01,4.22-3.46,5.14-56.31,21.08-117.16,27.27-176.73,17.8-26.3-4.18-52.32-10.57-77.62-18.8l-91.08-29.62c-12.62-4.11-25.15-7.06-38.06-10.03-35.81-8.22-72.32-10.61-109.03-7.48-32.44,2.77-64.62,8.14-96.1,16.49l-128.11,34c-16.24,4.31-32.54,7.18-49.17,8.54l-14.51,1.18c-2.24.18-3.66-2.82-3.67-4.56s1.04-4.35,3.29-4.61c20.48-2.39,40.47-5.84,60.49-10.92,9.16-2.33,17.81-4.43,26.85-7.27l92.58-29.06c10.18-3.2,20.07-5.54,30.44-8.07,21.58-5.27,43.17-9.15,65.32-11.77,32.47-3.84,64.88-3.58,97.21.82,9.86,1.34,19.13,2.61,28.74,4.94l36.28,8.8.07-22.1.09-91.09-.14-91.6h17.45Z"/></svg><div style="font:400 28px var(--serif);margin:4px 0">UP AND DOWN</div><p data-es="Golf, equipo y experiencia local en Los Cabos." data-en="Golf, equipment and local expertise in Los Cabos.">Golf, equipo y experiencia local en Los Cabos.</p></div>
+  <div><h4 data-es="EXPLORAR" data-en="EXPLORE">EXPLORAR</h4><a href="#novedades" data-es="Novedades" data-en="New arrivals">Novedades</a><a href="#catalogo" data-es="Productos" data-en="Products">Productos</a><a href="#cabos">Golf Los Cabos</a><a href="#noticias" data-es="Noticias" data-en="News">Noticias</a></div>
+  <div><h4>UP AND DOWN</h4><a href="#servicios" data-es="Servicios" data-en="Services">Servicios</a><a href="#nosotros" data-es="Nosotros" data-en="About us">Nosotros</a><a href="#categorias" data-es="Categorías" data-en="Categories">Categorías</a></div>
+  <div><h4 data-es="CONTACTO" data-en="CONTACT">CONTACTO</h4><a href="https://wa.me/526243554700">WhatsApp · 624 355 4700</a><p>Plaza Alba 206 · Cabo San Lucas</p><p data-es="Horario: todos los días, 12–20 h" data-en="Hours: daily, 12 p.m.–8 p.m.">Horario: todos los días, 12–20 h</p></div>
+ </div>
+ <div class="footer-bottom">© 2026 UP AND DOWN · CABO GOLF SHOP BY COQUE. <span data-es="Prototipo visual local sin conexión a inventario ni funciones de cobro." data-en="Local visual prototype, not connected to inventory or checkout.">Prototipo visual local sin conexión a inventario ni funciones de cobro.</span></div>
+</div></footer>
+<dialog class="modal" id="detailsDialog" aria-labelledby="modalTitle"><div class="modal-inner"><button class="modal-close" id="closeDialog" type="button" aria-label="Cerrar">×</button><div id="modalArt" class="modal-visual"></div><span class="eyebrow" id="modalBrand"></span><h2 id="modalTitle"></h2><p id="modalBody"></p><div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:22px"><button class="btn btn-primary" id="modalOk" type="button"></button><button class="btn btn-light" id="modalBack" type="button"></button></div></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+var lang="es",activeCat="all",visible=8,view="grid",arrivalOffset=0,toastTimeout;
+var categories=[
+{id:"sets",es:"Sets completos",en:"Complete Sets"},
+{id:"drivers",es:"Drivers",en:"Drivers"},
+{id:"maderas",es:"Maderas",en:"Fairway Woods"},
+{id:"hibridos",es:"Híbridos",en:"Hybrids"},
+{id:"fierros",es:"Fierros",en:"Irons"},
+{id:"wedges",es:"Wedges",en:"Wedges"},
+{id:"putters",es:"Putters",en:"Putters"},
+{id:"accesorios",es:"Accesorios",en:"Accessories"},
+{id:"pelotas",es:"Pelotas",en:"Golf Balls"},
+{id:"ropa",es:"Ropa",en:"Apparel"},
+{id:"bolsas",es:"Bolsas y carritos",en:"Bags & Carts"}];
+var products=[
+{id:1,brand:"CALLAWAY",es:"Madera Callaway Rogue Max D 5 / 19°",en:"Callaway Rogue Max D 5 / 19° Wood",cat:"maderas",price:1875},
+{id:2,brand:"CALLAWAY",es:"Madera Callaway Paradym Ai Smoke",en:"Callaway Paradym Ai Smoke Wood",cat:"maderas",price:2875},
+{id:3,brand:"UP AND DOWN",es:"Set completo · ejemplo visual",en:"Complete golf set · visual sample",cat:"sets",price:null},
+{id:4,brand:"UP AND DOWN",es:"Driver · ejemplo visual",en:"Driver · visual sample",cat:"drivers",price:null},
+{id:5,brand:"UP AND DOWN",es:"Híbrido · ejemplo visual",en:"Hybrid · visual sample",cat:"hibridos",price:null},
+{id:6,brand:"UP AND DOWN",es:"Fierro · ejemplo visual",en:"Iron · visual sample",cat:"fierros",price:null},
+{id:7,brand:"UP AND DOWN",es:"Wedge · ejemplo visual",en:"Wedge · visual sample",cat:"wedges",price:null},
+{id:8,brand:"UP AND DOWN",es:"Putter · ejemplo visual",en:"Putter · visual sample",cat:"putters",price:null},
+{id:9,brand:"UP AND DOWN",es:"Pelotas · ejemplo visual",en:"Golf balls · visual sample",cat:"pelotas",price:null},
+{id:10,brand:"UP AND DOWN",es:"Bolsa de golf · ejemplo visual",en:"Golf bag · visual sample",cat:"bolsas",price:null},
+{id:11,brand:"UP AND DOWN",es:"Accesorios · ejemplo visual",en:"Accessories · visual sample",cat:"accesorios",price:null},
+{id:12,brand:"UP AND DOWN",es:"Ropa de golf · ejemplo visual",en:"Golf apparel · visual sample",cat:"ropa",price:null}];
+var services=[
+{es:"Reparación y mantenimiento",en:"Repair & maintenance",key:"repair"},
+{es:"Intercambios y consignación",en:"Trade-ins & consignment",key:"trade"},
+{es:"Ajuste de lie y loft",en:"Lie & loft adjustment",key:"adjust",coming:true},
+{es:"Clases de golf",en:"Golf lessons",key:"lessons"},
+{es:"GHIN · Handicap oficial",en:"GHIN · Official handicap",key:"ghin"},
+{es:"Restauración y personalización",en:"Restoration & customization",key:"restore"}];
+var articles=[
+{es:"Cómo elegir el campo ideal para tu ronda.",en:"How to choose the right course for your round.",tagEs:"DESTINO · LOS CABOS",tagEn:"DESTINATION · LOS CABOS",descriptionEs:"Mar, desierto, viento y diferentes niveles de dificultad.",descriptionEn:"Ocean, desert, wind and different levels of difficulty."},
+{es:"Cómo elegir un driver sin comprar solo distancia.",en:"Choosing a driver beyond just distance.",tagEs:"GUÍA DE EQUIPO",tagEn:"EQUIPMENT GUIDE",descriptionEs:"La cabeza más nueva o el loft más bajo no garantizan mejores salidas.",descriptionEn:"The newest head or lowest loft does not guarantee better drives."},
+{es:"Qué llevar para jugar bajo el clima de Los Cabos.",en:"What to bring for golf in Los Cabos.",tagEs:"ESENCIALES DE CABO",tagEn:"CABO ESSENTIALS",descriptionEs:"Sol intenso, viento y cambios de temperatura exigen preparación.",descriptionEn:"Strong sun, wind and temperature changes call for preparation."}];
+var $=function(id){return document.getElementById(id);};
+var esc=function(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");};
+var t=function(es,en){return lang==="es"?es:en;};
+function artwork(type){
+var color="#163d32",metal="#6b7f76";
+var head='<svg viewBox="0 0 320 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Representación gráfica de equipo de golf"><defs><linearGradient id="steel" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f0f3ee"/><stop offset=".45" stop-color="#76958a"/><stop offset="1" stop-color="#193b32"/></linearGradient><linearGradient id="bag" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#cbd6ce"/><stop offset=".7" stop-color="#607f70"/><stop offset="1" stop-color="#123d32"/></linearGradient></defs>';
+var shaft='<path d="M212 24L151 159" stroke="'+metal+'" stroke-width="6" stroke-linecap="round"/><path d="M207 25l12-20" stroke="#1d302a" stroke-width="10" stroke-linecap="round"/>';
+var club=shaft+'<path d="M148 149q-55-23-93 0-24 19-9 39 28 25 97 3 37-13 27-30Z" fill="url(#steel)" stroke="'+color+'" stroke-width="4"/><path d="M65 161q45-15 86 7" fill="none" stroke="#d5e9db" stroke-width="4"/>';
+if(type==="sets")return head+'<path d="M120 45L92 183M146 29l-28 150M171 36l-19 143M194 46l-15 136" stroke="'+color+'" stroke-width="6"/><path d="M82 98L96 182M222 82L205 182" stroke="#6b8576" stroke-width="7"/><path d="M101 84q15-12 51-8l41 12 5 103q-63 23-112-1Z" fill="url(#bag)" stroke="#254b3e" stroke-width="4"/><path d="M110 108l78 4M109 171l80-8" stroke="#d4e1d7" stroke-width="3"/><path d="M193 105q29 3 29 35t-25 37" stroke="#284f41" fill="none" stroke-width="7"/><ellipse cx="141" cy="205" rx="67" ry="8" fill="#b8c7ba" opacity=".6"/></svg>';
+if(type==="pelotas")return head+'<circle cx="156" cy="113" r="69" fill="#f5f8f4" stroke="#d0dcd4" stroke-width="2"/>'+Array.from({length:7},function(_,i){return Array.from({length:6},function(_,j){return '<circle cx="'+(107+i*16+(j%2)*8)+'" cy="'+(74+j*16)+'" r="3.2" fill="#c9d7cf"/>';}).join("");}).join("")+'<ellipse cx="154" cy="201" rx="66" ry="7" fill="#bdcec0" opacity=".8"/></svg>';
+if(type==="bolsas")return head+'<path d="M110 43q38-18 91 3l-7 146q-44 14-87-4Z" fill="url(#bag)" stroke="'+color+'" stroke-width="4"/><path d="M121 65l67 5M116 166l76 4" stroke="#e3eae5" stroke-width="4"/><path d="M201 68q40-1 40 62t-40 49" stroke="'+color+'" stroke-width="10" fill="none"/><path d="M116 41l-18-23M149 42l5-31M180 44l20-26" stroke="'+color+'" stroke-width="7"/><ellipse cx="150" cy="204" rx="60" ry="7" fill="#b6c7b8"/></svg>';
+if(type==="ropa")return head+'<path d="M106 43l34 12 19 9 18-9 35-12 38 42-31 26-17-17v105H119V94l-17 17-31-26Z" fill="url(#bag)" stroke="'+color+'" stroke-width="4"/><path d="M140 55l19 30 18-30M159 85v50" fill="none" stroke="#e5eee8" stroke-width="3"/><path d="M126 155h69" stroke="#abc5ad" stroke-width="3"/></svg>';
+if(type==="accesorios")return head+'<rect x="82" y="65" width="156" height="100" rx="22" fill="url(#bag)" stroke="'+color+'" stroke-width="4"/><path d="M121 65V44q0-25 39-25t39 25v21" stroke="'+color+'" stroke-width="7" fill="none"/><circle cx="160" cy="115" r="26" fill="#dce9df"/><path d="M146 114l10 10 19-22" stroke="'+color+'" stroke-width="7" fill="none" stroke-linecap="round"/></svg>';
+if(type==="putters")return head+'<path d="M190 24L128 166" stroke="'+metal+'" stroke-width="7"/><path d="M185 25l12-22" stroke="'+color+'" stroke-width="10" stroke-linecap="round"/><rect x="57" y="159" width="120" height="29" rx="8" fill="url(#steel)" stroke="'+color+'" stroke-width="4"/><path d="M92 160l12 28M131 160l-12 28" stroke="#d8e3da" stroke-width="4"/><ellipse cx="123" cy="207" rx="75" ry="7" fill="#b7c8b9"/></svg>';
+if(type==="fierros"||type==="wedges"||type==="hibridos"||type==="maderas"||type==="drivers")return head+club+'<ellipse cx="119" cy="206" rx="83" ry="7" fill="#b6c8b8" opacity=".8"/></svg>';
+return head+club+"</svg>";
+}
+function serviceArt(key){
+var a='<svg viewBox="0 0 280 170" aria-hidden="true">';
+if(key==="repair")return a+'<path d="M35 120l110-67 68 31-110 61zM82 69l92 64M166 37l45 13M152 28l58 18" stroke-width="5"/><circle cx="91" cy="117" r="27"/><path d="M81 105l20 24M102 104l-21 24"/></svg>';
+if(key==="trade")return a+'<path d="M40 110q55-75 114-35M141 54l18 22-29 15M236 94q-54 70-111 42M141 160l-18-22 29-15" stroke-width="6"/><path d="M65 26l60 21-29 75M214 41l-48 21 42 75" stroke-width="5"/></svg>';
+if(key==="adjust")return a+'<path d="M172 18l-54 130M105 138l-52-18q-17-6-16 14t35 18l42-1" stroke-width="5"/><path d="M205 80a64 64 0 0 1-80 76M212 80l-5 30-25-15" stroke-width="4"/></svg>';
+if(key==="lessons")return a+'<circle cx="170" cy="28" r="14"/><path d="M160 51l-19 40-39 26M144 78l37 31M151 81l29 63M180 112l43 38" stroke-width="6"/><path d="M221 20L98 154" stroke-width="4"/><circle cx="92" cy="151" r="5" fill="white" stroke="none"/></svg>';
+if(key==="ghin")return a+'<rect x="46" y="36" width="186" height="111" rx="18"/><path d="M78 87h123M96 65v58M164 65v58" stroke-width="5"/><circle cx="210" cy="36" r="17"/></svg>';
+return a+'<circle cx="145" cy="86" r="58"/><path d="M105 128l75-84M126 54l63 59M69 152l29-29M200 39l18-17" stroke-width="6"/><circle cx="215" cy="24" r="16"/></svg>';
+}
+function price(p){return p.price===null?t("Consultar","Ask in store"):"MXN $"+p.price.toLocaleString("en-US");}
+function productCard(p){return '<article class="product-card"><div class="product-art"><span class="product-tag">'+t("Muestra visual","Visual sample")+'</span>'+artwork(p.cat)+'</div><div class="product-body"><div class="product-brand">'+esc(p.brand)+'</div><h3>'+esc(p[lang])+'</h3><div class="product-price">'+price(p)+'</div><div class="product-note">'+t("Precios e inventario no sincronizados","Prices and stock not synchronized")+'</div><button type="button" data-product="'+p.id+'">'+t("Ver ejemplo ↗","View sample ↗")+'</button></div></article>';}
+function renderCategories(){
+$("categoryGrid").innerHTML=categories.map(function(c){return '<button class="category-card" type="button" data-category="'+c.id+'"><div class="art-box">'+artwork(c.id)+'</div><div class="category-name">'+esc(c[lang])+'<span class="circle-arrow">›</span></div></button>';}).join("");
+$("categorySelect").innerHTML='<option value="all">'+t("Todas las categorías","All categories")+'</option>'+categories.map(function(c){return '<option value="'+c.id+'">'+esc(c[lang])+'</option>';}).join("");
+$("categorySelect").value=activeCat;
+}
+function renderArrivals(){var selected=[0,1,2,3].map(function(k){return products[(k+arrivalOffset)%products.length];});$("arrivalGrid").innerHTML=selected.map(productCard).join("");}
+function renderServices(){
+$("serviceGrid").innerHTML=services.map(function(s){return '<div class="service-card">'+serviceArt(s.key)+'<span class="service-plus">+</span><div class="service-content"><small>'+t(s.coming?"PRÓXIMAMENTE":"SERVICIO ESPECIALIZADO",s.coming?"COMING SOON":"SPECIALIZED SERVICE")+'</small><h3>'+esc(s[lang])+'</h3></div></div>';}).join("");
+}
+function renderNews(){
+$("newsGrid").innerHTML=articles.map(function(a,i){var deco='<svg viewBox="0 0 300 150" aria-hidden="true"><path d="M0 125q65-43 115-16t185-12v60H0Z" fill="#568047"/><circle cx="'+(110+i*30)+'" cy="82" r="20" fill="#f7f9ec"/><path d="M0 147Q70 120 130 138T300 132" fill="none" stroke="#b7dc8c" stroke-width="10"/></svg>';return '<article class="news-card"><div class="news-art">'+deco+'<span class="news-index">0'+(i+1)+'</span></div><div class="news-body"><small>'+esc(lang==="es"?a.tagEs:a.tagEn)+'</small><h3>'+esc(a[lang])+'</h3><p>'+esc(lang==="es"?a.descriptionEs:a.descriptionEn)+'</p><button type="button" data-article="'+i+'">'+t("Leer resumen ↗","Read summary ↗")+'</button></div></article>';}).join("");
+}
+function renderCollection(){
+var query=$("productSearch").value.trim().toLocaleLowerCase();
+var arr=products.filter(function(p){return (activeCat==="all"||activeCat===p.cat)&&(!query||(p.es+" "+p.en+" "+p.brand+" "+p.cat).toLowerCase().includes(query));});
+var sorting=$("sortSelect").value;
+if(sorting==="asc")arr.sort(function(a,b){return (a.price===null?Infinity:a.price)-(b.price===null?Infinity:b.price);});
+if(sorting==="desc")arr.sort(function(a,b){return (b.price===null?-Infinity:b.price)-(a.price===null?-Infinity:a.price);});
+if(sorting==="name")arr.sort(function(a,b){return a[lang].localeCompare(b[lang],lang);});
+$("resultsLabel").textContent=arr.length+" "+t(arr.length===1?"producto de ejemplo":"productos de ejemplo",arr.length===1?"sample product":"sample products");
+$("collectionGrid").innerHTML=arr.slice(0,visible).map(productCard).join("");
+$("collectionGrid").classList.toggle("list-view",view==="list");
+$("emptyResults").hidden=arr.length!==0;
+$("emptyResults").textContent=t("No se encontraron muestras para estos filtros. Prueba con otra categoría.","No sample items match those filters. Try another category.");
+$("moreBtn").hidden=arr.length<=visible;
+$("moreBtn").textContent=t("Ver más productos →","Show more products →");
+$("categorySelect").value=activeCat;
+}
+function translate(){
+document.documentElement.lang=lang;
+document.querySelectorAll("[data-es][data-en]").forEach(function(el){var str=el.getAttribute("data-"+lang);if(el.tagName==="H1" && el.closest(".hero-copy"))el.innerHTML=str;else el.textContent=str;});
+$("langEs").setAttribute("aria-pressed",lang==="es"?"true":"false");$("langEn").setAttribute("aria-pressed",lang==="en"?"true":"false");
+$("productSearch").placeholder=t("Nombre, marca o categoría","Name, brand or category");
+renderCategories();renderArrivals();renderServices();renderNews();renderCollection();
+}
+function notify(message){
+var el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toastTimeout);toastTimeout=setTimeout(function(){el.classList.remove("show");},2700);
+}
+function showModal(title,brand,body,graphic){
+$("modalTitle").textContent=title;$("modalBrand").textContent=brand;$("modalBody").textContent=body;
+$("modalArt").innerHTML=graphic||artwork("drivers");
+$("modalOk").textContent=t("Entendido","Got it");$("modalBack").textContent=t("Volver al catálogo","Back to catalog");
+$("detailsDialog").showModal();
+}
+function openMenu(open){
+$("mobilePanel").classList.toggle("open",open);$("panelShade").classList.toggle("open",open);
+$("mobilePanel").setAttribute("aria-hidden",open?"false":"true");$("menuBtn").setAttribute("aria-expanded",open?"true":"false");
+}
+function reset(){activeCat="all";$("productSearch").value="";$("sortSelect").value="featured";visible=Number($("pageSelect").value);renderCollection();}
+$("langEs").addEventListener("click",function(){lang="es";translate();});
+$("langEn").addEventListener("click",function(){lang="en";translate();});
+$("searchBtn").addEventListener("click",function(){$("catalogo").scrollIntoView({behavior:"smooth"});setTimeout(function(){$("productSearch").focus();},350);});
+$("cartBtn").addEventListener("click",function(){notify(t("Demo local: carrito y cobros desactivados.","Local demo: cart and checkout disabled."));});
+$("menuBtn").addEventListener("click",function(){openMenu(true);});$("closeMenu").addEventListener("click",function(){openMenu(false);});$("panelShade").addEventListener("click",function(){openMenu(false);});
+$("mobilePanel").addEventListener("click",function(e){if(e.target.closest("a"))openMenu(false);});
+$("railPrev").addEventListener("click",function(){arrivalOffset=(arrivalOffset-1+products.length)%products.length;renderArrivals();});
+$("railNext").addEventListener("click",function(){arrivalOffset=(arrivalOffset+1)%products.length;renderArrivals();});
+$("productSearch").addEventListener("input",function(){renderCollection();});
+$("categorySelect").addEventListener("change",function(e){activeCat=e.target.value;renderCollection();});
+$("sortSelect").addEventListener("change",renderCollection);
+$("pageSelect").addEventListener("change",function(e){visible=Number(e.target.value);renderCollection();});
+$("resetFilters").addEventListener("click",reset);
+$("moreBtn").addEventListener("click",function(){visible+=Number($("pageSelect").value);renderCollection();});
+$("gridView").addEventListener("click",function(){view="grid";$("gridView").setAttribute("aria-pressed","true");$("listView").setAttribute("aria-pressed","false");renderCollection();});
+$("listView").addEventListener("click",function(){view="list";$("gridView").setAttribute("aria-pressed","false");$("listView").setAttribute("aria-pressed","true");renderCollection();});
+document.addEventListener("click",function(e){
+var cat=e.target.closest("[data-category]");
+if(cat){activeCat=cat.getAttribute("data-category");renderCollection();$("catalogo").scrollIntoView({behavior:"smooth"});return;}
+var prod=e.target.closest("[data-product]");
+if(prod){var p=products.find(function(item){return item.id===Number(prod.getAttribute("data-product"));});if(!p)return;showModal(p[lang],p.brand,t("Artículo de muestra. Esta presentación solo ilustra la experiencia de compra y no consulta inventario ni procesa cobros.","Sample item. This presentation demonstrates the shopping experience without accessing live stock or processing purchases."),artwork(p.cat));return;}
+var art=e.target.closest("[data-article]");
+if(art){var a=articles[Number(art.getAttribute("data-article"))];showModal(a[lang],lang==="es"?a.tagEs:a.tagEn,(lang==="es"?a.descriptionEs:a.descriptionEn)+" "+t("Resumen de demostración. El artículo completo pertenece a la tienda actual.","Demo summary. The full article belongs to the current live storefront."),artwork("pelotas"));}
+var service=e.target.closest(".service-card");
+if(service){notify(t("Diseño de servicio: la contratación no está disponible en esta demo.","Service preview: bookings are not available in this demo."));}
+});
+$("closeDialog").addEventListener("click",function(){$("detailsDialog").close();});
+$("modalOk").addEventListener("click",function(){$("detailsDialog").close();});
+$("modalBack").addEventListener("click",function(){$("detailsDialog").close();$("catalogo").scrollIntoView({behavior:"smooth"});});
+$("detailsDialog").addEventListener("click",function(e){if(e.target===$("detailsDialog"))$("detailsDialog").close();});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")openMenu(false);});
+translate();
+})();
+</script>
+</body>
+</html>
