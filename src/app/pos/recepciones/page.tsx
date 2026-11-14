@@ -57,11 +57,15 @@ export default function ServiceRecepcionesPage() {
     let cancelled = false;
     const device = window.localStorage.getItem(DEVICE_KEY) || "";
     if (!device) {
-      setError("Este equipo no está activado para el POS. Entra y activa la terminal desde /pos.");
-      setLoading(false);
+      void Promise.resolve().then(() => {
+        if (!cancelled) {
+          setError("Este equipo no está activado para el POS. Entra y activa la terminal desde /pos.");
+          setLoading(false);
+        }
+      });
       return;
     }
-    setToken(device);
+    void Promise.resolve().then(() => { if (!cancelled) setToken(device); });
     void Promise.all([
       db.rpc("pos_reception_access", { p_device_token: device }),
       db.from("products").select("id,name,sku").eq("is_service", true)
