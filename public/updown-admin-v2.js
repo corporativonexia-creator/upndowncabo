@@ -956,6 +956,7 @@
   </div>
   <div class="udv2-pos-launch">
     <button id="udv2PosRefresh" class="udv2-btn secondary" type="button">Actualizar</button>
+    <a class="udv2-btn secondary" href="/admin/pos/promociones">Promociones y servicios ↗</a>
     <a class="udv2-btn primary" href="/pos" target="_blank" rel="noopener">Abrir panel POS ↗</a>
   </div>
 </div>

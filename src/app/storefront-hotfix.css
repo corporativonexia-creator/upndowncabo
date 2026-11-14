@@ -782,3 +782,12 @@ dialog.uds-native-menu::backdrop { background:rgba(20,62,53,.25); }
 #updown-store.uds-ux-v3 #udsModal:not(.is-open) {
   display:none!important;
 }
+
+/* POS 2.2 online campaigns: unobtrusive savings label in product cards. */
+#updown-store .uds-card-badges .uds-campaign-badge,
+#updown-store #udsModalPrice .uds-campaign-badge {
+  display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
+  padding:4px 8px;border-radius:6px;background:#184a3c;color:#fff;
+  font:800 11px/1.1 Inter,Arial,sans-serif;letter-spacing:.01em;
+}
+#updown-store #udsModalPrice .uds-campaign-badge { margin-inline-start:8px; }

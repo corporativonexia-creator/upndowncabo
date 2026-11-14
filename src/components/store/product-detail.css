@@ -350,3 +350,9 @@
 .ud-product-visit-link strong{font-weight:850;color:#143e35;text-decoration:underline;text-underline-offset:3px}
 .ud-product-visit-link:hover{background:#e6f0e9}
 .ud-product-visit-link:focus-visible{outline:3px solid #caa969;outline-offset:3px}
+
+.ud-product-campaign-badge,.ud-related-campaign{display:inline-flex;align-items:center;justify-content:center;background:#184a3c;color:#fff;border-radius:6px;padding:5px 8px;font:800 11px/1 Inter,Arial,sans-serif;white-space:nowrap}
+.ud-product-price .ud-product-campaign-badge{margin-inline-start:10px;vertical-align:middle}
+.ud-related-image{position:relative}
+.ud-related-campaign{position:absolute;top:10px;left:10px;z-index:2}
+.ud-related-before{margin-inline-start:8px;color:#8a8f8c;text-decoration:line-through;font-weight:400}

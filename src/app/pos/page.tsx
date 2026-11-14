@@ -4,6 +4,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
+import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
 
 type Access = {
@@ -26,6 +27,7 @@ type CartItem = {
   product: Product;
   quantity: number;
   promotion?: { mode: PromotionMode; value: string };
+  servicePrice?: string;
 };
 
 type ShiftPayment = {
@@ -125,38 +127,84 @@ function numeric(value: number | string | null | undefined) {
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
-function discountedUnitPrice(item: CartItem) {
-  const base = productPrice(item.product);
-  if (!item.promotion) return base;
-  const value = Number(item.promotion.value);
-  if (item.promotion.value.trim() === "" || !Number.isFinite(value) || value < 0) return NaN;
-  let price: number;
-  switch (item.promotion.mode) {
-    case "percent":
-      if (value > 100) return NaN;
-      price = roundMoney(base * (1 - value / 100));
-      break;
-    case "amount":
-      price = roundMoney(base - value);
-      break;
-    case "final":
-      price = roundMoney(value);
-      break;
-    default:
-      return NaN;
-  }
-  return price >= 0 && price <= base ? price : NaN;
+function cartUnitPrice(item: CartItem) {
+  if (!item.product.is_service) return productPrice(item.product);
+  if (!item.servicePrice?.trim()) return NaN;
+  const amount = Number(item.servicePrice);
+  return Number.isFinite(amount) && amount>0 && amount<=99999999 ? roundMoney(amount) : NaN;
 }
-function pos21Items(cart: CartItem[]) {
-  return cart.map(item => ({
+function manuallyDiscountedUnitPrice(item: CartItem) {
+  const base=cartUnitPrice(item);
+  if(!Number.isFinite(base)) return NaN;
+  if (!item.promotion) return base;
+  const value=Number(item.promotion.value);
+  if (item.promotion.value.trim()===""||!Number.isFinite(value)||value<0) return NaN;
+  let price:number;
+  switch(item.promotion.mode) {
+    case "percent": if(value>100)return NaN; price=roundMoney(base*(1-value/100));break;
+    case "amount": price=roundMoney(base-value);break;
+    case "final": price=roundMoney(value);break;
+    default:return NaN;
+  }
+  return price>=0 && price<=base ? price : NaN;
+}
+function discountedUnitPrice(item: CartItem) {
+  const base=cartUnitPrice(item);
+  const manual=manuallyDiscountedUnitPrice(item);
+  const percent=item.product.automaticPromotion?.percent||0;
+  const automated=roundMoney(base*percent/100);
+  const final=roundMoney(manual-automated);
+  return Number.isFinite(final)&&final>=0&&final<=base ? final : NaN;
+}
+function globalDiscountAmount(original:number, enabled:boolean, mode:PromotionMode, value:string, discountedSubtotal=original) {
+  if(!enabled)return 0;
+  if(!Number.isFinite(original)||original<=0||value.trim()==="")return NaN;
+  const v=Number(value);
+  if(!Number.isFinite(v)||v<0)return NaN;
+  let amount:number;
+  switch(mode) {
+    case "percent": amount=v<=100?roundMoney(original*v/100):NaN;break;
+    case "amount": amount=roundMoney(v);break;
+    case "final": amount=roundMoney(discountedSubtotal-v);break;
+    default:amount=NaN;
+  }
+  return amount>=0&&amount<=discountedSubtotal?amount:NaN;
+}
+function pos21Items(cart: CartItem[], global?:{mode:PromotionMode;value:string}) {
+  return cart.map((item,index) => ({
     product_id: item.product.parent_id || item.product.id,
-    ...(item.product.variant_id ? { variant_id: item.product.variant_id } : {}),
-    quantity: item.quantity,
+    ...(item.product.variant_id ? { variant_id:item.product.variant_id } : {}),
+    quantity:item.quantity,
+    ...(item.product.is_service ? { service_unit_price:cartUnitPrice(item) } : {}),
     ...(item.promotion ? {
-      promotion_mode: item.promotion.mode,
-      promotion_value: Number(item.promotion.value),
+      promotion_mode:item.promotion.mode,
+      promotion_value:Number(item.promotion.value)
     } : {}),
+    ...(index===0&&global ? {
+      global_promotion_mode:global.mode,
+      global_promotion_value:Number(global.value)
+    }:{})
   }));
+}
+function caboLocalDate() {
+  return new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Mazatlan",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+}
+type ScheduledPromotion = {
+  id:string;title:string;target_type:"category"|"sku"|"barcode";
+  target_value:string;discount_percent:number|string;
+  starts_on:string;ends_on:string;enabled:boolean;
+};
+function bestPromotion(product:Product, promotions:ScheduledPromotion[]) {
+  const active=promotions.filter(p=>{
+    const match=p.target_type==="category"
+      ? product.category_id===p.target_value
+      : p.target_type==="sku"
+        ? [product.sku,product.parent_sku].some(code=>String(code||"").toUpperCase()===p.target_value.trim().toUpperCase())
+       : [product.barcode,product.parent_barcode].some(code=>code===p.target_value.trim());
+    return p.enabled && match;
+  }).sort((a,b)=>Number(b.discount_percent)-Number(a.discount_percent) || a.id.localeCompare(b.id));
+  const winner=active[0];
+  return winner ? {id:winner.id,title:winner.title,percent:Number(winner.discount_percent)} : undefined;
 }
 const paymentMethods = ["cash", "card_terminal", "transfer", "other"] as const;
 function allowedDiscountFraction(role?: string | null) {
@@ -195,6 +243,7 @@ function receiptAmountWords(value: number) {
 }
 function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
   const items=sale.items||[],total=numeric(sale.total),net=Math.round((total/1.16)*100)/100,vat=Math.round((total-net)*100)/100,articleCount=items.reduce((sum,item)=>sum+Number(item.quantity||0),0);
+  const savings=receiptDiscountBreakdown(sale);
   const doc=new jsPDF({orientation:"portrait",unit:"mm",format:[80,Math.max(210,130+items.length*30+(sale.payments||[]).length*10)]}),width=80,margin=5,right=75;let y=8;
   const line=(kind="-")=>{doc.setDrawColor(kind==="="?70:155);doc.setLineWidth(kind==="="?0.45:0.2);doc.line(margin,y,right,y);y+=4;}; const pair=(label:string,value:string,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(bold?9:8);doc.text(label,margin,y);doc.text(value,right,y,{align:"right"});y+=4.2;}; const centered=(text:string,size=7,bold=false)=>{doc.setFont("helvetica",bold?"bold":"normal");doc.setFontSize(size);doc.text(text,width/2,y,{align:"center"});y+=size*.48+1.2;};
   doc.setFont("times","bold");doc.setFontSize(18);doc.text("UP AND DOWN",width/2,y,{align:"center"});y+=6;centered("PLAZA ALBA - LOCAL 206",7,true);centered("EL TEZAL",7);centered("CABO SAN LUCAS, B.C.S.",7);centered("C.P. 23454",7);centered("upndowncabo.com",7,true);y+=1;line("=");doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(`VENTA #${sale.sale_number}`,margin,y);y+=4.5;doc.setFontSize(8);doc.text("COMPROBANTE DIGITAL",margin,y);y+=4;line();doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.text(`Fecha: ${new Date(sale.created_at).toLocaleString("es-MX",{dateStyle:"short",timeStyle:"short"})}`,margin,y);y+=4;if(access){doc.text(`Cajero: #${access.employee_number} ${access.full_name}`,margin,y);y+=4;doc.text(`Terminal: ${access.terminal_name||"POS"}`,margin,y);y+=4;}line();
@@ -211,8 +260,10 @@ function buildReceiptPdf(sale: ShiftSale, access: Access | null) {
   }
   line();
   if(numeric(sale.discount_amount)>0){
-    pair("PRECIO ORIGINAL",money(numeric(sale.subtotal)));
-    pair("AHORRO TOTAL", "-"+money(numeric(sale.discount_amount)),true);
+    pair("PRECIO ORIGINAL",money(savings.original));
+    if(savings.itemSavings>0)pair("AHORRO ARTICULOS","-"+money(savings.itemSavings));
+    if(savings.generalSavings>0)pair("DESCUENTO GENERAL","-"+money(savings.generalSavings));
+    pair("AHORRO TOTAL", "-"+money(savings.totalSavings),true);
   }
   pair("SUBTOTAL SIN IVA",money(net));pair("IVA 16%",money(vat));pair("TOTAL",money(total),true);y+=1;doc.setFont("helvetica","bold");doc.setFontSize(7);doc.text("TOTAL CON LETRA:",margin,y);y+=3.5;doc.setFont("helvetica","normal");doc.setFontSize(6.7);const wordLines=doc.splitTextToSize(receiptAmountWords(total),70);doc.text(wordLines,margin,y);y+=wordLines.length*3.1+1;pair("ARTICULOS COMPRADOS",String(articleCount),true);line();doc.setFont("helvetica","bold");doc.setFontSize(8);doc.text((sale.payments||[]).length>1?"PAGO MIXTO":"PAGO",margin,y);y+=4;for(const payment of sale.payments||[]){pair(paymentLabel(payment.method),money(numeric(payment.amount)));if(payment.reference){doc.setFont("helvetica","normal");doc.setFontSize(7);doc.text(`Ref: ${payment.reference}`,margin,y);y+=3.5;}}line("=");centered("upndowncabo.com",8,true);centered("Gracias por tu compra.",7);centered("Conserva este comprobante para cualquier aclaracion.",6.5);return doc;
 }
@@ -351,6 +402,9 @@ export default function PosPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productQuery, setProductQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [globalPromotionEnabled,setGlobalPromotionEnabled]=useState(false);
+  const [globalPromotionMode,setGlobalPromotionMode]=useState<PromotionMode>("percent");
+  const [globalPromotionValue,setGlobalPromotionValue]=useState("");
   const [paymentMethod, setPaymentMethod] =
     useState<ShiftPayment["method"]>("cash");
   const [paymentReference, setPaymentReference] = useState("");
@@ -410,7 +464,7 @@ export default function PosPage() {
     try {
       const parents = await readAllPages<Product>((from, to) => supabase
         .from("products")
-        .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible")
+        .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible,category_id,is_service")
         .eq("status", "active").eq("pos_visible", true)
         .order("id").range(from, to));
       const variants: PosVariant[] = [];
@@ -423,7 +477,21 @@ export default function PosPage() {
           .in("product_id", ids).order("id").range(from, to));
         variants.push(...page);
       }
-      setProducts(buildPosCatalog(parents, variants).sort((a, b) => a.name.localeCompare(b.name, "es")));
+      const today=caboLocalDate();
+      const {data:promotionRows,error:promotionError}=await supabase
+        .from("pos22_promotions")
+        .select("id,title,target_type,target_value,discount_percent,starts_on,ends_on,enabled")
+        .eq("enabled",true).lte("starts_on",today).gte("ends_on",today);
+      if(promotionError)throw promotionError;
+      const campaigns=(promotionRows||[]) as ScheduledPromotion[];
+      const catalog=buildPosCatalog(parents,variants).map(product=>({
+        ...product,automaticPromotion:bestPromotion(product,campaigns)
+      })).sort((a,b)=>a.name.localeCompare(b.name,"es"));
+      setProducts(catalog);
+      setCart(current=>current.map(item=>{
+        const latest=catalog.find(p=>p.id===item.product.id);
+        return latest?{...item,product:latest}:item;
+      }));
     } catch (error) {
       setMessage(`PRODUCTS_ERROR: ${readableError(error)}`);
     } finally {
@@ -483,7 +551,7 @@ export default function PosPage() {
     }
 
     const stock = numeric(product.stock);
-    if (stock <= 0) {
+    if (!product.is_service && stock <= 0) {
       setMessage(`${product.name} está agotado.`);
       setProductQuery("");
       return false;
@@ -492,7 +560,7 @@ export default function PosPage() {
     const currentQuantity =
       cart.find((item) => item.product.id === product.id)?.quantity ?? 0;
 
-    if (currentQuantity >= stock) {
+    if (!product.is_service && currentQuantity >= stock) {
       setMessage(
         `${product.name}: ya tienes en el carrito todo el stock disponible (${stock}).`,
       );
@@ -583,17 +651,17 @@ export default function PosPage() {
       return;
     }
     const stock = numeric(product.stock);
-    if (stock <= 0) return;
+    if (!product.is_service && stock <= 0) return;
 
     setCart((current) => {
       const existing = current.find((item) => item.product.id === product.id);
-      if (!existing) return [...current, { product, quantity: 1 }];
+      if (!existing) return [...current, { product, quantity: 1, ...(product.is_service?{servicePrice:""}:{}) }];
 
       return current.map((item) =>
         item.product.id === product.id
           ? {
               ...item,
-              quantity: Math.min(item.quantity + 1, stock),
+              quantity: Math.min(item.quantity + 1, product.is_service?100:stock),
             }
           : item,
       );
@@ -609,7 +677,7 @@ export default function PosPage() {
           const stock = numeric(item.product.stock);
           return {
             ...item,
-            quantity: Math.max(0, Math.min(nextQuantity, stock)),
+            quantity: Math.max(0, Math.min(nextQuantity, item.product.is_service?100:stock)),
           };
         })
         .filter((item) => item.quantity > 0),
@@ -627,7 +695,7 @@ export default function PosPage() {
     setPromoApproval(null);
     setCart(current=>current.map(item=>item.product.id===productId
       ? {...item,promotion:mode==="none" ? undefined : {mode,value:value??(
-          mode==="percent"?"10":mode==="amount"?"100":String(roundMoney(productPrice(item.product)*0.9))
+          mode==="percent"?"10":mode==="amount"?"100":String(roundMoney(cartUnitPrice(item)*0.9))
         )}}
       : item));
   }
@@ -637,7 +705,8 @@ export default function PosPage() {
       setMessage("Ingresa correo, contraseña administrativa y motivo de al menos 6 caracteres.");
       return;
     }
-    const items=pos21Items(cart);
+    const global=globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined;
+    const items=pos21Items(cart,global);
     setApprovalBusy(true);
     try{
       // Isolated authentication: do not replace the cashier's POS session.
@@ -652,7 +721,7 @@ export default function PosPage() {
       });
       if(signError)throw signError;
       try{
-        const {data,error}=await adminClient.rpc("pos21_issue_promotion_approval",{
+        const {data,error}=await adminClient.rpc("pos22_issue_promotion_approval",{
           p_cashier_employee_id:access.employee_id,p_items:items,p_reason:approvalReason.trim()
         });
         if(error)throw error;
@@ -677,18 +746,22 @@ export default function PosPage() {
       return;
     }
 
-    const original = roundMoney(cart.reduce((sum,item)=>sum+productPrice(item.product)*item.quantity,0));
-    const total = roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+    const original=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
+    const lineFinal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+    const global=globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined;
+    const generalAmount=globalDiscountAmount(original,globalPromotionEnabled,globalPromotionMode,globalPromotionValue,lineFinal);
+    const total=roundMoney(lineFinal-generalAmount);
     if(!Number.isFinite(total)||total<=0){
-      setMessage("Precio promocional inválido. Revisa los descuentos de cada artículo.");return;
+      setMessage("Importe o descuento inválido. Revisa precio de servicios y promociones.");return;
     }
-    const saved = roundMoney(original-total);
-    const allowed = roundMoney(original*allowedDiscountFraction(access.employee_role));
-    const items = pos21Items(cart);
-    const fingerprintItems = JSON.stringify(items);
-    if(saved > allowed && (!promoApproval || promoApproval.itemsFingerprint!==fingerprintItems)){
-      setMessage("Esta promoción supera el límite del empleado. Solicita autorización del administrador.");
-      return;
+    const manualSaved=roundMoney(cart.reduce((sum,item)=>
+      sum+(cartUnitPrice(item)-manuallyDiscountedUnitPrice(item))*item.quantity,0));
+    const humanDiscount=roundMoney(manualSaved+generalAmount);
+    const allowed=roundMoney(original*allowedDiscountFraction(access.employee_role));
+    const items=pos21Items(cart,global);
+    const fingerprintItems=JSON.stringify(items);
+    if(humanDiscount>allowed && (!promoApproval||promoApproval.itemsFingerprint!==fingerprintItems)){
+      setMessage("El descuento manual/general supera el límite del empleado. Solicita autorización.");return;
     }
     const payments:ShiftPayment[] = mixedPayment
       ? paymentMethods.filter(m=>parseMoneyText(mixedAmounts[m])>0)
@@ -704,7 +777,7 @@ export default function PosPage() {
     if(numeric(cashApplied)>0 && parseMoneyText(cashReceived)<numeric(cashApplied)){
       setMessage("Efectivo recibido insuficiente para cubrir la parte en efectivo.");return;
     }
-    const approvalToken=saved>allowed?promoApproval?.token:null;
+    const approvalToken=humanDiscount>allowed?promoApproval?.token:null;
     const paymentNote=payments.length>1
       ?"Pago mixto: "+payments.map(p=>paymentLabel(p.method)+" "+money(numeric(p.amount))).join("; ")
       :null;
@@ -718,14 +791,14 @@ export default function PosPage() {
       if (checkoutRequest.current?.fingerprint !== fingerprint) {
         checkoutRequest.current = { fingerprint, id: crypto.randomUUID() };
       }
-      const { data, error } = await supabase.rpc("pos_create_sale_v21", {
+      const { data, error } = await supabase.rpc("pos_create_sale_v22", {
         p_device_token: deviceToken,
         p_items: items,
         p_payments: payments.map((payment,index)=>({
           ...payment,
           ...(index===0?{metadata:{pos_request_id:checkoutRequest.current!.id}}:{})
         })),
-        p_discount_amount: 0,
+        p_discount_amount: generalAmount,
         p_notes: paymentNote,
         p_promo_approval_token:approvalToken
       });
@@ -741,6 +814,9 @@ export default function PosPage() {
 
       checkoutRequest.current = null;
       setCart([]);
+      setGlobalPromotionEnabled(false);
+      setGlobalPromotionMode("percent");
+      setGlobalPromotionValue("");
       setCashReceived("");
       setPaymentReference("");
       setPromoApproval(null);
@@ -1126,7 +1202,7 @@ export default function PosPage() {
           result?.sale_number ?? "—"
         } por ${money(numeric(result?.amount))}.` +
         (mixedRefund ? " Desglose original por método registrado en bitácora." : "") +
-        " Inventario restituido.",
+        " Inventario físico restituido cuando corresponde.",
       );
     } catch (error) {
       setMessage(`REFUND_ERROR: ${readableError(error)}`);
@@ -1544,16 +1620,20 @@ export default function PosPage() {
       .some((value) => String(value).toLowerCase().includes(query));
   });
 
-  const cartOriginalSubtotal = roundMoney(cart.reduce(
-    (sum,item)=>sum+productPrice(item.product)*item.quantity,0
-  ));
-  const cartSubtotal = roundMoney(cart.reduce(
-    (sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0
-  ));
-  const cartTotalDiscount = roundMoney(cartOriginalSubtotal-cartSubtotal);
-  const maxAllowedDiscount = roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
-  const needsPromoApproval = cartTotalDiscount>maxAllowedDiscount;
-  const approvalValid = !!promoApproval && promoApproval.itemsFingerprint===JSON.stringify(pos21Items(cart));
+  const cartOriginalSubtotal=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
+  const itemDiscountedSubtotal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
+  const autoDiscountTotal=roundMoney(cart.reduce((sum,item)=>
+    sum+roundMoney(cartUnitPrice(item)*(item.product.automaticPromotion?.percent||0)/100)*item.quantity,0));
+  const manualDiscountTotal=roundMoney(cart.reduce((sum,item)=>
+    sum+(cartUnitPrice(item)-manuallyDiscountedUnitPrice(item))*item.quantity,0));
+  const generalDiscount=globalDiscountAmount(cartOriginalSubtotal,globalPromotionEnabled,globalPromotionMode,globalPromotionValue,itemDiscountedSubtotal);
+  const cartSubtotal=roundMoney(itemDiscountedSubtotal-generalDiscount);
+  const cartTotalDiscount=roundMoney(cartOriginalSubtotal-cartSubtotal);
+  const maxAllowedDiscount=roundMoney(cartOriginalSubtotal*allowedDiscountFraction(access?.employee_role));
+  const needsPromoApproval=roundMoney(manualDiscountTotal+generalDiscount)>maxAllowedDiscount;
+  const approvalValid=!!promoApproval&&promoApproval.itemsFingerprint===JSON.stringify(
+    pos21Items(cart,globalPromotionEnabled?{mode:globalPromotionMode,value:globalPromotionValue}:undefined)
+  );
   const mixedAllocated = roundMoney(paymentMethods.reduce(
     (sum,m)=>sum+(parseMoneyText(mixedAmounts[m])||0),0
   ));
@@ -1854,16 +1934,16 @@ export default function PosPage() {
                               <div className="pos-product-row">
                                 <div>
                                   <div className="pos-product-price">
-                                    {product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
+                                    {product.is_service ? "Precio libre al cobrar" : product.currency === "USD" ? `USD ${productPrice(product).toFixed(2)} · no cobrable en POS MXN` : money(productPrice(product))}
                                   </div>
                                   <div className={`pos-stock ${stock <= 0 ? "zero" : ""}`}>
-                                    {stock > 0 ? `Stock: ${stock}` : "Agotado"}
+                                    {product.is_service ? "SERVICIO · sin inventario" : stock > 0 ? `Stock: ${stock}` : "Agotado"}
                                   </div>
                                 </div>
                                 <button
                                   className="pos-add"
                                   type="button"
-                                  disabled={busy || stock <= 0}
+                                  disabled={busy || (!product.is_service && stock <= 0)}
                                   onClick={() => addToCart(product)}
                                   aria-label={`Agregar ${product.name}`}
                                 >
@@ -1911,6 +1991,20 @@ export default function PosPage() {
                                 Quitar
                               </button>
                             </div>
+                            {item.product.is_service && (
+                              <div className="pos-field" style={{margin:"10px 0 6px",background:"#eef6f0",padding:10,borderRadius:10}}>
+                                <label>Precio libre del servicio (MXN)</label>
+                                <input type="number" inputMode="decimal" min="0.01" max="99999999" step="0.01"
+                                  placeholder="Captura el importe"
+                                  value={item.servicePrice??""}
+                                  onChange={event=>{
+                                    setPromoApproval(null);
+                                    setCart(current=>current.map(row=>row.product.id===item.product.id
+                                      ? {...row,servicePrice:event.target.value}:row));
+                                  }}
+                                />
+                              </div>
+                            )}
                             <div className="pos-qty">
                               <div className="pos-qty-controls">
                                 <button
@@ -1928,7 +2022,7 @@ export default function PosPage() {
                                 <button
                                   type="button"
                                   disabled={
-                                    item.quantity >= numeric(item.product.stock)
+                                    item.quantity >= (item.product.is_service?100:numeric(item.product.stock))
                                   }
                                   onClick={() =>
                                     setCartQuantity(
@@ -1946,6 +2040,13 @@ export default function PosPage() {
                                   : "Promoción inválida"}
                               </div>
                             </div>
+                            {item.product.automaticPromotion && (
+                              <div style={{display:"flex",justifyContent:"space-between",gap:8,padding:10,marginTop:8,
+                                background:"#eaf6eb",borderRadius:10,color:"#185b38",fontSize:12}}>
+                                <span>✓ Campaña automática: {item.product.automaticPromotion.title}</span>
+                                <strong>−{item.product.automaticPromotion.percent}%</strong>
+                              </div>
+                            )}
                             <div style={{display:"grid",gap:8,marginTop:10,padding:"12px",background:"#f5f8f5",borderRadius:12}}>
                               <label style={{fontSize:12,fontWeight:750,color:"#143e35"}}>Promoción para este artículo</label>
                               <select
@@ -1965,15 +2066,15 @@ export default function PosPage() {
                                   </label>
                                   <input
                                     inputMode="decimal" type="number" min="0" step="0.01"
-                                    max={item.promotion.mode==="percent"?"100":String(productPrice(item.product))}
+                                    max={item.promotion.mode==="percent"?"100":String(cartUnitPrice(item))}
                                     value={item.promotion.value}
                                     onChange={event=>setItemPromotion(item.product.id,item.promotion!.mode,event.target.value)}
                                   />
                                   <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12}}>
-                                    <span>Precio original: {money(productPrice(item.product))} c/u</span>
+                                    <span>Precio original: {money(cartUnitPrice(item))} c/u</span>
                                     <strong style={{color:"#24724c"}}>
                                       Ahorro: {Number.isFinite(discountedUnitPrice(item))
-                                        ? money(roundMoney((productPrice(item.product)-discountedUnitPrice(item))*item.quantity))
+                                        ? money(roundMoney((cartUnitPrice(item)-discountedUnitPrice(item))*item.quantity))
                                         : "Valor inválido"}
                                     </strong>
                                   </div>
@@ -1991,9 +2092,36 @@ export default function PosPage() {
                     )}
 
                     <div className="pos-checkout">
+                      <label style={{display:"flex",gap:10,alignItems:"center",marginBottom:10,fontWeight:800,fontSize:13}}>
+                        <input type="checkbox" checked={globalPromotionEnabled} style={{width:19,height:19}}
+                          onChange={e=>{
+                            setPromoApproval(null);setGlobalPromotionEnabled(e.target.checked);
+                            if(!e.target.checked)setGlobalPromotionValue("");
+                          }}/>
+                        Descuento GENERAL para toda la cuenta
+                      </label>
+                      {globalPromotionEnabled && (
+                        <div style={{background:"#f0f5f1",border:"1px solid #c8ddcf",padding:12,
+                          borderRadius:12,display:"grid",gap:8,marginBottom:12}}>
+                          <label style={{fontSize:12,fontWeight:800}}>Tipo de promoción general</label>
+                          <select aria-label="Tipo de descuento general" value={globalPromotionMode}
+                            onChange={e=>{setPromoApproval(null);setGlobalPromotionMode(e.target.value as PromotionMode);}}>
+                            <option value="percent">% Descuento general</option>
+                            <option value="amount">$ Descuento general</option>
+                            <option value="final">$ Precio final de la cuenta</option>
+                          </select>
+                          <input type="number" min="0" step="0.01" inputMode="decimal" placeholder="Escribe el descuento"
+                            aria-label="Valor de descuento general" value={globalPromotionValue}
+                            onChange={e=>{setPromoApproval(null);setGlobalPromotionValue(e.target.value);}}/>
+                          <small>{globalPromotionMode==="final" ? "El total a cobrar será exactamente el importe indicado, después de los descuentos por artículo." : "El descuento general se acumula con las promociones por artículo y se calcula sobre el total original de "+money(cartOriginalSubtotal)+"."}</small>
+                          <strong style={{color:"#175a37"}}>
+                            Ahorro general: {Number.isFinite(generalDiscount)?money(generalDiscount):"Revisa el valor"}
+                          </strong>
+                        </div>
+                      )}
                       <div className="pos-total-row">
                         <span>Total</span>
-                        <strong>{money(cartSubtotal)}</strong>
+                        <strong>{Number.isFinite(cartSubtotal)?money(cartSubtotal):"Importe inválido"}</strong>
                       </div>
 
                       {cartTotalDiscount>0 && (
@@ -2002,7 +2130,16 @@ export default function PosPage() {
                             <span>Precio original</span><strong>{money(cartOriginalSubtotal)}</strong>
                           </div>
                           <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
-                            <span>Ahorro total por promociones</span><strong>−{money(cartTotalDiscount)}</strong>
+                            <span>Campañas automáticas</span><strong>−{money(autoDiscountTotal)}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
+                            <span>Descuentos por artículo</span><strong>−{money(manualDiscountTotal)}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,color:"#26704b"}}>
+                            <span>Descuento general</span><strong>−{Number.isFinite(generalDiscount)?money(generalDiscount):"Inválido"}</strong>
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,fontWeight:800,color:"#21543a"}}>
+                            <span>Ahorro total</span><strong>−{Number.isFinite(cartTotalDiscount)?money(cartTotalDiscount):"Inválido"}</strong>
                           </div>
                         </div>
                       )}
