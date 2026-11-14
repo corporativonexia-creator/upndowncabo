@@ -1851,6 +1851,16 @@ export default function PosPage() {
               <div className="pos-stat"><span>Rol</span><strong>{roleLabel}</strong></div>
             </div>
 
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+              <a className="pos-btn secondary" href="/pos/recepciones"
+                style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                🔧 Recibir equipo para servicio
+              </a>
+              <span className="pos-muted" style={{ alignSelf: "center" }}>
+                Disponible sin abrir turno de caja · Comprobante cliente y taller
+              </span>
+            </div>
+
             {access.open_shift_id ? (
               <>
                 <div className="pos-ready">
