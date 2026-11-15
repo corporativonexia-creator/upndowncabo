@@ -4,8 +4,9 @@
  * Applies only when /vista-previa renders #updown-store.uds-preview.
  * No DOM, navigation, event, filter, inventory, checkout or responsive logic changes.
  * The current full-bleed category photos, dark course section, and dark footer remain.
- * DO NOT set: display, visibility, position, pointer-events, z-index, order,
- * grid-template-*, flex-direction, overflow, transform, width, height or content.
+ * Design-only exception: the user-approved List and mobile News layouts
+ * override display/grid sizes at the bottom of this file. Never change
+ * pointer-events, stacking, state, navigation, filters or data bindings.
  */
 
 /* Brand tokens: white canvas, deep golf green, muted neutrals, discreet lime. */
@@ -369,7 +370,7 @@
     gap:10px!important;
     align-items:start!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) {
     display:grid!important;
     grid-template-columns:minmax(100px,34%) minmax(0,1fr)!important;
     grid-template-rows:auto!important;
@@ -380,51 +381,51 @@
     background:#fff!important;
     box-shadow:none!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) .uds-journal-media {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-media {
     width:100%!important;
     height:136px!important;
     min-height:136px!important;
     max-height:136px!important;
     overflow:hidden!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) .uds-journal-body {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-body {
     display:flex!important;
     flex-direction:column!important;
     justify-content:center!important;
     min-width:0!important;
     padding:10px 13px!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) h3 {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) h3 {
     font-size:15px!important;
     line-height:1.25!important;
     margin:5px 0!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) p {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) p {
     font-size:11px!important;
     line-height:1.4!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open) :is(button,a) {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) :is(button,a) {
     font-size:11px!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-open {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) {
     display:block!important;
     width:100%!important;
     height:auto!important;
     border-radius:15px!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-open .uds-journal-media {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) .uds-journal-media {
     width:100%!important;
     height:215px!important;
     min-height:215px!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-open .uds-journal-body {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) .uds-journal-body {
     padding:17px!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-open h3 {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) h3 {
     font-size:21px!important;
     line-height:1.25!important;
   }
-  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-open p {
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) p {
     font-size:13px!important;
     line-height:1.6!important;
   }
@@ -440,4 +441,71 @@
 }
 #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo:not(.is-open) .uds-service-title small {
   color:#e7eecf!important;
+}
+
+
+/* PREMIUM WHITE / LIST AND READER POLISH V3
+   Reader behavior in production: managed stories use #udsEditorialReader,
+   legacy stories use .is-expanded; no JS or links are modified. */
+@media (max-width: 760px) {
+  /* Compact news list: readable eyebrow and predictable two-line summaries. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-summary small {
+    display: block !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    color: #557966 !important;
+    letter-spacing: .055em !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-summary h3 {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-lead {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    color: #65756b !important;
+    margin: 5px 0 8px !important;
+    min-height: 0 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    min-height: 36px !important;
+    font-size: 11px !important;
+    color: #123d32 !important;
+  }
+  /* The existing article-opening button remains keyboard and touch usable. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card .uds-journal-toggle:focus-visible {
+    outline: 2px solid #7aaf6c !important;
+    outline-offset: 3px !important;
+  }
+  /* Expanded legacy articles: title and body return to normal text flow. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-expanded .uds-journal-summary h3 {
+    display: block !important;
+    overflow: visible !important;
+    font-size: 21px !important;
+    -webkit-line-clamp: unset !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-expanded .uds-journal-lead {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: unset !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Service cards: a not-yet-loaded remote image never leaves invisible copy. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.uds-preview-service-coming .uds-service-title h3 {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.uds-preview-service-coming .uds-service-title small {
+  color: #8b693d !important;
 }
