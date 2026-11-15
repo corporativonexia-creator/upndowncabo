@@ -1,0 +1,279 @@
+/*
+ * UP AND DOWN · Premium White — visual-only skin, 2026-11-14
+ *
+ * Applies only when /vista-previa renders #updown-store.uds-preview.
+ * No DOM, navigation, event, filter, inventory, checkout or responsive logic changes.
+ * The current full-bleed category photos, dark course section, and dark footer remain.
+ * DO NOT set: display, visibility, position, pointer-events, z-index, order,
+ * grid-template-*, flex-direction, overflow, transform, width, height or content.
+ */
+
+/* Brand tokens: white canvas, deep golf green, muted neutrals, discreet lime. */
+#updown-store.uds-preview {
+  --ivory: #ffffff;
+  --warm: #f6f8f6;
+  --green: #123d32;
+  --green-2: #2f7058;
+  --gold: #b7de45;
+  --ink: #22372e;
+  --muted: #64746b;
+  --white: #ffffff;
+  --line: rgba(18, 61, 50, .12);
+  --shadow: 0 14px 36px rgba(18, 61, 50, .09);
+  --shadow-soft: 0 5px 18px rgba(18, 61, 50, .045);
+  background: #ffffff !important;
+  color: #22372e;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+/* Uniform white sections, preserving existing order, layout and all content. */
+#updown-store.uds-preview #udsCategories,
+#updown-store.uds-preview .uds-brands-section,
+#updown-store.uds-preview #udsNew,
+#updown-store.uds-preview #udsCatalog,
+#updown-store.uds-preview #udsServices,
+#updown-store.uds-preview #udsJournal,
+#updown-store.uds-preview #udsAbout,
+#updown-store.uds-preview #udsVisit {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+/* The golf-course experience and footer intentionally retain brand contrast. */
+#updown-store.uds-preview #udsCourses {
+  background: #123d32 !important;
+}
+#updown-store.uds-preview .uds-footer {
+  background: #0c3027 !important;
+}
+
+/* Editorial headings, restrained labels and consistent reading text. */
+#updown-store.uds-preview .uds-section-head h2,
+#updown-store.uds-preview .uds-about h2,
+#updown-store.uds-preview .uds-visit-heading h2 {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 400 !important;
+  letter-spacing: -.028em !important;
+}
+#updown-store.uds-preview .uds-section-head .uds-section-intro,
+#updown-store.uds-preview .uds-section-intro,
+#updown-store.uds-preview .uds-about-copy p {
+  color: #63736a !important;
+}
+#updown-store.uds-preview .uds-section-head .uds-eyebrow,
+#updown-store.uds-preview .uds-eyebrow {
+  color: #45725c;
+  letter-spacing: .105em;
+}
+#updown-store.uds-preview #udsCourses .uds-section-head h2 {
+  color: #ffffff !important;
+}
+#updown-store.uds-preview #udsCourses .uds-section-intro,
+#updown-store.uds-preview #udsCourses .uds-eyebrow {
+  color: #d3e5d9 !important;
+}
+
+/* Navigation: replace the warm glass tint with a crisp, quiet white. */
+@media (min-width: 1024px) {
+  #updown-store.uds-preview .uds-header {
+    background: rgba(255, 255, 255, .98) !important;
+    border-bottom-color: #e7ece8 !important;
+    box-shadow: 0 2px 12px rgba(18, 61, 50, .045) !important;
+    color: #123d32 !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo,
+  #updown-store.uds-preview .uds-header .uds-top-actions,
+  #updown-store.uds-preview .uds-header .uds-nav-link {
+    color: #123d32 !important;
+  }
+}
+.uds-native-mobile-header.uds-preview-mobile-header {
+  background: rgba(255, 255, 255, .97) !important;
+  border-bottom-color: #e7ece8 !important;
+  box-shadow: 0 2px 13px rgba(18, 61, 50, .05) !important;
+  color: #123d32 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-actions button {
+  background: #ffffff !important;
+  border-color: #e2e9e4 !important;
+  color: #123d32 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language {
+  background: #f5f8f5 !important;
+  border-color: #dae5dc !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language button {
+  background: transparent !important;
+  border: 0 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language button[aria-pressed="true"] {
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-service-logo.is-vs-golf {
+  background: #101815 !important;
+}
+
+/* Smart search: change surfaces only. Never touch its open states or JS selectors. */
+#updown-store.uds-preview .uds-discovery,
+#updown-store.uds-preview .uds-discovery-card {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #22372e !important;
+}
+#updown-store.uds-preview .uds-discovery-card,
+#updown-store.uds-preview .uds-catalog-filter-box {
+  border: 1px solid #e3eae5 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 5px 19px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview #udsAdvancedFilters,
+#updown-store.uds-preview .uds-advanced-filters-inner,
+#updown-store.uds-preview #udsCatalogFilterBody {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+#updown-store.uds-preview .uds-discovery input[type="text"],
+#updown-store.uds-preview .uds-discovery input[type="search"],
+#updown-store.uds-preview .uds-discovery select,
+#updown-store.uds-preview .uds-catalog-filter-box input[type="text"],
+#updown-store.uds-preview .uds-catalog-filter-box input[type="search"],
+#updown-store.uds-preview .uds-catalog-filter-box select,
+#updown-store.uds-preview #udsPreviewCatalogTools select {
+  background: #f8faf8 !important;
+  background-image: none !important;
+  border-color: #dae5dc !important;
+  color: #203d30 !important;
+}
+#updown-store.uds-preview .uds-discovery :is(input, select):focus-visible,
+#updown-store.uds-preview .uds-catalog-filter-box :is(input, select):focus-visible,
+#updown-store.uds-preview #udsPreviewCatalogTools :is(input, select):focus-visible {
+  outline: 2px solid #89b796 !important;
+  outline-offset: 2px !important;
+}
+#updown-store.uds-preview .uds-filter-toggle,
+#updown-store.uds-preview .uds-catalog-filter-toggle,
+#updown-store.uds-preview #udsClearFilters {
+  border-color: #dce7df !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview .uds-catalog-bar,
+#updown-store.uds-preview #udsPreviewCatalogTools,
+#updown-store.uds-preview #udsPreviewCatalogPager {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+/* Categories: retain original imagery, crop, overlays, click targets and ordering. */
+#updown-store.uds-preview #udsCategoryGrid > .uds-category-tile {
+  border: 1px solid #e3e9e4 !important;
+  box-shadow: 0 5px 18px rgba(18, 61, 50, .06) !important;
+}
+#updown-store.uds-preview #udsCategoryGrid > .uds-category-tile:hover {
+  border-color: #cbd9cf !important;
+  box-shadow: 0 10px 24px rgba(18, 61, 50, .1) !important;
+}
+#updown-store.uds-preview #udsCategories .uds-category-more {
+  background: #ffffff !important;
+  border-color: #d6e4da !important;
+  color: #123d32 !important;
+}
+
+/* Product results: neutral photography backgrounds and subtle outlines. */
+#updown-store.uds-preview .uds-card,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card {
+  background: #ffffff !important;
+  border-color: #e3eae5 !important;
+  box-shadow: 0 4px 16px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview .uds-card:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card:hover {
+  box-shadow: 0 10px 26px rgba(18, 61, 50, .09) !important;
+}
+#updown-store.uds-preview .uds-card-media,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card-media,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview .uds-card h3,
+#updown-store.uds-preview .uds-card .uds-price,
+#updown-store.uds-preview .uds-price-row {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview .uds-card .uds-category {
+  color: #68796e !important;
+}
+#updown-store.uds-preview #udsPreviewCatalogPager button {
+  border-color: #dbe5dd !important;
+}
+
+/* Services, news and benefits: clean white cards without changing expansion UX. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card,
+#updown-store.uds-preview .uds-journal-card,
+#updown-store.uds-preview .uds-benefit {
+  background: #ffffff !important;
+  border-color: #e4eae5 !important;
+  box-shadow: 0 5px 18px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:hover,
+#updown-store.uds-preview .uds-journal-card:hover {
+  box-shadow: 0 11px 26px rgba(18, 61, 50, .095) !important;
+}
+#updown-store.uds-preview .uds-journal-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview .uds-service-head h3,
+#updown-store.uds-preview .uds-journal-card h3,
+#updown-store.uds-preview .uds-benefit strong {
+  color: #123d32;
+}
+/* Preserve white text on deliberately dark green featured-service headers. */
+#updown-store.uds-preview #udsServices .uds-service-card.is-featured .uds-service-title h3 {
+  color: #ffffff !important;
+}
+#updown-store.uds-preview #udsServices .uds-service-card.is-featured .uds-service-title small {
+  color: #e4eecb !important;
+}
+
+/* About + in-store visit: matte surfaces, keep the green contact panel. */
+#updown-store.uds-preview .uds-benefits {
+  background: #e7eee9 !important;
+  border-color: #e7eee9 !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview #udsVisit {
+  border-top: 1px solid #e8eee8 !important;
+}
+#updown-store.uds-preview #udsVisit .uds-visit-directions {
+  background: #123d32 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(18, 61, 50, .08) !important;
+}
+#updown-store.uds-preview #udsVisit .uds-visit-contact {
+  background: #ffffff !important;
+  border-color: #e3eae4 !important;
+  box-shadow: 0 4px 16px rgba(18, 61, 50, .04) !important;
+}
+
+/* Preserve the layered modal and cart logic. Update only surface colors. */
+#updown-store.uds-preview #udsModal,
+#updown-store.uds-preview #udsCart,
+#updown-store.uds-preview #udsSuccessModal {
+  background: #ffffff !important;
+}
+#updown-store.uds-preview .uds-modal-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview #udsCart .uds-cart-head {
+  border-bottom-color: #e2eae3 !important;
+}
+#updown-store.uds-preview .uds-shipping-note {
+  color: #586e60 !important;
+}
+
+/* Keyboard focus: visible and consistent, with no hit-area change. */
+#updown-store.uds-preview :focus-visible {
+  outline-color: #7aaf6c !important;
+}
