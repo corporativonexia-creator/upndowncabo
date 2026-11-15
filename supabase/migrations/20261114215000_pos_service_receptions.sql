@@ -157,15 +157,32 @@ create or replace function public.pos_reception_checkout(
 as $checkout$
 declare
   a jsonb; r public.pos_service_receptions%rowtype;
-  item jsonb; sale jsonb;
-  v_service_lines int; v_quantity int;
+  item jsonb; sale jsonb; previous_sale public.pos_sales%rowtype;
+  v_service_lines int;
 begin
   a:=public.pos_reception_access(p_device_token);
   if p_reception_id is null then raise exception 'RECEPTION_ID_REQUIRED'; end if;
   select * into r from public.pos_service_receptions
     where id=p_reception_id for update;
   if not found then raise exception 'RECEPTION_NOT_FOUND'; end if;
-  if r.status='delivered' then raise exception 'RECEPTION_ALREADY_DELIVERED'; end if;
+  if r.status='delivered' then
+    -- A network retry with the SAME checkout request returns the original sale.
+    -- All other attempts are rejected, preventing a duplicated payment.
+    select * into previous_sale from public.pos_sales where id=r.checkout_sale_id;
+    if found and previous_sale.status='completed'
+      and nullif(previous_sale.metadata->>'pos_request_id','') is not null
+      and previous_sale.metadata->>'pos_request_id' = p_payments #>> '{0,metadata,pos_request_id}'
+      and previous_sale.metadata->'request_payload' = jsonb_build_object(
+        'items',p_items,'payments',p_payments,'discount',p_discount_amount,
+        'notes',p_notes,'approval',p_promo_approval_token) then
+      return jsonb_build_object('ok',true,'sale_id',previous_sale.id,
+        'sale_number',previous_sale.sale_number,'total',previous_sale.total,
+        'currency',previous_sale.currency,'subtotal',previous_sale.subtotal,
+        'discount_amount',previous_sale.discount_amount,'replayed',true,
+        'service_reception_id',r.id,'service_reception_status','delivered');
+    end if;
+    raise exception 'RECEPTION_ALREADY_DELIVERED';
+  end if;
   if r.status<>'ready' then raise exception 'RECEPTION_NOT_READY'; end if;
   if p_items is null or jsonb_typeof(p_items)<>'array' then raise exception 'SALE_ITEMS_REQUIRED'; end if;
   if jsonb_array_length(p_items)=0 then raise exception 'SALE_ITEMS_REQUIRED'; end if;
