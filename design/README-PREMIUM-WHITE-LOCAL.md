@@ -122,6 +122,18 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 5. Revisar móviles a 320, 390 y 440 px; controles sin cortes, textos legibles, selección y cierre funcionando.
 6. No completar pedidos ni modificar datos de producción desde la sesión local.
 
+### PW-UX-04 · Autocierre suave de filtros móviles — Implementado, pendiente de verificación local
+
+**Solicitud (15-nov-2026):** al pulsar «Aplicar filtros» o «Borrar filtros» dentro del panel del catálogo móvil, ejecutar primero la acción existente y después contraer suavemente el panel para mostrar los productos debajo.
+
+**Implementación aislada:** archivo nuevo `src/app/vista-previa/preview-filter-auto-collapse.tsx`, importado únicamente por `src/app/vista-previa/page.tsx`. Registra un listener de clic en la fase de burbujeo del documento para los botones actuales `#udsCatalogApply` y `#udsCatalogClear` exclusivamente cuando la raíz es `#updown-store.uds-preview` y la ventana es menor de 1024 px. Tras el manejador original de los botones, elimina la clase `.is-open` y actualiza `aria-expanded`; reutiliza la animación CSS ya existente (0.25 s). Si el foco estaba dentro del panel cerrado, lo devuelve al botón de apertura.
+
+**Protección funcional:** sin cambios en `public/updown-parity-runtime.js`, filtros, consulta a Supabase, opciones de selects, ventas, inventario ni `main`. En escritorio no cambia el comportamiento.
+
+**Validación local:** abrir «Filtrar catálogo», seleccionar marca/categoría, pulsar «Aplicar filtros» y confirmar que se contrae suavemente mostrando resultados filtrados. Reabrir, pulsar «Borrar filtros», verificar cierre y recuperación del recuento sin filtros. Probar el control por teclado y comprobar que el botón «Filtrar catálogo» permite reabrir el panel. Asegurar que a partir de 1024 px no se aplican estos cierres.
+
+**Actualización de copia ZIP:** esta mejora requiere descargar **dos archivos** desde la misma rama: `src/app/vista-previa/page.tsx` y `src/app/vista-previa/preview-filter-auto-collapse.tsx`. No se requiere actualizar `premium-white.css` para esta solicitud si ya se descargó la corrección móvil del filtro.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
