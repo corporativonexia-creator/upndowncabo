@@ -321,6 +321,47 @@ test('POS Taller: cashier can receive without a shift, repeat safely, and never 
  await sql("update pos_shifts set status='open',closed_at=null where id=$1",[shift]);
 });
 
+test('POS Taller: ready -> priced checkout -> delivered is atomic and can be charged only once',async()=>{
+ const service=(await one("select public.pos22_admin_create_service('QA Taller entrega',$1) result",[category])).result;
+ const receive=async()=> (await one(
+  'select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
+  [token,randomUUID(),'Cliente Taller QA','6241234567','Putter en servicio QA',service.id,
+   'Cambio de grip de prueba','Desgaste superficial observado','Funda original']
+ )).result;
+ const r=await receive();
+ assert.equal(r.status,'received');
+ const saleCount=(await one('select count(*)::int n from pos_sales')).n;
+ const movements=(await one('select count(*)::int n from inventory_movements')).n;
+ const sellLinked=async(price,payment)=>one(
+  'select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',
+  [token,r.id,JSON.stringify(items(service.id,{service_unit_price:price})),
+   JSON.stringify([{method:'cash',amount:payment,metadata:{pos_request_id:randomUUID()}}])]
+ );
+ await assert.rejects(sellLinked(450,450),/RECEPTION_NOT_READY/);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
+ const ready=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ assert.equal(ready.status,'ready');
+ const again=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ assert.equal(again.ready_at,ready.ready_at);
+ await assert.rejects(sellLinked(0,0),/RECEPTION_SERVICE_PRICE_OR_QUANTITY_INVALID/);
+ await assert.rejects(sellLinked(450,100),/PAYMENT_TOTAL_MISMATCH/);
+ assert.equal((await one('select status from pos_service_receptions where id=$1',[r.id])).status,'ready');
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
+ const result=(await sellLinked(450,450)).result;
+ assert.equal(result.service_reception_status,'delivered');
+ assert.ok(result.sale_id);
+ const linked=await one('select status,checkout_sale_id,delivered_at from pos_service_receptions where id=$1',[r.id]);
+ assert.equal(linked.status,'delivered');
+ assert.equal(linked.checkout_sale_id,result.sale_id);
+ assert.ok(linked.delivered_at);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount+1);
+ await assert.rejects(sellLinked(450,450),/RECEPTION_ALREADY_DELIVERED/);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2) result',[token,r.id]),/RECEPTION_ALREADY_DELIVERED/);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount+1);
+ assert.equal((await one('select count(*)::int n from inventory_movements')).n,movements);
+ assert.equal((await one('select stock from products where id=$1',[service.id])).stock,0);
+});
+
 test('POS Taller: no anonymous access, unapproved terminal or inactive service',async()=>{
  const flags=await one(`select
   has_function_privilege('anon','public.pos_reception_create(text,uuid,text,text,text,uuid,text,text,text)','EXECUTE') anon_create,
