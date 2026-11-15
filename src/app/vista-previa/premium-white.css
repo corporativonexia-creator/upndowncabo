@@ -699,3 +699,151 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
     font-size: 13px !important;
   }
 }
+
+
+/* PW-UX-03 / SMART COLLECTION FILTERS — presentation only.
+   The existing filter controls, IDs, events, option values, open/closed
+   classes and native select behavior are unchanged.
+   Restore legible select chevrons that the earlier white skin suppressed. */
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox {
+  background: #ffffff !important;
+  border: 1px solid #e0e8e1 !important;
+  border-radius: 17px !important;
+  box-shadow: 0 3px 15px rgba(18,61,50,.035) !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head strong {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle {
+  background: #f4f8f4 !important;
+  color: #123d32 !important;
+  border: 1px solid #d9e6dc !important;
+  border-radius: 12px !important;
+  min-height: 46px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: .035em !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:focus-visible {
+  background: #eaf2ec !important;
+  border-color: #a7c7b0 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle[aria-expanded="true"] {
+  background: #eaf2eb !important;
+  border-color: #b4ceb9 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters .uds-control {
+  min-height: 46px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d5e2d9 !important;
+  border-radius: 11px !important;
+  color: #143e35 !important;
+  font: 600 12px/1.35 Inter, "Segoe UI", Arial, sans-serif !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox input.uds-control::placeholder {
+  color: #75867b !important;
+  opacity: 1 !important;
+}
+/* Always show the downward arrow, including on iOS and Chrome mobile.
+   It is a CSS image on the EXISTING native selector, not a new control. */
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox select.uds-control,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters select.uds-control {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #446c55 50%),
+    linear-gradient(135deg, #446c55 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 19px) center,
+    calc(100% - 14px) center !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+  padding-left: 12px !important;
+  padding-right: 33px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control:focus,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control:focus-visible,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters .uds-control:focus-visible {
+  border-color: #78a787 !important;
+  outline: 2px solid rgba(120,167,135,.32) !important;
+  outline-offset: 1px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox select.uds-control:has(option:checked:not([value="all"]):not([value="featured"])) {
+  background-color: #f0f7f1 !important;
+  border-color: #a9cbb0 !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-actions {
+  gap: 9px !important;
+  margin-top: 13px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action {
+  min-height: 44px !important;
+  border-radius: 11px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .02em !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action.is-secondary {
+  background: #ffffff !important;
+  border: 1px solid #d3e1d7 !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action.is-primary {
+  background: #123d32 !important;
+  border: 1px solid #123d32 !important;
+  color: #ffffff !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action:focus-visible,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:focus-visible {
+  outline: 2px solid #78a787 !important;
+  outline-offset: 2px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsClearFilters {
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  letter-spacing: .035em !important;
+  color: #446957 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools .uds-preview-view-switch {
+  background: #f5f8f5 !important;
+  border-color: #d9e5db !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools .uds-preview-view-switch button[aria-pressed="true"] {
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools select {
+  border-color: #d4e1d8 !important;
+  background-color: #ffffff !important;
+  color: #123d32 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 760px) {
+  /* Keep the original collapsed/expanded filtering mechanism intact. */
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox {
+    padding: 9px !important;
+    margin-bottom: 17px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle {
+    min-height: 47px !important;
+    font-size: 12px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control {
+    font-size: 13px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox.is-open .uds-catalog-filter-grid {
+    row-gap: 10px !important;
+    column-gap: 10px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action {
+    font-size: 10px !important;
+    padding: 10px 9px !important;
+  }
+}
