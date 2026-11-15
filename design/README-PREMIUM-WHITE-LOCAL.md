@@ -72,7 +72,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 ## Pendientes UX — Premium White
 
-### PW-UX-01 · Fondo blanco puro sin degradado lateral — P1 / Corrección ampliada; pendiente validación visual
+### PW-UX-01 · Fondo blanco puro sin degradado lateral — RESUELTO (verificación móvil del usuario, 15-nov-2026)
 **Reportado:** 15-nov-2026. **Contexto:** captura de localhost en móvil, tras las mejoras de Noticias, justo antes de «Quiénes somos».
 
 **Problema observado:** aparece una franja/velo degradado gris verdoso hacia el borde derecho de las secciones de contenido (muy visible alrededor de Noticias y Quiénes somos). El fondo de la propuesta debe ser blanco puro, sin bruma, tinte ni degradado en los laterales.
@@ -85,10 +85,12 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Ajuste adicional (15-nov-2026):** el primer cambio no eliminó la franja. Al revisar `globals.css` se identificaron otras dos sombras laterales persistentes: el carrito `#udsCart` (`-30px 0 90px`) y el menú móvil anterior `#udsMobileMenu` (`-24px 0 70px !important`). Se agregó en `premium-white.css` una regla de alcance privado para anular las sombras del carrito y ambos menús, abiertos o cerrados, sin alterar estados, navegación ni overlay. **Falta confirmar el resultado tras actualizar el CSS local**; no marcar cerrado hasta comprobarlo visualmente.
 
+**Validación:** el usuario confirmó el 15-nov-2026 que, tras actualizar el CSS local con la eliminación de las tres sombras laterales, **el degradado ya no se ve** en su navegador. Incidencia cerrada para el caso móvil reportado. Quedan las comprobaciones generales de regresión a otros anchos y con los paneles abiertos.
+
 **Criterios de aceptación:** inspeccionar a 320, 390, 440 px y escritorio; fondo blanco puro de lado a lado en los espacios sin imágenes; sin halos ni bandas verdosas al hacer scroll; contraste intacto en menú, botones, fotos, tarjetas, lector de noticias, filtro inteligente y fichas. Solo CSS, cambios aislados en premium-white.css; sin modificaciones de funciones, Supabase, POS, carrito, catálogo, orden ni despliegues.
 
 ### Próximas verificaciones de UX
-1. Diagnosticar y corregir PW-UX-01.
+1. PW-UX-01 resuelto en el móvil reportado; conservar en regresión visual con paneles abiertos y otros anchos.
 2. Validar en Chrome que la vista Lista conserve una sola columna y que las noticias mantengan su lector original.
 3. Continuar con revisión visual del filtro inteligente (campos, estados y controles), sin cambiar su lógica.
 
