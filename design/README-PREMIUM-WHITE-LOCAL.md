@@ -94,14 +94,29 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 2. Validar en Chrome que la vista Lista conserve una sola columna y que las noticias mantengan su lector original.
 3. Continuar con revisión visual del filtro inteligente (campos, estados y controles), sin cambiar su lógica.
 
-### PW-UX-02 · Buscador en tiempo real — Capa visual lista, pendiente de pruebas locales
+### PW-UX-02 · Buscador en tiempo real — Mejora visual validada por el usuario
 **Reportado:** 15-nov-2026; interfaz móvil con búsqueda de productos, categorías y marcas.
 
 **Regla de integridad:** el buscador ya consulta coincidencias automáticamente en cada cambio del texto. Conservar sin cambios las funciones `window.__UPDOWN_SEARCH_PRODUCTS__`, `window.__UPDOWN_OPEN_SEARCH_PRODUCT__`, el estado de carga, historial, filtros, contador de coincidencias, límite inicial de seis resultados, «Ver más resultados», idiomas, cerrar el diálogo y foco del teclado. No añadir botón obligatorio para ejecutar la búsqueda.
 
 **Intervención visual:** únicamente en `premium-white.css`, reglas aisladas para el diálogo `.uds-search-panel` (fuera de la raíz de la tienda), su campo, chips y tarjetas de resultados: fondo blanco puro, contraste verde, precios más destacados, nombres legibles y objetivos táctiles apropiados. No se modificó `store-search.tsx` ni `store-search.css`.
 
-**Validación pendiente:** en `http://localhost:3000/vista-previa` abrir búsqueda, escribir letras de una marca o modelo, comprobar que los resultados se muestran mientras se escribe, tocar una ficha, volver, borrar texto, usar chips y «Ver más», cerrar y reabrir, y repetir en ES/EN y a 320/390/440 px. Confirmar visualmente que los controles permanecen accesibles con el teclado del teléfono abierto.
+**Validación parcial:** el usuario confirmó el 15-nov-2026 que la presentación del buscador mejoró en localhost. Conservamos como regresión pendiente: en `http://localhost:3000/vista-previa` abrir búsqueda, escribir letras de una marca o modelo, comprobar que los resultados se muestran mientras se escribe, tocar una ficha, volver, borrar texto, usar chips y «Ver más», cerrar y reabrir, y repetir en ES/EN y a 320/390/440 px. Confirmar visualmente que los controles permanecen accesibles con el teclado del teléfono abierto.
+
+### PW-UX-03 · Filtro inteligente del catálogo — CSS implementado, pruebas locales pendientes
+**Fecha:** 15-nov-2026. **Ámbito:** solo estilos de `/vista-previa`, archivo `src/app/vista-previa/premium-white.css`.
+
+**Qué cambia:** panel de filtros sobre fondo blanco puro, botón «Filtrar catálogo» más visible y con altura táctil, selects con flechas recuperadas, estados activos con contraste verde suave, campos de texto legibles, botones «Borrar filtros» / «Aplicar filtros» claros, ordenamiento y selector de Galería/Lista visualmente consistentes. En 320–760 px se ajustan paddings y tipografías sin alterar las columnas ni los estados de apertura.
+
+**Qué NO cambia:** `#udsCatalogFilterToggle`, `#udsCatalogFilterBody`, `#udsCatalogCategory`, `#udsCatalogCondition`, `#udsCatalogBrand`, `#udsCatalogHand`, `#udsCatalogFlex`, `#udsCatalogLoft`, `#udsCatalogSort`, `#udsCatalogSearch`, `#udsCatalogClear`, `#udsCatalogApply`, `#udsClearFilters`, su JS/eventos, el filtro inteligente dinámico, reglas de disponibilidad de campos, datos, URLs, promociones, ventas o inventario. La apertura/cierre sigue bajo la clase original `.is-open`; el CSS añadido no cambia `grid-template-rows`, `display`, `opacity` ni `pointer-events` del panel.
+
+**Pruebas locales necesarias:**
+1. Ir a `http://localhost:3000/vista-previa?limit=8` y abrir «Filtrar catálogo».
+2. Seleccionar categorías, condiciones, marcas y especificaciones que correspondan; comprobar que solo aparezcan las opciones aplicables.
+3. Aplicar filtros; validar recuento, productos, orden y controles; después borrar y confirmar restauración.
+4. Alternar Galería y Lista; cambiar número por página; confirmar que ni el filtro ni los resultados se pierden inesperadamente.
+5. Revisar móviles a 320, 390 y 440 px; controles sin cortes, textos legibles, selección y cierre funcionando.
+6. No completar pedidos ni modificar datos de producción desde la sesión local.
 
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
