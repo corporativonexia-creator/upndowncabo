@@ -103,12 +103,16 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Validación parcial:** el usuario confirmó el 15-nov-2026 que la presentación del buscador mejoró en localhost. Conservamos como regresión pendiente: en `http://localhost:3000/vista-previa` abrir búsqueda, escribir letras de una marca o modelo, comprobar que los resultados se muestran mientras se escribe, tocar una ficha, volver, borrar texto, usar chips y «Ver más», cerrar y reabrir, y repetir en ES/EN y a 320/390/440 px. Confirmar visualmente que los controles permanecen accesibles con el teclado del teléfono abierto.
 
-### PW-UX-03 · Filtro inteligente del catálogo — CSS implementado, pruebas locales pendientes
+### PW-UX-03 · Filtro inteligente del catálogo — Filtro móvil rehabilitado en CSS, pruebas locales pendientes
 **Fecha:** 15-nov-2026. **Ámbito:** solo estilos de `/vista-previa`, archivo `src/app/vista-previa/premium-white.css`.
 
 **Qué cambia:** panel de filtros sobre fondo blanco puro, botón «Filtrar catálogo» más visible y con altura táctil, selects con flechas recuperadas, estados activos con contraste verde suave, campos de texto legibles, botones «Borrar filtros» / «Aplicar filtros» claros, ordenamiento y selector de Galería/Lista visualmente consistentes. En 320–760 px se ajustan paddings y tipografías sin alterar las columnas ni los estados de apertura.
 
 **Qué NO cambia:** `#udsCatalogFilterToggle`, `#udsCatalogFilterBody`, `#udsCatalogCategory`, `#udsCatalogCondition`, `#udsCatalogBrand`, `#udsCatalogHand`, `#udsCatalogFlex`, `#udsCatalogLoft`, `#udsCatalogSort`, `#udsCatalogSearch`, `#udsCatalogClear`, `#udsCatalogApply`, `#udsClearFilters`, su JS/eventos, el filtro inteligente dinámico, reglas de disponibilidad de campos, datos, URLs, promociones, ventas o inventario. La apertura/cierre sigue bajo la clase original `.is-open`; el CSS añadido no cambia `grid-template-rows`, `display`, `opacity` ni `pointer-events` del panel.
+
+**Corrección móvil del 15-nov-2026:** al comparar la captura de teléfono con el código se confirmó que `globals.css` todavía incluye una regla heredada `#updown-store.uds-ux-v1 #udsCatalogFilterBox {display:none!important}`. Al mismo tiempo, `mobile-storefront.tsx` oculta `.uds-discovery`, de modo que el usuario móvil no veía ningún filtro. Se añadió en el CSS de la rama privada una anulación solo para pantallas menores de 1024 px, recuperando el panel y el botón originales; cuando está cerrado, el panel conserva el colapso y cuando está abierto responde a la clase `.is-open` original. **No se modificó el código del filtro, los eventos, los valores ni los datos.**
+
+**Validación adicional móvil:** debe aparecer el botón «Filtrar catálogo» sobre la barra de resultados. Pulsarlo debe abrir/cerrar los selectores originales, y Aplicar/Borrar debe seguir funcionando. Revisar también el caso 768–1023 px y comprobar que la vista escritorio >=1024 px no cambia.
 
 **Pruebas locales necesarias:**
 1. Ir a `http://localhost:3000/vista-previa?limit=8` y abrir «Filtrar catálogo».
