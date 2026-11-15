@@ -233,7 +233,7 @@ export default function ServiceRecepcionesPage() {
                     <option value="">Selecciona un servicio del POS</option>
                     {services.map(s => <option key={s.id} value={s.id}>{s.name} · {s.sku}</option>)}
                   </select>
-                  {services.length === 0 && <small>No hay servicios activos. Pide al administrador crear un servicio en Admin → POS → Servicios (precio libre).</small>}
+                  {services.length === 0 && <small>No hay servicios activos. Pide al administrador crear un servicio en Admin → POS → Promociones y servicios → Alta de servicio (precio libre).</small>}
                 </div>
                 <div className={styles.field}><label htmlFor="reception-work">Qué trabajo se realizará</label>
                   <textarea id="reception-work" required minLength={5} maxLength={1500} rows={3}
