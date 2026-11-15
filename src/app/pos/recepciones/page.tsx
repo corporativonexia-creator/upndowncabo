@@ -136,6 +136,24 @@ export default function ServiceRecepcionesPage() {
     } finally { setBusy(false); }
   }
 
+  async function markReady(reception: ServiceReception) {
+    if (busy || !identity || !token) return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const { data, error } = await db.rpc("pos_reception_set_ready", {
+        p_device_token: token, p_reception_id: reception.id,
+      });
+      if (error) throw error;
+      const updated = data as ServiceReception;
+      setSelected(updated);
+      setNotice("Equipo " + receptionFolio(updated.receipt_number) +
+        " listo para entregar. Cuando el cliente venga, escanea el folio en caja y captura el precio.");
+      await refreshHistory(search.trim());
+    } catch (e) {
+      setError("No se pudo actualizar el equipo: " + errorText(e));
+    } finally { setBusy(false); }
+  }
+
   function pdf(reception: ServiceReception, print: boolean) {
     const doc = buildReceptionPdf(reception);
     if (!print) {
@@ -184,7 +202,7 @@ export default function ServiceRecepcionesPage() {
           <div>
             <div className={styles.kicker}>UP AND DOWN · POS / TALLER</div>
             <h1>Recepción de equipos</h1>
-            <p>Comprobante de ingreso para revisión o reparación. No genera venta ni afecta existencias.</p>
+            <p>Recepción, preparación y entrega con cobro posterior desde el POS. Registrar no genera venta ni afecta existencias.</p>
           </div>
           <a href="/pos" className={styles.back}>← Volver al POS</a>
         </header>
@@ -215,7 +233,7 @@ export default function ServiceRecepcionesPage() {
                     <option value="">Selecciona un servicio del POS</option>
                     {services.map(s => <option key={s.id} value={s.id}>{s.name} · {s.sku}</option>)}
                   </select>
-                  {services.length === 0 && <small>No hay servicios activos. Solicita al administrador registrar uno en Admin → POS → Promociones.</small>}
+                  {services.length === 0 && <small>No hay servicios activos. Pide al administrador crear un servicio en Admin → POS → Servicios (precio libre).</small>}
                 </div>
                 <div className={styles.field}><label htmlFor="reception-work">Qué trabajo se realizará</label>
                   <textarea id="reception-work" required minLength={5} maxLength={1500} rows={3}
@@ -240,7 +258,20 @@ export default function ServiceRecepcionesPage() {
                 <div className={styles.saved}>
                   <strong>{receptionFolio(selected.receipt_number)}</strong>
                   <small>{selected.customer_name} · {selected.equipment_description}</small>
+                  <small><strong style={{fontSize:13,display:"inline"}}>
+                    {selected.status === "delivered" ? "ENTREGADO Y COBRADO" : selected.status === "ready" ? "LISTO PARA ENTREGAR" : "RECIBIDO · PENDIENTE"}
+                  </strong> · Precio del servicio pendiente hasta cobrar en caja.</small>
+                  {selected.status === "delivered" && selected.checkout_sale_id &&
+                    <small>Venta vinculada: {selected.checkout_sale_id}</small>}
                   <div className={styles.actions}>
+                    {selected.status === "received" &&
+                      <button type="button" className={styles.primary} disabled={busy}
+                        onClick={() => void markReady(selected)}>✓ Listo para entregar</button>}
+                    {selected.status === "ready" &&
+                      <a href={"/pos?recepcion=" + encodeURIComponent(receptionFolio(selected.receipt_number))}
+                         className={styles.primary} style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>
+                        Escanear y cobrar en POS
+                      </a>}
                     <button type="button" className={styles.primary} disabled={printing} onClick={() => void printThermal(selected)}>
                       {printing ? "Enviando..." : "Imprimir 2 tickets térmicos"}
                     </button>
@@ -252,7 +283,7 @@ export default function ServiceRecepcionesPage() {
             </section>
             <aside className={styles.panel}>
               <h2>Consultar recepciones</h2>
-              <p className={styles.muted}>Busca el folio, nombre, teléfono o equipo. Reimprime sin crear otro registro.</p>
+              <p className={styles.muted}>Busca el folio, nombre, teléfono o equipo. Marca listo, cobra desde el POS o reimprime sin duplicar.</p>
               <form onSubmit={searchHistory} className={styles.actions}>
                 <input aria-label="Buscar recepciones" className={styles.search} maxLength={80}
                   value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ej. SR-000128" />
@@ -263,7 +294,7 @@ export default function ServiceRecepcionesPage() {
                   <button type="button" key={r.id} className={styles.item} onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); }}>
                     <span className={styles.itemLine}><strong>{r.customer_name}</strong><span className={styles.folio}>{receptionFolio(r.receipt_number)}</span></span>
                     <small>{r.equipment_description} · {r.service_name}</small>
-                    <small>{receptionDate(r.received_at)}</small>
+                    <small>{receptionDate(r.received_at)} · {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}</small>
                   </button>
                 ))}
                 {!receptions.length && <div className={styles.empty}>No hay recepciones para mostrar.</div>}
