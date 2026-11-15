@@ -5,6 +5,9 @@ import { jsPDF } from "jspdf";
 export type ServiceReception = {
   id: string;
   receipt_number: number;
+  service_product_id: string;
+  status: "received" | "ready" | "delivered";
+  checkout_sale_id?: string | null;
   customer_name: string;
   customer_phone: string;
   equipment_description: string;
@@ -34,6 +37,34 @@ export function receptionDate(value: string) {
   }).format(new Date(value));
 }
 
+// Code 39 for uppercase workshop folios (SR- + digits).
+// Printed as actual bars on BOTH 80-mm PDF copies, not a decorative stripe.
+const CODE39: Record<string,string> = {
+  "*":"nwnnwnwnn", "-":"nnnnwnwnw",
+  "S":"nnwnnnwwn", "R":"wnnnnnwwn",
+  "0":"nnnwwnwnn", "1":"wnnwnnnnw", "2":"nnwwnnnnw", "3":"wnwwnnnnn",
+  "4":"nnnwwnnnw", "5":"wnnwwnnnn", "6":"nnwwwnnnn", "7":"nnnwnnwnw",
+  "8":"wnnwnnwnn", "9":"nnwwnnwnn",
+};
+function drawReceptionBarcode(doc: jsPDF, folio: string, top: number) {
+  const pattern = ("*" + folio + "*").split("").map(c => CODE39[c]);
+  if (pattern.some(v => !v)) throw new Error("Código de recepción no compatible con Code 39");
+  const unit = 0.34;
+  const wide = 2.5;
+  const widths = pattern.flatMap(part => [...part].map(p => p === "w" ? wide : 1));
+  const total = (widths.reduce((sum, width) => sum + width, 0) + pattern.length - 1) * unit;
+  let x = (80 - total) / 2;
+  doc.setFillColor(0);
+  pattern.forEach((part,index) => {
+    for (let i=0;i<part.length;i++) {
+      const width = (part[i] === "w" ? wide : 1) * unit;
+      if (i % 2 === 0) doc.rect(x, top, width, 12, "F");
+      x += width;
+    }
+    if (index + 1 < pattern.length) x += unit;
+  });
+}
+
 type Field = { label: string; value: string };
 function fieldsFor(reception: ServiceReception): Field[] {
   return [
@@ -53,7 +84,7 @@ export function buildReceptionPdf(reception: ServiceReception) {
   const tester = new jsPDF({ unit: "mm", format: [80, 250] });
   const data = fieldsFor(reception);
   const pageHeight = Math.max(150, Math.ceil(
-    61 + data.reduce((sum, f) => {
+    83 + data.reduce((sum, f) => {
       tester.setFont("helvetica", "normal");
       tester.setFontSize(8);
       return sum + 4.1 + tester.splitTextToSize(f.value, 70).length * 3.8 + 1.5;
@@ -83,6 +114,8 @@ export function buildReceptionPdf(reception: ServiceReception) {
     y += 2;
     rule();
     center(receptionFolio(reception.receipt_number), 18, true);
+    drawReceptionBarcode(doc, receptionFolio(reception.receipt_number), y);
+    y += 16;
     center("COPIA " + copy, 9, true);
     center(receptionDate(reception.received_at), 7);
     rule();
