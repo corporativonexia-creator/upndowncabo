@@ -72,7 +72,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 ## Pendientes UX — Premium White
 
-### PW-UX-01 · Fondo blanco puro sin degradado lateral — P1 / Pendiente
+### PW-UX-01 · Fondo blanco puro sin degradado lateral — P1 / Implementado en rama; pendiente validación visual
 **Reportado:** 15-nov-2026. **Contexto:** captura de localhost en móvil, tras las mejoras de Noticias, justo antes de «Quiénes somos».
 
 **Problema observado:** aparece una franja/velo degradado gris verdoso hacia el borde derecho de las secciones de contenido (muy visible alrededor de Noticias y Quiénes somos). El fondo de la propuesta debe ser blanco puro, sin bruma, tinte ni degradado en los laterales.
@@ -80,6 +80,8 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 **Resultado exigido:** #FFFFFF uniforme a todo lo ancho del fondo general y de las secciones neutras, sin gradiente visible en los bordes. Mantener deliberadamente los fondos gráficos de fotografías/hero, las tarjetas de servicio con fotografía, la sección verde de campos y el footer oscuro.
 
 **Investigar antes de cambiar:** fondos, pseudo-elementos ::before y ::after, gradientes o sombras heredados en #updown-store, contenedores y secciones, .uds-shell, wrappers de vista previa, #udsJournal, #udsAbout, #udsVisit y estilos responsive en globals.css y preview-header.css. No asumir que la causa es un único background: podría ser un elemento superpuesto o una sombra. No desactivar gradientes de las imágenes por accidente.
+
+**Intervención del 15-nov-2026:** se identificó una causa plausible y específica en el menú móvil H53 que se monta fuera de la raíz de la tienda. En `globals.css`, `#udsMobileMenu53` conserva `box-shadow: -28px 0 70px rgba(20,62,53,.18)` mientras permanece oculto con `translate3d(104%,0,0)`. Se agregó únicamente a `premium-white.css` una regla para eliminar esa sombra cuando NO tenga `.is-open`, además de fijar el fondo blanco puro solo en la vista previa. Al abrir el menú sigue utilizando su sombra original. **Pendiente:** comprobar en Chrome que desapareció la franja y que el menú abre/cierra bien.
 
 **Criterios de aceptación:** inspeccionar a 320, 390, 440 px y escritorio; fondo blanco puro de lado a lado en los espacios sin imágenes; sin halos ni bandas verdosas al hacer scroll; contraste intacto en menú, botones, fotos, tarjetas, lector de noticias, filtro inteligente y fichas. Solo CSS, cambios aislados en premium-white.css; sin modificaciones de funciones, Supabase, POS, carrito, catálogo, orden ni despliegues.
 
