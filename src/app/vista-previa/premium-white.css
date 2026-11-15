@@ -509,3 +509,23 @@
 #updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.uds-preview-service-coming .uds-service-title small {
   color: #8b693d !important;
 }
+
+
+/* PW-UX-01 — prevent hidden off-canvas drawer shadow from washing out
+   the right edge of the page.
+   Source: globals.css defines #udsMobileMenu53 with box-shadow:
+   -28px 0 70px rgba(20,62,53,.18), even when translated 104% offscreen.
+   The menu is appended to body, outside #updown-store; use :has to scope
+   changes to /vista-previa. Opening it restores its original shadow. */
+html:has(#updown-store.uds-preview),
+body:has(#updown-store.uds-preview) {
+  background-color: #ffffff !important;
+}
+body:has(#updown-store.uds-preview) #udsMobileMenu53:not(.is-open) {
+  box-shadow: none !important;
+}
+/* Keep content's neutral canvas white; never affect hero, photos,
+   photo readability overlays, dark golf courses or the dark footer. */
+#updown-store.uds-preview {
+  background-color: #ffffff !important;
+}
