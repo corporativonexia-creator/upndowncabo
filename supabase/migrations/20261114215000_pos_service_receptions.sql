@@ -192,12 +192,9 @@ begin
   if v_service_lines<>1 then raise exception 'RECEPTION_SERVICE_REQUIRED_ONCE'; end if;
   select x into item from jsonb_array_elements(p_items) x
   where x->>'product_id'=r.service_product_id::text;
-  if (item->>'quantity') is null
-    or (item->>'quantity') !~ '^[0-9]+
-    or (item->>'quantity')::int<>1
+  if (item->>'quantity') is distinct from '1'
     or item ? 'variant_id'
-    or not (item ? 'service_unit_price')
-    or (item->>'service_unit_price') !~ '^[0-9]+(\.[0-9]{1,2})?
+    or jsonb_typeof(item->'service_unit_price') is distinct from 'number'
     or (item->>'service_unit_price')::numeric<=0 then
     raise exception 'RECEPTION_SERVICE_PRICE_OR_QUANTITY_INVALID';
   end if;
