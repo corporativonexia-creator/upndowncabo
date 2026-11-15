@@ -40,7 +40,7 @@ export function receptionDate(value: string) {
 // Code 39 for uppercase workshop folios (SR- + digits).
 // Printed as actual bars on BOTH 80-mm PDF copies, not a decorative stripe.
 const CODE39: Record<string,string> = {
-  "*":"nwnnwnwnn", "-":"nnnnwnwnw",
+  "*":"nwnnwnwnn", "-":"nwnnnnwnw",
   "S":"nnwnnnwwn", "R":"wnnnnnwwn",
   "0":"nnnwwnwnn", "1":"wnnwnnnnw", "2":"nnwwnnnnw", "3":"wnwwnnnnn",
   "4":"nnnwwnnnw", "5":"wnnwwnnnn", "6":"nnwwwnnnn", "7":"nnnwnnwnw",
