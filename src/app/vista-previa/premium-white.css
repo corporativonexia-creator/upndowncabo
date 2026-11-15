@@ -548,3 +548,154 @@ body:has(#updown-store.uds-preview) #udsMobileMenu53 {
 body:has(#updown-store.uds-preview) #udsMobileMenu53 {
   box-shadow: none !important;
 }
+
+
+/* PW-UX-02 / LIVE SEARCH PRESENTATION — visual only, preview branch.
+   The live search dialog is a sibling of #updown-store, so scope through
+   html:has(...). Never change React, input/change handlers, dynamic result
+   generation, product click, record counts, keyboard focus or scroll lock.
+   Keep the full-height dialog to remain compatible with mobile keyboards. */
+html:has(#updown-store.uds-preview) dialog.uds-search-panel {
+  background: #ffffff !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-shell,
+html:has(#updown-store.uds-preview) .uds-search-content {
+  background: #ffffff !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-signature {
+  color: #4f7660 !important;
+  letter-spacing: .12em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-handle {
+  background: #dae5dc !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-heading h2 {
+  color: #123d32 !important;
+  font-weight: 500 !important;
+  letter-spacing: -.022em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-dismiss {
+  background: #ffffff !important;
+  color: #123d32 !important;
+  border-color: #e1e9e3 !important;
+  box-shadow: none !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form {
+  border: 1px solid #cadccd !important;
+  background: #ffffff !important;
+  box-shadow: 0 3px 12px rgba(18,61,50,.045) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form:focus-within {
+  border-color: #548568 !important;
+  box-shadow: 0 0 0 2px rgba(73,131,92,.12) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form input {
+  color: #123d32 !important;
+  background: transparent !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form input::placeholder {
+  color: #728177 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-content h3 {
+  color: #557162 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips button {
+  background: #f4f7f4 !important;
+  border-color: #dbe6dc !important;
+  color: #123d32 !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips.is-brands button {
+  background: #ffffff !important;
+  border-color: #dce5dd !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips button:hover,
+html:has(#updown-store.uds-preview) .uds-search-chips button:focus-visible {
+  background: #eaf2eb !important;
+  border-color: #9fbea7 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-recents button {
+  color: #123d32 !important;
+  border-bottom-color: #e6ece7 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-count {
+  color: #607568 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #ecf0ec !important;
+  padding-bottom: 11px !important;
+  margin-bottom: 13px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-results {
+  gap: 9px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result {
+  min-height: 102px !important;
+  padding: 10px !important;
+  gap: 12px !important;
+  background: #ffffff !important;
+  border: 1px solid #e3eae5 !important;
+  border-radius: 15px !important;
+  color: #123d32 !important;
+  box-shadow: 0 3px 12px rgba(18,61,50,.035) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result:hover,
+html:has(#updown-store.uds-preview) .uds-search-result:focus-visible {
+  background: #f9fbf9 !important;
+  border-color: #afc7b4 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-thumb {
+  background: #f5f7f5 !important;
+  border-radius: 11px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy {
+  gap: 4px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy small {
+  font-size: 10px !important;
+  color: #6a7e70 !important;
+  font-weight: 700 !important;
+  letter-spacing: .025em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy strong {
+  font: 650 14px/1.34 Inter, "Segoe UI", Arial, sans-serif !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy > span {
+  font: 800 15px/1.3 Inter, "Segoe UI", Arial, sans-serif !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-arrow {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 27px !important;
+  width: 27px !important;
+  height: 27px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: #eef4ef !important;
+  color: #23533b !important;
+  font-size: 20px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-empty strong {
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-more,
+html:has(#updown-store.uds-preview) .uds-search-empty button {
+  border-color: #123d32 !important;
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+@media (max-width: 390px) {
+  html:has(#updown-store.uds-preview) .uds-search-shell {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  html:has(#updown-store.uds-preview) .uds-search-result {
+    gap: 10px !important;
+  }
+  html:has(#updown-store.uds-preview) .uds-search-result-copy strong {
+    font-size: 13px !important;
+  }
+}
