@@ -529,3 +529,22 @@ body:has(#updown-store.uds-preview) #udsMobileMenu53 {
 #updown-store.uds-preview {
   background-color: #ffffff !important;
 }
+
+
+/* PW-UX-01 / V4 OFFCANVAS SHADOWS — 15 Nov 2026
+   Additional confirmed shadow source: the cart drawer exists offscreen
+   on every page, and globals.css sets a -30px 0 90px shadow on it.
+   The legacy mobile drawer has its own -24px 0 70px !important shadow.
+   Both cast a right-edge tint even when translated out of the viewport.
+   Remove shadows in ALL states only on /vista-previa.
+   Do not alter transforms, pointer-events, opacity, z-index or overlay. */
+#updown-store.uds-preview .uds-cart,
+#updown-store.uds-preview #udsCart,
+#updown-store.uds-preview.uds-ux-v3 .uds-mobile-menu,
+#updown-store.uds-preview.uds-ux-v3 #udsMobileMenu {
+  box-shadow: none !important;
+}
+/* The current H53 drawer is mounted directly under <body>. */
+body:has(#updown-store.uds-preview) #udsMobileMenu53 {
+  box-shadow: none !important;
+}
