@@ -17,7 +17,12 @@ create table public.pos_service_receptions (
   employee_name text not null,
   terminal_id uuid not null references public.pos_terminals(id) on delete restrict,
   terminal_name text not null,
-  received_at timestamptz not null default now()
+  received_at timestamptz not null default now(),
+  status text not null default 'received'
+    check (status in ('received','ready','delivered')),
+  ready_at timestamptz,
+  delivered_at timestamptz,
+  checkout_sale_id uuid unique references public.pos_sales(id) on delete restrict
 );
 create index pos_service_receptions_received_idx on public.pos_service_receptions(received_at desc);
 create index pos_service_receptions_customer_idx on public.pos_service_receptions(lower(customer_name));
@@ -117,4 +122,89 @@ end;
 $recent$;
 revoke all on function public.pos_reception_recent(text,text) from PUBLIC,anon,authenticated;
 grant execute on function public.pos_reception_recent(text,text) to authenticated;
+
+-- Avance mínimo del taller: Recibido -> Listo para entregar.
+-- Se conserva el ticket de recepción y el precio queda sin asignar.
+create or replace function public.pos_reception_set_ready(p_device_token text,p_reception_id uuid)
+returns jsonb language plpgsql security definer set search_path=''
+as $ready$
+declare a jsonb; r public.pos_service_receptions%rowtype;
+begin
+  a:=public.pos_reception_access(p_device_token);
+  select * into r from public.pos_service_receptions
+    where id=p_reception_id for update;
+  if not found then raise exception 'RECEPTION_NOT_FOUND'; end if;
+  if r.status='delivered' then raise exception 'RECEPTION_ALREADY_DELIVERED'; end if;
+  if r.status='received' then
+    update public.pos_service_receptions
+      set status='ready', ready_at=now()
+      where id=r.id returning * into r;
+  end if;
+  return to_jsonb(r);
+end;
+$ready$;
+revoke all on function public.pos_reception_set_ready(text,uuid) from PUBLIC,anon,authenticated;
+grant execute on function public.pos_reception_set_ready(text,uuid) to authenticated;
+
+-- Cobro atómico de una orden de taller usando EXACTAMENTE el motor POS 2.2.
+-- El bloqueo del folio evita dos cobros concurrentes desde terminales distintas.
+-- Si la venta falla, toda la transacción se revierte y la orden continúa abierta.
+create or replace function public.pos_reception_checkout(
+  p_device_token text,p_reception_id uuid,p_items jsonb,p_payments jsonb,
+  p_discount_amount numeric default 0,p_notes text default null,
+  p_promo_approval_token uuid default null
+) returns jsonb language plpgsql security definer set search_path=''
+as $checkout$
+declare
+  a jsonb; r public.pos_service_receptions%rowtype;
+  item jsonb; sale jsonb;
+  v_service_lines int; v_quantity int;
+begin
+  a:=public.pos_reception_access(p_device_token);
+  if p_reception_id is null then raise exception 'RECEPTION_ID_REQUIRED'; end if;
+  select * into r from public.pos_service_receptions
+    where id=p_reception_id for update;
+  if not found then raise exception 'RECEPTION_NOT_FOUND'; end if;
+  if r.status='delivered' then raise exception 'RECEPTION_ALREADY_DELIVERED'; end if;
+  if r.status<>'ready' then raise exception 'RECEPTION_NOT_READY'; end if;
+  if p_items is null or jsonb_typeof(p_items)<>'array' then raise exception 'SALE_ITEMS_REQUIRED'; end if;
+  if jsonb_array_length(p_items)=0 then raise exception 'SALE_ITEMS_REQUIRED'; end if;
+  select count(*) into v_service_lines
+  from jsonb_array_elements(p_items) as x
+  where x->>'product_id'=r.service_product_id::text;
+  if v_service_lines<>1 then raise exception 'RECEPTION_SERVICE_REQUIRED_ONCE'; end if;
+  select x into item from jsonb_array_elements(p_items) x
+  where x->>'product_id'=r.service_product_id::text;
+  if (item->>'quantity') is null
+    or (item->>'quantity') !~ '^[0-9]+
+    or (item->>'quantity')::int<>1
+    or item ? 'variant_id'
+    or not (item ? 'service_unit_price')
+    or (item->>'service_unit_price') !~ '^[0-9]+(\.[0-9]{1,2})?
+    or (item->>'service_unit_price')::numeric<=0 then
+    raise exception 'RECEPTION_SERVICE_PRICE_OR_QUANTITY_INVALID';
+  end if;
+  -- No se acepta una orden asociada a una variante ni a un servicio eliminado.
+  if not exists(select 1 from public.products
+    where id=r.service_product_id and status='active' and pos_visible=true and is_service=true)
+    then raise exception 'RECEPTION_SERVICE_NOT_AVAILABLE';
+  end if;
+  sale:=public.pos_create_sale_v22(
+    p_device_token,p_items,p_payments,p_discount_amount,p_notes,p_promo_approval_token
+  );
+  if coalesce((sale->>'ok')::boolean,false) is distinct from true
+    or nullif(sale->>'sale_id','') is null then
+    raise exception 'RECEPTION_SALE_NOT_CONFIRMED';
+  end if;
+  update public.pos_service_receptions
+    set status='delivered', delivered_at=now(),checkout_sale_id=(sale->>'sale_id')::uuid
+    where id=r.id;
+  return sale || jsonb_build_object('service_reception_id',r.id,'service_reception_folio',
+    'SR-'||lpad(r.receipt_number::text,6,'0'),'service_reception_status','delivered');
+end;
+$checkout$;
+revoke all on function public.pos_reception_checkout(text,uuid,jsonb,jsonb,numeric,text,uuid)
+  from PUBLIC,anon,authenticated;
+grant execute on function public.pos_reception_checkout(text,uuid,jsonb,jsonb,numeric,text,uuid)
+  to authenticated;
 commit;
