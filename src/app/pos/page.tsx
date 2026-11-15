@@ -589,7 +589,8 @@ export default function PosPage() {
     const folio = new URLSearchParams(window.location.search).get("recepcion");
     if (!folio) return;
     window.history.replaceState(null, "", window.location.pathname);
-    void openReceptionByFolio(folio);
+    // The URL is consumed once; defer work until this effect has finished.
+    window.setTimeout(() => { void openReceptionByFolio(folio); }, 0);
   // One-shot URL parameter passed from the reception screen.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [access?.open_shift_id, products, deviceToken]);
