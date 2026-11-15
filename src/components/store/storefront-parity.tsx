@@ -50,8 +50,8 @@ function repairStoreText(root: HTMLElement) {
   }
 }
 
-// Stage 9: only check DOM text that actually changed. The previous observer
-// rescanned every product card after each badge, filter and cart update.
+// Repair only changed DOM text in both preview and production.
+// A full scan after every cart, filter or badge mutation causes avoidable lag.
 function repairChangedStoreText(records: MutationRecord[]) {
   const seen = new Set<Node>();
   const repairNode = (node: Node) => {
@@ -177,8 +177,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     const root = document.getElementById("updown-store");
     if (root) { root.dataset.deviceMode = deviceMode; repairStoreText(root); }
     const observer = root ? new MutationObserver((records) => {
-      if (previewMode) repairChangedStoreText(records);
-      else repairStoreText(root);
+      repairChangedStoreText(records);
     }) : null;
     observer?.observe(root!, { childList: true, subtree: true, characterData: true });
     document.querySelectorAll<HTMLScriptElement>('script[data-updown-parity="true"], script[data-updown-home-h60="true"]').forEach((node) => node.remove());
@@ -216,7 +215,8 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     script.src = previewMode ? "/updown-parity-runtime.js?v=preview-web2-stage9-perf-security-review-v9-20261108" : "/updown-parity-runtime.js?v=2B.1-UX5.3-electronics-20261102"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
-      if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
+      // Initial markup was already repaired, and later mutations are handled incrementally.
+      if (root && deviceMode === "desktop") restoreDesktopCart(root);
       stopCoursePagination = installCoursePagination();
       // Stage 7 runs only in the protected preview and never alters managed DB rows.
       if (previewMode) {
