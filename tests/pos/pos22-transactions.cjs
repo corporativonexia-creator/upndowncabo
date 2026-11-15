@@ -332,10 +332,10 @@ test('POS Taller: ready -> priced checkout -> delivered is atomic and can be cha
  assert.equal(r.status,'received');
  const saleCount=(await one('select count(*)::int n from pos_sales')).n;
  const movements=(await one('select count(*)::int n from inventory_movements')).n;
- const sellLinked=async(price,payment)=>one(
+ const sellLinked=async(price,payment,requestId=randomUUID())=>one(
   'select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',
   [token,r.id,JSON.stringify(items(service.id,{service_unit_price:price})),
-   JSON.stringify([{method:'cash',amount:payment,metadata:{pos_request_id:randomUUID()}}])]
+   JSON.stringify([{method:'cash',amount:payment,metadata:{pos_request_id:requestId}}])]
  );
  await assert.rejects(sellLinked(450,450),/RECEPTION_NOT_READY/);
  assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
@@ -347,8 +347,12 @@ test('POS Taller: ready -> priced checkout -> delivered is atomic and can be cha
  await assert.rejects(sellLinked(450,100),/PAYMENT_TOTAL_MISMATCH/);
  assert.equal((await one('select status from pos_service_receptions where id=$1',[r.id])).status,'ready');
  assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
- const result=(await sellLinked(450,450)).result;
+ const paymentRequest=randomUUID();
+ const result=(await sellLinked(450,450,paymentRequest)).result;
  assert.equal(result.service_reception_status,'delivered');
+ const replay=(await sellLinked(450,450,paymentRequest)).result;
+ assert.equal(replay.sale_id,result.sale_id);
+ assert.equal(replay.replayed,true);
  assert.ok(result.sale_id);
  const linked=await one('select status,checkout_sale_id,delivered_at from pos_service_receptions where id=$1',[r.id]);
  assert.equal(linked.status,'delivered');
@@ -366,9 +370,12 @@ test('POS Taller: no anonymous access, unapproved terminal or inactive service',
  const flags=await one(`select
   has_function_privilege('anon','public.pos_reception_create(text,uuid,text,text,text,uuid,text,text,text)','EXECUTE') anon_create,
   has_function_privilege('anon','public.pos_reception_recent(text,text)','EXECUTE') anon_list,
+  has_function_privilege('anon','public.pos_reception_set_ready(text,uuid)','EXECUTE') anon_ready,
+  has_function_privilege('anon','public.pos_reception_checkout(text,uuid,jsonb,jsonb,numeric,text,uuid)','EXECUTE') anon_checkout,
   has_table_privilege('authenticated','public.pos_service_receptions','SELECT') auth_table_select,
   (select relrowsecurity from pg_class where oid='public.pos_service_receptions'::regclass) rls`);
  assert.equal(flags.anon_create,false);assert.equal(flags.anon_list,false);
+ assert.equal(flags.anon_ready,false);assert.equal(flags.anon_checkout,false);
  assert.equal(flags.auth_table_select,false);assert.equal(flags.rls,true);
  await assert.rejects(one("select public.pos_reception_recent('unknown-device','') result"),/TERMINAL_NOT_AUTHORIZED/);
  await auth(cashierUser);
@@ -389,4 +396,6 @@ test('POS Taller: thermal bridge has separate two-copy route and no cash drawer 
  assert.equal((route.match(/SendRaw \$CUT/g)||[]).length,2);
  assert.doesNotMatch(route,/\$DRAWER/);
  assert.match(route,/"drawer":0/);
+ assert.match(bridge,/AddReceptionBarcode \$b \$folio/);
+ assert.match(bridge,/\$GS,107,4/);
 });
