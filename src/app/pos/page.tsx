@@ -461,6 +461,7 @@ export default function PosPage() {
   const deviceTokenRef = useRef("");
   const revalidatingRef = useRef(false);
   const checkoutLock = useRef(false);
+  const receptionLookupLock = useRef(false);
   const checkoutRequest = useRef<{ fingerprint: string; id: string } | null>(null);
 
   async function loadProducts() {
@@ -552,6 +553,8 @@ export default function PosPage() {
       setMessage("Primero cobra o retira la recepción " + receptionFolio(activeReception.receipt_number) + ".");
       return;
     }
+    if (receptionLookupLock.current) return;
+    receptionLookupLock.current = true;
     setReceptionLoading(true);
     try {
       const { data, error } = await supabase.rpc("pos_reception_recent", {
@@ -576,6 +579,7 @@ export default function PosPage() {
     } catch (error) {
       setMessage("RECEPCION: " + readableError(error));
     } finally {
+      receptionLookupLock.current = false;
       setReceptionLoading(false);
     }
   }
@@ -702,7 +706,7 @@ export default function PosPage() {
       document.removeEventListener("keydown", handleGlobalScannerKey);
       if (resetTimer) clearTimeout(resetTimer);
     };
-  }, [products, cart]);
+  }, [products, cart, activeReception, access?.open_shift_id, deviceToken]);
 
   function addToCart(product: Product) {
     if (activeReception?.service_product_id === (product.parent_id || product.id)) {
@@ -1350,6 +1354,7 @@ export default function PosPage() {
     accessRef.current = null;
     await supabase.auth.signOut();
     setAccess(null);
+    setActiveReception(null);
     setCart([]);
     setShiftSales([]);
     setCashMovements([]);
@@ -1454,6 +1459,7 @@ export default function PosPage() {
           await supabase.auth.signOut();
           accessRef.current = null;
           setAccess(null);
+          setActiveReception(null);
           setMessage(`POS_ACCESS_ERROR: ${readableError(error)}`);
         }
       }
@@ -1525,6 +1531,8 @@ export default function PosPage() {
     if (!access?.open_shift_id) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Revoke the cart when its server shift closes.
       setCart([]);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear linked reception for closed shifts.
+      setActiveReception(null);
       setShiftSales([]);
       return;
     }
@@ -1664,6 +1672,7 @@ export default function PosPage() {
         difference?: number | string;
       } | null;
 
+      setActiveReception(null);
       setCart([]);
       setShiftSales([]);
       await loadAccess(deviceToken);
