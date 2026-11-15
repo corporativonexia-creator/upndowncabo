@@ -81,7 +81,12 @@ function BuildBody($sale,$access,[string]$copy){
 # Reception receipts never open the cash drawer.
 # Code39: GS k 4 data NUL. Scannable workshop folio on both thermal copies.
 function AddReceptionBarcode($b,[string]$folio){
- if($folio -notmatch '^SR-[0-9]{6,12}
+ if($folio -notmatch '^SR-[0-9]{6,12}$'){throw 'FOLIO_BARCODE_INVALIDO'}
+ AddBytes $b $CENTER
+ AddBytes $b (B @($GS,72,2,$GS,119,2,$GS,104,70,$GS,107,4))
+ AddBytes $b ([Text.Encoding]::ASCII.GetBytes($folio))
+ AddBytes $b (B @(0,10))
+}
 function ReceptionLine($b,[string]$value){AddText $b ($value+[char]10)}
 function ReceptionText($b,[string]$label,[string]$value){
  $clean=[regex]::Replace([string]$value,'[\x00-\x1F\x7F]',' ')
