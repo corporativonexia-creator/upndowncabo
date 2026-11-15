@@ -94,6 +94,15 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 2. Validar en Chrome que la vista Lista conserve una sola columna y que las noticias mantengan su lector original.
 3. Continuar con revisión visual del filtro inteligente (campos, estados y controles), sin cambiar su lógica.
 
+### PW-UX-02 · Buscador en tiempo real — Capa visual lista, pendiente de pruebas locales
+**Reportado:** 15-nov-2026; interfaz móvil con búsqueda de productos, categorías y marcas.
+
+**Regla de integridad:** el buscador ya consulta coincidencias automáticamente en cada cambio del texto. Conservar sin cambios las funciones `window.__UPDOWN_SEARCH_PRODUCTS__`, `window.__UPDOWN_OPEN_SEARCH_PRODUCT__`, el estado de carga, historial, filtros, contador de coincidencias, límite inicial de seis resultados, «Ver más resultados», idiomas, cerrar el diálogo y foco del teclado. No añadir botón obligatorio para ejecutar la búsqueda.
+
+**Intervención visual:** únicamente en `premium-white.css`, reglas aisladas para el diálogo `.uds-search-panel` (fuera de la raíz de la tienda), su campo, chips y tarjetas de resultados: fondo blanco puro, contraste verde, precios más destacados, nombres legibles y objetivos táctiles apropiados. No se modificó `store-search.tsx` ni `store-search.css`.
+
+**Validación pendiente:** en `http://localhost:3000/vista-previa` abrir búsqueda, escribir letras de una marca o modelo, comprobar que los resultados se muestran mientras se escribe, tocar una ficha, volver, borrar texto, usar chips y «Ver más», cerrar y reabrir, y repetir en ES/EN y a 320/390/440 px. Confirmar visualmente que los controles permanecen accesibles con el teclado del teléfono abierto.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
