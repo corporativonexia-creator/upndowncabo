@@ -78,6 +78,56 @@ function BuildBody($sale,$access,[string]$copy){
  if($copy -eq 'COMERCIO' -and (@($sale.payments)|Where-Object {$_.method -eq 'card_terminal'})){AddText $b "`nENGRAPAR VOUCHER DE TERMINAL A ESTA COPIA`n"}
  AddBytes $b $CENTER;if($sale.is_test){AddText $b "`n*** PRUEBA TECNICA ***`nNO ES UN COMPROBANTE DE VENTA`nNO EXISTE TRANSACCION REAL`n"}else{AddText $b "`nESCANEA Y VISITANOS`n";AddQR $b;AddText $b "upndowncabo.com`nGRACIAS POR TU COMPRA`nConserva este comprobante para`ncualquier aclaracion.`n"};AddBytes $b (B @(10,10,10,10,10));return $b.ToArray()
 }
+# Reception receipts never open the cash drawer.
+# Code39: GS k 4 data NUL. Scannable workshop folio on both thermal copies.
+function AddReceptionBarcode($b,[string]$folio){
+ if($folio -notmatch '^SR-[0-9]{6,12}$'){throw 'FOLIO_BARCODE_INVALIDO'}
+ AddBytes $b $CENTER
+ AddBytes $b (B @($GS,72,2,$GS,119,2,$GS,104,70,$GS,107,4))
+ AddBytes $b ([Text.Encoding]::ASCII.GetBytes($folio))
+ AddBytes $b (B @(0,10))
+}
+function ReceptionLine($b,[string]$value){AddText $b ($value+[char]10)}
+function ReceptionText($b,[string]$label,[string]$value){
+ $clean=[regex]::Replace([string]$value,'[\x00-\x1F\x7F]',' ')
+ $clean=$clean.Trim();if(-not $clean){$clean='No especificado'}
+ AddBytes $b $BOLDON;ReceptionLine $b ($label+':');AddBytes $b $BOLDOFF
+ for($offset=0;$offset -lt $clean.Length;$offset+=42){
+  ReceptionLine $b $clean.Substring($offset,[Math]::Min(42,$clean.Length-$offset))
+ }
+}
+function BuildReceptionBody($r,[string]$copy){
+ $number=[int64]$r.receipt_number
+ if($number -le 0 -or -not $r.customer_name -or -not $r.equipment_description -or -not $r.service_name -or -not $r.work_description){throw 'RECEPCION_INVALIDA'}
+ $folio='SR-'+$number.ToString('000000')
+ $b=New-Object 'System.Collections.Generic.List[byte]'
+ AddBytes $b $INIT;AddLogo $b
+ AddBytes $b $CENTER;AddBytes $b $BOLDON
+ ReceptionLine $b 'RECEPCION DE EQUIPO'
+ ReceptionLine $b ('FOLIO '+$folio)
+ AddReceptionBarcode $b $folio
+ ReceptionLine $b ('COPIA '+$copy)
+ AddBytes $b $BOLDOFF;AddBytes $b $LEFT
+ ReceptionLine $b (Line '=')
+ ReceptionLine $b ('Fecha: '+([datetime]$r.received_at).ToLocalTime().ToString('dd/MM/yyyy HH:mm'))
+ ReceptionText $b 'CLIENTE' $r.customer_name
+ ReceptionText $b 'TELEFONO' $r.customer_phone
+ ReceptionText $b 'EQUIPO' $r.equipment_description
+ ReceptionText $b 'SERVICIO' $r.service_name
+ ReceptionText $b 'TRABAJO SOLICITADO' $r.work_description
+ ReceptionText $b 'CONDICION AL RECIBIR' $r.condition_notes
+ ReceptionText $b 'ACCESORIOS' $r.accessories
+ ReceptionText $b 'RECIBIO' ('#'+$r.employee_number+' '+$r.employee_name)
+ ReceptionText $b 'TERMINAL' $r.terminal_name
+ ReceptionLine $b (Line '-')
+ AddBytes $b $CENTER;AddBytes $b $BOLDON
+ if($copy -eq 'CLIENTE'){ReceptionLine $b 'CONSERVE ESTE COMPROBANTE'}else{ReceptionLine $b 'MANTENER JUNTO AL EQUIPO'}
+ AddBytes $b $BOLDOFF
+ ReceptionLine $b 'NO ES COMPROBANTE DE PAGO'
+ if($copy -eq 'CLIENTE'){ReceptionLine $b 'Firma de quien entrega: ______________'}
+ AddBytes $b $LEFT;AddBytes $b (B @(10,10,10,10,10))
+ return $b.ToArray()
+}
 function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
 # Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
@@ -103,4 +153,4 @@ if($TestReceipt){
  exit 0
 }
 $l=New-Object Net.HttpListener;$l.Prefixes.Add("http://127.0.0.1:$Port/");$l.Start();Write-Host "Up & Down Print Bridge listo -> $PrinterName @ 127.0.0.1:$Port" -ForegroundColor Green
-while($l.IsListening){$c=$l.GetContext();try{if($c.Request.HttpMethod -eq 'OPTIONS'){Reply $c 204 '{}';continue};if($c.Request.Url.AbsolutePath -eq '/health'){Reply $c 200 ('{"ok":true,"printer":"'+$PrinterName+'","receipt":"retail-v8"}');continue};if($c.Request.HttpMethod -ne 'POST' -or $c.Request.Url.AbsolutePath -ne '/print-sale'){Reply $c 404 '{"ok":false}';continue};$r=New-Object IO.StreamReader($c.Request.InputStream,$c.Request.ContentEncoding);$p=$r.ReadToEnd()|ConvertFrom-Json;$sale=$p.sale;$access=$p.access;if(-not $sale -or -not $sale.sale_number){throw 'Venta invalida'};SendRaw (BuildBody $sale $access 'CLIENTE') ("Venta "+$sale.sale_number+" CLIENTE");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE CLIENTE");Start-Sleep -Milliseconds 1200;SendRaw (BuildBody $sale $access 'COMERCIO') ("Venta "+$sale.sale_number+" COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $DRAWER ("Venta "+$sale.sale_number+" CAJON");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":1,"receipt":"retail-v8"}'}catch{Reply $c 500 ('{"ok":false,"error":'+(ConvertTo-Json $_.Exception.Message -Compress)+'}')}}
+while($l.IsListening){$c=$l.GetContext();try{if($c.Request.HttpMethod -eq 'OPTIONS'){Reply $c 204 '{}';continue};if($c.Request.Url.AbsolutePath -eq '/health'){Reply $c 200 ('{"ok":true,"printer":"'+$PrinterName+'","receipt":"retail-v8"}');continue};if($c.Request.HttpMethod -ne 'POST' -or ($c.Request.Url.AbsolutePath -ne '/print-sale' -and $c.Request.Url.AbsolutePath -ne '/print-reception')){Reply $c 404 '{"ok":false}';continue};$r=New-Object IO.StreamReader($c.Request.InputStream,$c.Request.ContentEncoding);$p=$r.ReadToEnd()|ConvertFrom-Json;if($c.Request.Url.AbsolutePath -eq '/print-reception'){$reception=$p.reception;if(-not $reception){throw 'RECEPCION_REQUERIDA'};SendRaw (BuildReceptionBody $reception 'CLIENTE') ("Recepcion "+$reception.receipt_number+" CLIENTE");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Recepcion "+$reception.receipt_number+" CORTE CLIENTE");Start-Sleep -Milliseconds 900;SendRaw (BuildReceptionBody $reception 'TALLER') ("Recepcion "+$reception.receipt_number+" TALLER");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Recepcion "+$reception.receipt_number+" CORTE TALLER");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":0,"receipt":"service-reception-v1"}';continue};$sale=$p.sale;$access=$p.access;if(-not $sale -or -not $sale.sale_number){throw 'Venta invalida'};SendRaw (BuildBody $sale $access 'CLIENTE') ("Venta "+$sale.sale_number+" CLIENTE");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE CLIENTE");Start-Sleep -Milliseconds 1200;SendRaw (BuildBody $sale $access 'COMERCIO') ("Venta "+$sale.sale_number+" COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $DRAWER ("Venta "+$sale.sale_number+" CAJON");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":1,"receipt":"retail-v8"}'}catch{Reply $c 500 ('{"ok":false,"error":'+(ConvertTo-Json $_.Exception.Message -Compress)+'}')}}

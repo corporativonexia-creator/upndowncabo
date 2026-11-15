@@ -114,6 +114,9 @@ before(async()=>{
   '20261112202000_pos22_approval_and_service_reversals',
   '20261113093000_pos22_storefront_campaign_checkout'
  ])await migrate(migration);
+ // The disposable fixture predates real auth.sessions; only local tests use this stub.
+ await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as 'select auth.uid() is not null'");
+ await migrate('20261114215000_pos_service_receptions');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
@@ -290,4 +293,109 @@ test('cashier manual discount needs valid administrative approval',async()=>{
  assert.equal(money(result.total),80);
  assert.equal((await one('select consumed_sale_id from pos21_promotion_approvals where token=$1',[approval])).consumed_sale_id,result.sale_id);
  await auth(user);await sql("update pos_shifts set employee_id=$1 where id=$2",[adminEmployee,shift]);
+});
+
+test('POS Taller: cashier can receive without a shift, repeat safely, and never move stock or sales',async()=>{
+ const service=(await one("select public.pos22_admin_create_service('QA Taller grip',$1) result",[category])).result;
+ await sql("update pos_shifts set status='closed',closed_at=now() where id=$1",[shift]);
+ await auth(cashierUser);
+ const request=randomUUID();
+ const params=[token,request,'Cliente QA','6241234567','Driver TaylorMade QA',service.id,
+   'Cambiar grip y revisar ajuste','Grips con desgaste, sin roturas','Funda original'];
+ const before=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
+ const saved=(await one('select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',params)).result;
+ assert.ok(saved.receipt_number>=1);assert.equal(saved.service_name,'QA Taller grip');
+ assert.equal(saved.employee_id,cashierEmployee);
+ const same=(await one('select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',params)).result;
+ assert.equal(same.id,saved.id);
+ assert.equal((await one('select count(*)::int n from public.pos_service_receptions')).n,1);
+ await assert.rejects(one('select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
+  [...params.slice(0,6),'Trabajo distinto',...params.slice(7)]),/RECEPTION_REQUEST_CONFLICT/);
+ const list=(await one("select public.pos_reception_recent($1,$2) result",[token,'SR-'+String(saved.receipt_number).padStart(6,'0')])).result;
+ assert.equal(list.length,1);assert.equal(list[0].id,saved.id);
+ assert.equal(list[0].condition_notes,'Grips con desgaste, sin roturas');
+ const after=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
+ assert.deepEqual(after,before);
+ assert.equal((await one("select count(*)::int n from pos_shifts where status='open'")).n,0);
+ await auth(user);
+ await sql("update pos_shifts set status='open',closed_at=null where id=$1",[shift]);
+});
+
+test('POS Taller: ready -> priced checkout -> delivered is atomic and can be charged only once',async()=>{
+ const service=(await one("select public.pos22_admin_create_service('QA Taller entrega',$1) result",[category])).result;
+ const receive=async()=> (await one(
+  'select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
+  [token,randomUUID(),'Cliente Taller QA','6241234567','Putter en servicio QA',service.id,
+   'Cambio de grip de prueba','Desgaste superficial observado','Funda original']
+ )).result;
+ const r=await receive();
+ assert.equal(r.status,'received');
+ const saleCount=(await one('select count(*)::int n from pos_sales')).n;
+ const movements=(await one('select count(*)::int n from inventory_movements')).n;
+ const sellLinked=async(price,payment,requestId=randomUUID())=>one(
+  'select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',
+  [token,r.id,JSON.stringify(items(service.id,{service_unit_price:price})),
+   JSON.stringify([{method:'cash',amount:payment,metadata:{pos_request_id:requestId}}])]
+ );
+ await assert.rejects(sellLinked(450,450),/RECEPTION_NOT_READY/);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
+ const ready=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ assert.equal(ready.status,'ready');
+ const again=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ assert.equal(again.ready_at,ready.ready_at);
+ await assert.rejects(sellLinked(0,0),/RECEPTION_SERVICE_PRICE_OR_QUANTITY_INVALID/);
+ await assert.rejects(sellLinked(450,100),/PAYMENT_TOTAL_MISMATCH/);
+ assert.equal((await one('select status from pos_service_receptions where id=$1',[r.id])).status,'ready');
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount);
+ const paymentRequest=randomUUID();
+ const result=(await sellLinked(450,450,paymentRequest)).result;
+ assert.equal(result.service_reception_status,'delivered');
+ const replay=(await sellLinked(450,450,paymentRequest)).result;
+ assert.equal(replay.sale_id,result.sale_id);
+ assert.equal(replay.replayed,true);
+ assert.ok(result.sale_id);
+ const linked=await one('select status,checkout_sale_id,delivered_at from pos_service_receptions where id=$1',[r.id]);
+ assert.equal(linked.status,'delivered');
+ assert.equal(linked.checkout_sale_id,result.sale_id);
+ assert.ok(linked.delivered_at);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount+1);
+ await assert.rejects(sellLinked(450,450),/RECEPTION_ALREADY_DELIVERED/);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2) result',[token,r.id]),/RECEPTION_ALREADY_DELIVERED/);
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,saleCount+1);
+ assert.equal((await one('select count(*)::int n from inventory_movements')).n,movements);
+ assert.equal((await one('select stock from products where id=$1',[service.id])).stock,0);
+});
+
+test('POS Taller: no anonymous access, unapproved terminal or inactive service',async()=>{
+ const flags=await one(`select
+  has_function_privilege('anon','public.pos_reception_create(text,uuid,text,text,text,uuid,text,text,text)','EXECUTE') anon_create,
+  has_function_privilege('anon','public.pos_reception_recent(text,text)','EXECUTE') anon_list,
+  has_function_privilege('anon','public.pos_reception_set_ready(text,uuid)','EXECUTE') anon_ready,
+  has_function_privilege('anon','public.pos_reception_checkout(text,uuid,jsonb,jsonb,numeric,text,uuid)','EXECUTE') anon_checkout,
+  has_table_privilege('authenticated','public.pos_service_receptions','SELECT') auth_table_select,
+  (select relrowsecurity from pg_class where oid='public.pos_service_receptions'::regclass) rls`);
+ assert.equal(flags.anon_create,false);assert.equal(flags.anon_list,false);
+ assert.equal(flags.anon_ready,false);assert.equal(flags.anon_checkout,false);
+ assert.equal(flags.auth_table_select,false);assert.equal(flags.rls,true);
+ await assert.rejects(one("select public.pos_reception_recent('unknown-device','') result"),/TERMINAL_NOT_AUTHORIZED/);
+ await auth(cashierUser);
+ await assert.rejects(one("select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result",
+   [token,randomUUID(),'Cliente QA','6241234567','Putter QA',randomUUID(),
+    'Reparar grip de prueba','Rayas leves','Ninguno']),/SERVICE_NOT_AVAILABLE/);
+ await auth(user);
+});
+
+test('POS Taller: thermal bridge has separate two-copy route and no cash drawer command',()=>{
+ const bridge=fs.readFileSync('tools/pos-print-bridge/UpNDownPrintBridge.ps1','utf8');
+ const start=bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')");
+ const end=bridge.indexOf('};$sale=$p.sale;',start);
+ assert.ok(start>=0&&end>start);
+ const route=bridge.slice(start,end);
+ assert.match(route,/BuildReceptionBody \$reception 'CLIENTE'/);
+ assert.match(route,/BuildReceptionBody \$reception 'TALLER'/);
+ assert.equal((route.match(/SendRaw \$CUT/g)||[]).length,2);
+ assert.doesNotMatch(route,/\$DRAWER/);
+ assert.match(route,/"drawer":0/);
+ assert.match(bridge,/AddReceptionBarcode \$b \$folio/);
+ assert.match(bridge,/\$GS,107,4/);
 });
