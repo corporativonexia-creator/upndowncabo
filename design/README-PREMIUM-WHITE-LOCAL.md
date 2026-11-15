@@ -42,11 +42,33 @@ La ruta `http://localhost:3000/` permanece con el diseño original: sirve para c
 - Orientación horizontal, vertical, móvil y escritorio; overlays, scroll y accesibilidad.
 
 ## Verificación estática completada
-- GitHub: comparado con `main`. Solo 4 archivos diferentes (HTML de demostración antiguo, CSS nuevo, importación en preview y `vercel.json`).
+- GitHub: comparado con `main`. Solo 5 archivos diferentes (README, HTML de demostración, CSS nuevo, importación en preview y `vercel.json`).
 - No cambian clases ni componentes operativos, no se renombran ids ni data attributes, no cambia el orden de secciones.
-- El nuevo CSS contiene **cero declaraciones** de `display`, `visibility`, `position`, `pointer-events`, `z-index`, `overflow`, `grid-template-columns`, `grid-template-rows`, `flex-direction`, `order`, `width`, `height` y `transform`.
+- La capa blanca inicial cambió colores, tipografía y superficies. Las correcciones locales V2/V3 agregaron **solo reglas visuales responsive** de `display`, `grid-template-columns`, tamaños y espaciados, para que Lista y Noticias se vean como filas. No se cambiaron los estados ni eventos de los módulos, ni `pointer-events` o `z-index`.
 - El archivo CSS tiene llaves balanceadas.
 - Vercel: no hubo despliegues de esta rama al completar esta revisión.
+
+## Mejoras UX incrementales (15-nov-2026)
+- Vista **Lista**: una ficha horizontal de producto por renglón; vista **Galería** permanece separada.
+- **Noticias**: una fila horizontal por noticia en móvil; las noticias administradas en Supabase siguen abriendo su lector modal original. Las noticias antiguas que utilizan `.is-expanded` conservan la expansión original.
+- **Servicios**: seis opciones visibles y una tarjeta oculta de compatibilidad; fondo verde de respaldo cuando una fotografía esté pendiente, sin cambiar URLs, registros ni acciones.
+
+Después de actualizar `premium-white.css` localmente, recarga con `Ctrl + Shift + R`. Validaciones de solo lectura en Chrome DevTools:
+
+```javascript
+getComputedStyle(document.querySelector("#udsGrid")).gridTemplateColumns
+```
+
+La salida en **Lista** debe ser una sola medida, no dos anchuras como `188px 188px`.
+
+Para revisar si las fotos de servicios han terminado de cargar:
+
+```javascript
+console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-service-photo img.uds-service-photo')].map(img=>({servicio:img.closest('[data-service-kind]')?.dataset.serviceKind,completa:img.complete,anchoNatural:img.naturalWidth})))
+```
+
+`anchoNatural` mayor que 0 confirma imagen cargada; 0 indica carga pendiente o fallida. No modificar el código de fotografías hasta conocer la causa.
+
 
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
