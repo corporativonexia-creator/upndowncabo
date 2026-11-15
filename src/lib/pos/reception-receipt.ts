@@ -54,7 +54,7 @@ function drawReceptionBarcode(doc: jsPDF, folio: string, top: number) {
   const widths = pattern.flatMap(part => [...part].map(p => p === "w" ? wide : 1));
   const total = (widths.reduce((sum, width) => sum + width, 0) + pattern.length - 1) * unit;
   let x = (80 - total) / 2;
-  doc.setFillColor(0);
+  doc.setFillColor(0, 0, 0);
   pattern.forEach((part,index) => {
     for (let i=0;i<part.length;i++) {
       const width = (part[i] === "w" ? wide : 1) * unit;
