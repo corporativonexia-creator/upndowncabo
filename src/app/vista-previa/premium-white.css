@@ -847,3 +847,70 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
     padding: 10px 9px !important;
   }
 }
+
+
+/* PW-UX-03B / MOBILE FILTER ACCESS — corrective visual-only override.
+   Root cause: globals.css hides #udsCatalogFilterBox via an older
+   .uds-ux-v1 rule (display:none!important). Both ux-v1 and ux-v3
+   classes coexist. The mobile storefront also hides .uds-discovery,
+   unintentionally leaving phones without any smart-filter entrance.
+   Only expose the EXISTING catalog filter on preview mobile/tablet.
+   All IDs, select options, applied-filter logic and JS remain untouched. */
+@media (max-width: 1023px) {
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox {
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    border: 1px solid #e0e8e1 !important;
+    border-radius: 15px !important;
+    box-shadow: none !important;
+    padding: 9px !important;
+    margin: 12px 0 14px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterToggle {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 47px !important;
+    border-radius: 11px !important;
+    background: #f4f8f4 !important;
+    border: 1px solid #d9e6dc !important;
+    color: #123d32 !important;
+    font: 800 12px/1.2 Inter, "Segoe UI", Arial, sans-serif !important;
+    cursor: pointer !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head > div {
+    display: none !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody {
+    display: grid !important;
+    grid-template-rows: 0fr !important;
+    opacity: 0 !important;
+    transition: grid-template-rows .25s ease,opacity .2s ease !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody > div {
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox.is-open #udsCatalogFilterBody {
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox.is-open #udsCatalogFilterToggle {
+    background: #eaf2eb !important;
+    border-color: #aac8b2 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid {
+    gap: 9px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-actions {
+    gap: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid,
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid + .uds-catalog-filter-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
