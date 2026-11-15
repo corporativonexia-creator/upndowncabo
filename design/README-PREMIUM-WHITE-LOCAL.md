@@ -70,6 +70,24 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 `anchoNatural` mayor que 0 confirma imagen cargada; 0 indica carga pendiente o fallida. No modificar el código de fotografías hasta conocer la causa.
 
 
+## Pendientes UX — Premium White
+
+### PW-UX-01 · Fondo blanco puro sin degradado lateral — P1 / Pendiente
+**Reportado:** 15-nov-2026. **Contexto:** captura de localhost en móvil, tras las mejoras de Noticias, justo antes de «Quiénes somos».
+
+**Problema observado:** aparece una franja/velo degradado gris verdoso hacia el borde derecho de las secciones de contenido (muy visible alrededor de Noticias y Quiénes somos). El fondo de la propuesta debe ser blanco puro, sin bruma, tinte ni degradado en los laterales.
+
+**Resultado exigido:** #FFFFFF uniforme a todo lo ancho del fondo general y de las secciones neutras, sin gradiente visible en los bordes. Mantener deliberadamente los fondos gráficos de fotografías/hero, las tarjetas de servicio con fotografía, la sección verde de campos y el footer oscuro.
+
+**Investigar antes de cambiar:** fondos, pseudo-elementos ::before y ::after, gradientes o sombras heredados en #updown-store, contenedores y secciones, .uds-shell, wrappers de vista previa, #udsJournal, #udsAbout, #udsVisit y estilos responsive en globals.css y preview-header.css. No asumir que la causa es un único background: podría ser un elemento superpuesto o una sombra. No desactivar gradientes de las imágenes por accidente.
+
+**Criterios de aceptación:** inspeccionar a 320, 390, 440 px y escritorio; fondo blanco puro de lado a lado en los espacios sin imágenes; sin halos ni bandas verdosas al hacer scroll; contraste intacto en menú, botones, fotos, tarjetas, lector de noticias, filtro inteligente y fichas. Solo CSS, cambios aislados en premium-white.css; sin modificaciones de funciones, Supabase, POS, carrito, catálogo, orden ni despliegues.
+
+### Próximas verificaciones de UX
+1. Diagnosticar y corregir PW-UX-01.
+2. Validar en Chrome que la vista Lista conserve una sola columna y que las noticias mantengan su lector original.
+3. Continuar con revisión visual del filtro inteligente (campos, estados y controles), sin cambiar su lógica.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
