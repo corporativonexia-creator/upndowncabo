@@ -134,6 +134,13 @@ test("runtime preview and public share paths retain the same UUID and seller cod
   assert.equal(publicUrl.searchParams.get("ref"), "TEST01");
   assert.equal(publicUrl.origin, "https://upndowncabo.com");
   assert.ok(!publicUrl.pathname.includes("/vista-previa"));
+  // A variant must keep its own stable ID in BOTH routes.
+  const variant = { ...product, variant_id:"223e4567-e89b-42d3-a456-426614174001" };
+  const previewVariant = new URL(getUrl(variant));
+  const publicVariant = new URL(getUrl(variant, true));
+  assert.ok(previewVariant.pathname.endsWith("--v-" + variant.variant_id));
+  assert.equal(previewVariant.pathname.replace("/vista-previa", ""), publicVariant.pathname);
+  assert.equal(publicVariant.searchParams.get("ref"), "TEST01");
 });
 
 // Still pending: requires an actual browser session and fixture backend.
