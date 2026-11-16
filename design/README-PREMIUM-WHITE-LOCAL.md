@@ -186,6 +186,15 @@ El usuario confirmó expresamente los siguientes resultados tras sus pruebas loc
 
 Estas confirmaciones validan los comportamientos indicados, **no** equivalen a una auditoría completa de variantes, carrito, facturación, checkout, enlaces compartidos, lector, traducciones ES/EN ni todos los tamaños de pantalla.
 
+## Auditoría de regresión · 15-nov-2026
+
+**Resultado:** 28/30 contratos estáticos conformes. Nueva suite de 12 pruebas de contrato ejecutada sobre fuentes exactas de la rama: 12 aprobadas, 2 asuntos explícitos pendientes (enlace público para invitados y pruebas E2E con navegador). Corrección `PW-QA-01`: los enlaces de productos relacionados ahora también se interceptan antes del handler de Next Link para permanecer en localhost.
+
+**Informe completo:** `design/PREMIUM_WHITE_AUDITORIA_REGRESION_20261115.md`  
+**Pruebas de solo lectura:** `node --test tests/premium-white-contracts.cjs`
+
+**No publicar todavía:** falta resolver enlaces para compartir con clientes y completar pruebas en navegador, integración y conciliación de cambios con `main`. Sin despliegue, SQL o pagos reales.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
