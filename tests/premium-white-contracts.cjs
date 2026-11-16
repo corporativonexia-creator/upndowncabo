@@ -25,6 +25,8 @@ const files = {
   search: read("src/components/store/responsive/store-search.tsx"),
   proxy: read("src/proxy.ts"),
   services: read("public/updown-preview-services-stage7.js"),
+  parity: read("src/components/store/storefront-parity.tsx"),
+  adminServices: read("src/components/admin/services-admin.tsx"),
 };
 function has(file, ...parts) { for (const x of parts) assert.ok(file.includes(x), "Missing contract: " + x); }
 function braces(css) {
@@ -141,6 +143,30 @@ test("runtime preview and public share paths retain the same UUID and seller cod
   assert.ok(previewVariant.pathname.endsWith("--v-" + variant.variant_id));
   assert.equal(previewVariant.pathname.replace("/vista-previa", ""), publicVariant.pathname);
   assert.equal(publicVariant.searchParams.get("ref"), "TEST01");
+});
+
+test("preview service copy is exclusively admin managed and not overwritten", () => {
+  has(files.runtime,
+    "db.from('storefront_services').select('*').eq('is_active',true).order('sort_order').order('key')",
+    "function renderManagedServices()", "window.dispatchEvent(new Event('updown:services-ready'))");
+  has(files.services,
+    "window.__UPDOWN_SERVICES__", "isComingSoon(card)",
+    'card.classList.toggle("uds-preview-service-coming", isComingSoon(card))',
+    'button.dataset.previewServiceKey = row.key',
+    "window.__UPDOWN_OPEN_SERVICE__?.(row.key)");
+  assert.ok(!files.services.includes("const copies="), "Preview must not override DB service content");
+  assert.ok(!files.services.includes("putter-restoration"), "Preview must not alias obsolete restoration");
+  assert.ok(!files.services.includes('byKind("maintenance")'), "Preview must not hide merged DB records");
+  assert.ok(!files.services.includes("body.replaceChildren()"), "Preview must not remove admin content");
+});
+test("admin continues to edit source records and protected classes content", () => {
+  has(files.adminServices,
+    'from("storefront_services").select("*")',
+    'from("storefront_services").update(fields)',
+    'from("storefront_services").insert(fields)',
+    'service.key === "classes"');
+  has(files.parity,
+    "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116");
 });
 
 // Still pending: requires an actual browser session and fixture backend.
