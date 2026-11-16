@@ -185,11 +185,12 @@ test("no-photo cards use approved velvet image without touching real product pho
   has(files.productFallback, 'width="400" height="400"');
 
   has(files.runtime,
-    'const cover=typeof product.cover_image_url==="string"?product.cover_image_url.trim():""',
+    'const cover=productGallery(product)[0]||"";',
     'const imageSrc=cover&&(/^https?:\\/\\//i.test(cover)||cover.startsWith("/"))?cover:fallback;',
     'class="uds-card-media${placeholder?" is-product-placeholder":""}"',
     'img.src=fallback',
     'host.classList.add("is-product-placeholder")');
+  has(files.runtime, 'image:productGallery(product)[0]||""');
   has(files.runtime, 'const imageSrc=validImage?item.image:fallback;');
   has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: cover !important');
   has(files.search, 'product.image || "/assets/updown-product-placeholder.svg"');
