@@ -112,7 +112,9 @@ export default function ProductDetail({ product, preview }: { product: Shareable
     };
   }, [preview]);
 
-  const link = productPageUrl(product.key, preview, affiliate?.code || null);
+  // Customer-facing links always use the permanent public product route.
+  // Preview-only variant/related navigation remains on /vista-previa/producto.
+  const link = productPageUrl(product.key, false, affiliate?.code || null);
   const whatsappMessage = shareText(product.name, link);
   const contactNumber = String(affiliate?.seller_phone || "526243554700").replace(/\D/g, "").replace(/^([0-9]{10})$/, "52$1");
   const contactText = "Hola" + (affiliate?.seller_name ? " " + affiliate.seller_name : " UP AND DOWN") +
