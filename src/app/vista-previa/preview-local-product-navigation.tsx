@@ -67,7 +67,28 @@ export default function PreviewLocalProductNavigation() {
     // Share text and WhatsApp destinations remain public URLs.
     const detailRoot = document.querySelector(".ud-preview-product-skin");
     let observer: MutationObserver | null = null;
+    const onDetailProductClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 ||
+          event.metaKey || event.ctrlKey || event.shiftKey || event.altKey ||
+          !(event.target instanceof Element)) return;
+
+      const anchor = event.target.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || !detailRoot?.contains(anchor) ||
+          anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const path = productPath(anchor.href);
+      if (!path) return;
+
+      // A streamed related-product card uses Next.js <Link>, whose
+      // internal click handler may still retain its ORIGINAL absolute href
+      // even if the displayed anchor was rewritten to a local URL.
+      // Intercept before React's Link handler and keep this navigation
+      // on the preview's current host. Modified/new-tab clicks are native.
+      event.preventDefault();
+      event.stopPropagation();
+      router.push(path);
+    };
     if (detailRoot) {
+      detailRoot.addEventListener("click", onDetailProductClick, true);
       const localizeLinks = () => {
         detailRoot.querySelectorAll<HTMLAnchorElement>("a[href]").forEach(anchor => {
           if (!canonicalForeign(anchor.href)) return;
@@ -90,6 +111,7 @@ export default function PreviewLocalProductNavigation() {
     return () => {
       window.removeEventListener("updown:product-navigate", onNavigate, true);
       window.removeEventListener("updown:product-prefetch", onPrefetch, true);
+      detailRoot?.removeEventListener("click", onDetailProductClick, true);
       observer?.disconnect();
     };
   }, [router]);
