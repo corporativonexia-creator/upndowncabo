@@ -151,9 +151,12 @@ test("preview service copy is exclusively admin managed and not overwritten", ()
     "function renderManagedServices()", "window.dispatchEvent(new Event('updown:services-ready'))");
   has(files.services,
     "window.__UPDOWN_SERVICES__", "isComingSoon(card)",
-    'card.classList.toggle("uds-preview-service-coming", isComingSoon(card))',
-    'button.dataset.previewServiceKey = row.key',
-    "window.__UPDOWN_OPEN_SERVICE__?.(row.key)");
+    'card.classList.toggle("uds-preview-service-coming", isComingSoon(card))');
+  has(files.runtime,
+    "const managedServiceLinks=Array.isArray(window.__UPDOWN_SERVICES__)",
+    "window.__UPDOWN_OPEN_SERVICE__?.(row.key)",
+    'serviceActions.length?serviceActions');
+  assert.ok(!files.services.includes("refreshMobileServiceMenu"), "Preview must not duplicate the DB-led mobile menu");
   assert.ok(!files.services.includes("const copies="), "Preview must not override DB service content");
   assert.ok(!files.services.includes("putter-restoration"), "Preview must not alias obsolete restoration");
   assert.ok(!files.services.includes('byKind("maintenance")'), "Preview must not hide merged DB records");
