@@ -63,49 +63,8 @@
     section.querySelector('[data-service-kind="ghin"] .uds-service-ghin-logo')
       ?.setAttribute("aria-hidden", "true");
     root.classList.add("uds-preview-services-stage7");
-    refreshMobileServiceMenu();
+    // Mobile links are rendered from the same DB rows by the shared runtime.
   }
-
-  function refreshMobileServiceMenu() {
-    const menu = document.getElementById("udsMobileMenu53");
-    const rows = window.__UPDOWN_SERVICES__;
-    if (!menu || !Array.isArray(rows) || !rows.length) return;
-    const group = [...menu.querySelectorAll(".uds53-group")].find(node => {
-      const heading = node.querySelector(".uds53-toggle > span")?.textContent || "";
-      return /^(Servicios|Services)$/i.test(heading.trim());
-    });
-    const sub = group?.querySelector(".uds53-sub");
-    if (!sub) return;
-
-    // The legacy menu used text-based handlers for services that no longer
-    // exist (maintenance, putter restoration). Replace ONLY these shortcuts
-    // with DB-keyed, current-language, active-service buttons.
-    sub.replaceChildren();
-    for (const row of rows) {
-      const service = root.querySelector('#udsServices [data-service-kind="' + row.key + '"]');
-      if (!service || !service.isConnected) continue;
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.previewServiceKey = row.key;
-      button.textContent = (lang() === "en" ? row.title_en : row.title_es) || row.title_es || row.key;
-      button.addEventListener("click", () => {
-        menu.querySelector(".uds53-close")?.click();
-        requestAnimationFrame(() => {
-          if (!window.__UPDOWN_OPEN_SERVICE__?.(row.key)) {
-            root.querySelector("#udsServices")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        });
-      });
-      sub.appendChild(button);
-    }
-  }
-
-  function onMobileMenuClick(event) {
-    if (event.target?.closest?.("#udsMenuButton, #udsDockMenu")) {
-      requestAnimationFrame(refreshMobileServiceMenu);
-    }
-  }
-  root.addEventListener("click", onMobileMenuClick, true);
 
   function onServiceToggle(event) {
     const trigger = event.target?.closest?.("#udsServices .uds-service-head");
@@ -130,7 +89,6 @@
   const dispose = () => {
     window.removeEventListener("updown:services-ready", onReady);
     window.removeEventListener("updown:language-change", onReady);
-    root.removeEventListener("click", onMobileMenuClick, true);
     root.removeEventListener("click", onServiceToggle, true);
     window.removeEventListener("updown:preview-services-dispose", dispose);
     if (window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__ === dispose) {
