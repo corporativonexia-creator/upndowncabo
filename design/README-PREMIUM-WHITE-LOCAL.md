@@ -164,6 +164,18 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Pruebas locales pendientes:** con `npm run dev`, abrir `/vista-previa`, buscar un producto, tocar su ficha y confirmar ruta independiente. Verificar a 320, 390, 440 y 1280px: imagen, controles anterior/siguiente, ampliar, título completo, precio, condición/stock, variantes (cuando existan), enlaces de intercambio y preguntas, compartir y regresar a los mismos resultados. No realizar compras ni escrituras sobre base de datos productiva durante la revisión. Para actualizar una copia ZIP, descargar **dos archivos** de la rama: `src/app/vista-previa/producto/[productKey]/page.tsx` y el nuevo `premium-product-detail.css` en la misma carpeta.
 
+### PW-UX-06B · Localhost en fichas individuales — Corrección de navegación experimental
+
+**Incidente 15-nov-2026:** al seleccionar un producto del catálogo en localhost, se abría `https://upndowncabo.com/vista-previa/producto/...` (dominio online). Causa técnica comprobada: el runtime original genera una URL canónica absoluta, pero `StorefrontParity` solo admite navegación interna cuando el origen coincide con el host actual; por tanto el evento no se interceptaba y el fallback abría el dominio remoto.
+
+**Corrección aislada:** se creó `src/app/vista-previa/preview-local-product-navigation.tsx` (componente cliente exclusivo de la vista previa), montado en `src/app/vista-previa/page.tsx` y `src/app/vista-previa/producto/[productKey]/page.tsx`. Convierte el evento de navegación de producto de URL canónica a ruta local de Next.js en el host actual, conservando su identificador y parámetros; cancela el fallback al dominio remoto. Prefetch se ejecuta sobre el host local. Dentro de la ficha privada, los links de variantes y productos relacionados se ajustan al host actual cuando llegan al DOM, incluidos los cargados de forma diferida. No se modifica `productPageUrl` ni el contenido de los enlaces para compartir por WhatsApp, que deben seguir apuntando a la web pública.
+
+**Protección:** no se tocaron `public/updown-parity-runtime.js`, `src/components/store/storefront-parity.tsx`, `src/components/store/product-detail.tsx`, `src/lib/storefront/product-share.ts`, Supabase, precios, stock, carrito, ni los enlaces de la tienda pública.
+
+**Para actualizar la copia ZIP local:** descargar tres archivos: `src/app/vista-previa/preview-local-product-navigation.tsx`, `src/app/vista-previa/page.tsx`, `src/app/vista-previa/producto/[productKey]/page.tsx`. Para la última ruta, PowerShell interpreta `[productKey]` como comodín; usar `[System.IO.File]::Copy` con una ruta literal construida mediante `Join-Path`, o `Copy-Item -LiteralPath`, evitando `Invoke-WebRequest -OutFile` directamente sobre esa carpeta.
+
+**Comprobaciones locales pendientes:** en `http://localhost:3000/vista-previa`, seleccionar cualquier producto y confirmar que la barra de URL permanece en `localhost:3000/vista-previa/producto/...`. Probar volver al catálogo, seleccionar variante, abrir artículo relacionado y verificar que el dominio sigue siendo localhost. Comprobar que compartir copia una URL pública de `upndowncabo.com`. No usar botones de compra durante las pruebas de interfaz.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
