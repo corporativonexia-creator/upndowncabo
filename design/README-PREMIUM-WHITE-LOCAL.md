@@ -208,6 +208,16 @@ Estas confirmaciones validan los comportamientos indicados, **no** equivalen a u
 
 **Archivos a descargar en una copia local anterior:** `public/updown-parity-runtime.js`, `src/components/store/product-detail.tsx`, `src/components/store/premium-product-detail.css`, `src/app/vista-previa/producto/[productKey]/page.tsx`, `src/app/producto/[productKey]/page.tsx`, `src/app/vista-previa/preview-local-product-navigation.tsx`. El antiguo `src/app/vista-previa/producto/[productKey]/premium-product-detail.css` dejó de usarse.
 
+## PW-SV-01 · Seis servicios administrables (Supabase) — ejecutado 16-nov-2026
+
+Se obtuvo autorización específica del administrador. **Se hizo respaldo de las siete filas originales**, se ejecutó una transacción atómica en el proyecto `upanddown` y se verificaron seis filas activas, orden 1–6: **Reparación y mantenimiento; Intercambios y consignación; Ajuste de lie y loft (Próximamente); Clases de golf; GHIN; Restauración y personalización (VS GOLF)**.
+
+Se fusionaron y eliminaron los registros independientes `maintenance` y `putter-restoration`; se creó `lie-loft-adjustment`; Clases de golf quedó idéntica al respaldo. No se borraron objetos de Storage. Los enlaces GHIN e Instagram VS GOLF permanecieron sin cambios.
+
+La tienda y el submenú móvil ahora consumen los títulos y orden de Supabase, sin cambios de copia de Stage 7. **16/16 contratos estáticos aprobados. Sin despliegue, publicación o merge a main.** La copia local necesita actualizar `public/updown-parity-runtime.js`, `public/updown-preview-services-stage7.js`, `src/components/store/storefront-parity.tsx`.
+
+Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/backups/storefront_services_20261116_pre_unification.json`. SQL ejecutado una sola vez: `design/sql/STORE_SERVICES_SIX_UNIFICATION_20261116_ONE_TIME.sql`.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
