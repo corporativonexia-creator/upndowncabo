@@ -16,7 +16,10 @@ const files = {
   focus: read("src/app/vista-previa/preview-desktop-search-focus.tsx"),
   collapse: read("src/app/vista-previa/preview-filter-auto-collapse.tsx"),
   css: read("src/app/vista-previa/premium-white.css"),
-  productCss: read("src/app/vista-previa/producto/[productKey]/premium-product-detail.css"),
+  productCss: read("src/components/store/premium-product-detail.css"),
+  publicPage: read("src/app/producto/[productKey]/page.tsx"),
+  share: read("src/lib/storefront/product-share.ts"),
+  metadata: read("src/lib/storefront/product-metadata.ts"),
   runtime: read("public/updown-parity-runtime.js"),
   product: read("src/components/store/product-detail.tsx"),
   search: read("src/components/store/responsive/store-search.tsx"),
@@ -41,7 +44,9 @@ test("premium styling stays scoped and syntactically balanced", () => {
   assert.equal(braces(files.css), 0);
   assert.equal(braces(files.productCss), 0);
   has(files.css, "#updown-store.uds-preview", ".uds-search-focus #udsServices");
-  has(files.productCss, ".ud-preview-product-skin");
+  has(files.productCss, ".ud-premium-product-skin");
+  has(files.detail, "ud-premium-product-skin", 'import "@/components/store/premium-product-detail.css"');
+  has(files.publicPage, "ud-premium-product-skin", 'import "@/components/store/premium-product-detail.css"');
 });
 test("live search and independent navigation remain connected", () => {
   has(files.search, "window.__UPDOWN_SEARCH_PRODUCTS__?.(query)",
@@ -96,6 +101,40 @@ test("services and languages remain connected", () => {
   has(files.runtime, 'currentLanguage=lang==="en"?"en":"es"');
 });
 
-// Known launch blockers, intentionally not recorded as passing tests:
-test.todo("Public sharing links must not send guests to admin-only /vista-previa/producto");
+test("preview navigation remains private but share URLs are public", () => {
+  has(files.runtime, "function previewShareUrl(product,forPublicShare=false)",
+    'forPublicShare?"/producto/":"/vista-previa/producto/"',
+    "const url=previewShareUrl(product,true);",
+    "const destination=previewShareUrl(product);",
+    "direct.href=previewShareUrl(product);");
+  has(files.product, "const link = productPageUrl(product.key, false, affiliate?.code || null);",
+    "preview, affiliate?.code");
+  has(files.share, '(preview ? "/vista-previa" : "") + "/producto/"');
+  has(files.metadata, "alternates: { canonical: productPageUrl(product.key, false) }",
+    "openGraph:", "twitter:");
+  has(files.publicPage, "<ProductDetail product={product} preview={false} />",
+    "RelatedProductsServer product={product} preview={false}");
+});
+test("runtime preview and public share paths retain the same UUID and seller code", () => {
+  const matched = files.runtime.match(/  function previewShareUrl\(product,forPublicShare=false\)\{[\s\S]*?\n  \}/);
+  assert.ok(matched, "previewShareUrl function not found");
+  const getUrl = new Function(
+    "PREVIEW_CATEGORY_GROUPS", "getStoredAffiliate",
+    matched[0] + "\nreturn previewShareUrl;"
+  )([{slug:"wedges"}], () => ({code:"TEST01"}));
+  const product = {
+    id:"123e4567-e89b-42d3-a456-426614174000",
+    name:"Wedge Tour 56°", variant_id:null
+  };
+  const preview = new URL(getUrl(product));
+  const publicUrl = new URL(getUrl(product, true));
+  assert.equal(preview.pathname.replace("/vista-previa", ""), publicUrl.pathname);
+  assert.ok(publicUrl.pathname.startsWith("/producto/"));
+  assert.equal(preview.searchParams.get("ref"), "TEST01");
+  assert.equal(publicUrl.searchParams.get("ref"), "TEST01");
+  assert.equal(publicUrl.origin, "https://upndowncabo.com");
+  assert.ok(!publicUrl.pathname.includes("/vista-previa"));
+});
+
+// Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
