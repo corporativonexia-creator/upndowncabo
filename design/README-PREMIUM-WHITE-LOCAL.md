@@ -158,11 +158,11 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Objetivo:** mejorar visualmente la página independiente que se abre al tocar un producto en la vista previa. En este proyecto el producto **NO** abre el modal legado: el runtime `openProduct` utiliza la ruta estable `/vista-previa/producto/[productKey]`.
 
-**Protección de producción:** la ficha independiente comparte `src/components/store/product-detail.tsx` y `product-detail.css` con la tienda normal, por lo que esos dos archivos **no se han modificado**. En la rama experimental se creó `src/app/vista-previa/producto/[productKey]/premium-product-detail.css` y se importó exclusivamente desde `src/app/vista-previa/producto/[productKey]/page.tsx`, envolviendo su contenido en `.ud-preview-product-skin`. Todos los selectores están limitados a ese contenedor privado.
+**Evolución para el lanzamiento:** la ficha independiente sigue compartiendo el componente `ProductDetail`, cuya lógica de carrito y variantes no se ha alterado. En PW-QA-02 su enlace de compartir se ajustó a la ruta pública permanente. El CSS Premium White pasó a `src/components/store/premium-product-detail.css` y se utiliza en ambas rutas de ficha (`/vista-previa/producto` y `/producto`) bajo `.ud-premium-product-skin`. La ruta pública permanece protegida por la puerta general de lanzamiento.
 
 **Tratamiento visual:** fondo general blanco puro, encabezado blanco, fotografía sobre superficie neutra mínima, bordes discretos, tipografía y precio legibles, botones de 44–48px, variantes y especificaciones más claras; en móvil se respetan la galería, el orden del contenido, compartir, Intercambiar/Preguntar/Carrito, productos relacionados y retorno al catálogo. No se han modificado cálculos de precio, eventos del carrito, imágenes, stock, selección de variantes, productos relacionados ni Supabase.
 
-**Pruebas locales pendientes:** con `npm run dev`, abrir `/vista-previa`, buscar un producto, tocar su ficha y confirmar ruta independiente. Verificar a 320, 390, 440 y 1280px: imagen, controles anterior/siguiente, ampliar, título completo, precio, condición/stock, variantes (cuando existan), enlaces de intercambio y preguntas, compartir y regresar a los mismos resultados. No realizar compras ni escrituras sobre base de datos productiva durante la revisión. Para actualizar una copia ZIP, descargar **dos archivos** de la rama: `src/app/vista-previa/producto/[productKey]/page.tsx` y el nuevo `premium-product-detail.css` en la misma carpeta.
+**Pruebas locales pendientes:** con `npm run dev`, abrir `/vista-previa`, buscar un producto, tocar su ficha y confirmar ruta independiente. Verificar a 320, 390, 440 y 1280px: imagen, controles anterior/siguiente, ampliar, título completo, precio, condición/stock, variantes (cuando existan), enlaces de intercambio y preguntas, compartir y regresar a los mismos resultados. No realizar compras ni escrituras sobre base de datos productiva durante la revisión. Para actualizar una copia ZIP después de PW-QA-02, descargar el CSS compartido y ambas páginas de producto según el inventario de archivos de esa corrección; el CSS anterior en la carpeta privada ya no se utiliza.
 
 ### PW-UX-06B · Localhost en fichas individuales — VALIDADO por el usuario
 
@@ -170,7 +170,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Corrección aislada:** se creó `src/app/vista-previa/preview-local-product-navigation.tsx` (componente cliente exclusivo de la vista previa), montado en `src/app/vista-previa/page.tsx` y `src/app/vista-previa/producto/[productKey]/page.tsx`. Convierte el evento de navegación de producto de URL canónica a ruta local de Next.js en el host actual, conservando su identificador y parámetros; cancela el fallback al dominio remoto. Prefetch se ejecuta sobre el host local. Dentro de la ficha privada, los links de variantes y productos relacionados se ajustan al host actual cuando llegan al DOM, incluidos los cargados de forma diferida. No se modifica `productPageUrl` ni el contenido de los enlaces para compartir por WhatsApp, que deben seguir apuntando a la web pública.
 
-**Protección:** no se tocaron `public/updown-parity-runtime.js`, `src/components/store/storefront-parity.tsx`, `src/components/store/product-detail.tsx`, `src/lib/storefront/product-share.ts`, Supabase, precios, stock, carrito, ni los enlaces de la tienda pública.
+**Protección tras PW-QA-02:** se modificaron puntualmente `public/updown-parity-runtime.js` y `src/components/store/product-detail.tsx` para usar enlaces públicos al compartir y conservar rutas privadas al navegar. `src/components/store/storefront-parity.tsx`, `src/lib/storefront/product-share.ts`, Supabase, lógica de precios, stock, carrito y checkout permanecen intactos.
 
 **Para actualizar la copia ZIP local:** descargar tres archivos: `src/app/vista-previa/preview-local-product-navigation.tsx`, `src/app/vista-previa/page.tsx`, `src/app/vista-previa/producto/[productKey]/page.tsx`. Para la última ruta, PowerShell interpreta `[productKey]` como comodín; usar `[System.IO.File]::Copy` con una ruta literal construida mediante `Join-Path`, o `Copy-Item -LiteralPath`, evitando `Invoke-WebRequest -OutFile` directamente sobre esa carpeta.
 
@@ -188,12 +188,25 @@ Estas confirmaciones validan los comportamientos indicados, **no** equivalen a u
 
 ## Auditoría de regresión · 15-nov-2026
 
-**Resultado:** 28/30 contratos estáticos conformes. Nueva suite de 12 pruebas de contrato ejecutada sobre fuentes exactas de la rama: 12 aprobadas, 2 asuntos explícitos pendientes (enlace público para invitados y pruebas E2E con navegador). Corrección `PW-QA-01`: los enlaces de productos relacionados ahora también se interceptan antes del handler de Next Link para permanecer en localhost.
+**Resultado actualizado:** PW-QA-02 resuelve la ruta de compartir. 29/30 contratos de la matriz original conformes; suite de 14 pruebas de contrato y generación de URLs aprobadas, 1 prueba de navegador pendiente. PW-QA-01 mantiene productos relacionados en localhost, sin alterar el destino público para clientes.
 
 **Informe completo:** `design/PREMIUM_WHITE_AUDITORIA_REGRESION_20261115.md`  
 **Pruebas de solo lectura:** `node --test tests/premium-white-contracts.cjs`
 
-**No publicar todavía:** falta resolver enlaces para compartir con clientes y completar pruebas en navegador, integración y conciliación de cambios con `main`. Sin despliegue, SQL o pagos reales.
+**No publicar todavía:** las URL públicas están preparadas, pero aún hay que completar pruebas en navegador, integración y conciliación con `main`. La tienda sigue detrás de «Próximamente». Sin despliegue, SQL o pagos reales.
+
+## PW-QA-02 · Ficha pública permanente y aspecto Premium White compartido — implementado
+
+**Decisión del administrador:** las fichas han de compartirse con clientes mediante una URL pública definitiva, aunque la fase actual siga protegida para administradores.
+
+- **Compartir / WhatsApp / Copiar enlace:** `https://upndowncabo.com/producto/[productKey]` (con `ref` del vendedor cuando aplique).
+- **Navegación local de pruebas:** `http://localhost:3000/vista-previa/producto/[productKey]` (dentro del área admin).
+- **Diseño:** ambas rutas utilizan `src/components/store/premium-product-detail.css` y `ud-premium-product-skin`, sin duplicar el diseño.
+- **Carrito, catálogo, variantes, productos relacionados y precios:** no hay cambios a su lógica.
+- **Bloqueo de lanzamiento:** `src/proxy.ts` conserva `UNDER_CONSTRUCTION = true`. Las URL públicas están listas en código, pero hasta abrir la tienda mostrarán «Próximamente». No compartir como ficha visible con clientes mientras la barrera siga activa.
+- **QA:** 14 pruebas de contrato aprobadas, incluida verificación con UUID de producto padre, variante y código de referencia; navegación E2E aún pendiente.
+
+**Archivos a descargar en una copia local anterior:** `public/updown-parity-runtime.js`, `src/components/store/product-detail.tsx`, `src/components/store/premium-product-detail.css`, `src/app/vista-previa/producto/[productKey]/page.tsx`, `src/app/producto/[productKey]/page.tsx`, `src/app/vista-previa/preview-local-product-navigation.tsx`. El antiguo `src/app/vista-previa/producto/[productKey]/premium-product-detail.css` dejó de usarse.
 
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
