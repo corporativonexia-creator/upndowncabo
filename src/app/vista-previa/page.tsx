@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/require-role";
 import StorefrontParity from "@/components/store/storefront-parity";
 import PreviewFilterAutoCollapse from "./preview-filter-auto-collapse";
+import PreviewDesktopSearchFocus from "./preview-desktop-search-focus";
 import "./preview-header.css";
 import "./premium-white.css";
 
@@ -16,6 +17,7 @@ export default async function StorefrontPreviewPage() {
     <>
       <StorefrontParity previewMode />
       <PreviewFilterAutoCollapse />
+      <PreviewDesktopSearchFocus />
     </>
   );
 }
