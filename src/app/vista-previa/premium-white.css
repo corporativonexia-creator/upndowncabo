@@ -914,3 +914,70 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
     grid-template-columns: minmax(0,1fr) !important;
   }
 }
+
+
+/* PW-UX-05 / DESKTOP FOCUSED SEARCH FLOW
+   Desktop visual behavior in the private preview only.
+   The existing uds-search-focus class is controlled by the catalog runtime.
+   No product/filter/event/navigation logic is replaced. */
+@media (min-width: 1024px) {
+  /* In the normal landing view, the search floats over the actual hero
+     instead of painting a white rectangular strip on its sides. */
+  #updown-store.uds-preview .uds-discovery {
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  #updown-store.uds-preview:not(.uds-search-focus) .uds-discovery-card {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  /* Stage 7 moves Services after Novedades and BEFORE the catalog.
+     It must also disappear during focused search, otherwise the browser
+     scrolls into Services instead of immediately showing product results. */
+  #updown-store.uds-preview.uds-search-focus .uds-hero,
+  #updown-store.uds-preview.uds-search-focus #udsCategories,
+  #updown-store.uds-preview.uds-search-focus .uds-brands-section,
+  #updown-store.uds-preview.uds-search-focus #udsNew,
+  #updown-store.uds-preview.uds-search-focus #udsServices,
+  #updown-store.uds-preview.uds-search-focus .uds-advisor-meta {
+    display: none !important;
+  }
+
+  /* The original header stays on top. The search is the second sticky
+     tier; its top offset is measured from the existing header element. */
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus .uds-discovery {
+    position: sticky !important;
+    top: var(--pw-preview-header-height, 80px) !important;
+    z-index: 390 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    scroll-margin-top: var(--pw-preview-header-height, 80px) !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus .uds-discovery-card {
+    max-width: 1120px !important;
+    border: 1px solid #dce7df !important;
+    border-radius: 16px !important;
+    box-shadow: 0 5px 18px rgba(18,61,50,.05) !important;
+    background: #ffffff !important;
+  }
+  /* Keep the top of the collection adjacent to the sticky search. */
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog {
+    margin-top: 0 !important;
+    padding-top: 28px !important;
+    scroll-margin-top: calc(var(--pw-preview-header-height, 80px) + 145px) !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog .uds-section-head {
+    margin-top: 0 !important;
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  #updown-store.uds-preview.uds-search-focus .uds-discovery {
+    scroll-behavior: auto !important;
+  }
+}
