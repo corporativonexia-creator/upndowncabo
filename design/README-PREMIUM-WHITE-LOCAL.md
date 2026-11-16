@@ -154,6 +154,16 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 **Ajuste fino posterior:** otra captura confirmó que aún se cortaba ligeramente la descripción derecha del encabezado de colección, aunque el título izquierdo casi se veía completo. Se agregaron **34 px de separación propia** al bloque `.uds-section-head` exclusivamente en el modo de búsqueda enfocada de escritorio (`>=1024px`), para desplazar título y descripción conjuntamente debajo del buscador sticky. No se cambia el scroll, la búsqueda, ni la posición de productos o estado de filtros; queda pendiente comprobación visual local.
 
 
+### PW-UX-06 · Ficha canónica independiente — estilo Premium White (por validar localmente)
+
+**Objetivo:** mejorar visualmente la página independiente que se abre al tocar un producto en la vista previa. En este proyecto el producto **NO** abre el modal legado: el runtime `openProduct` utiliza la ruta estable `/vista-previa/producto/[productKey]`.
+
+**Protección de producción:** la ficha independiente comparte `src/components/store/product-detail.tsx` y `product-detail.css` con la tienda normal, por lo que esos dos archivos **no se han modificado**. En la rama experimental se creó `src/app/vista-previa/producto/[productKey]/premium-product-detail.css` y se importó exclusivamente desde `src/app/vista-previa/producto/[productKey]/page.tsx`, envolviendo su contenido en `.ud-preview-product-skin`. Todos los selectores están limitados a ese contenedor privado.
+
+**Tratamiento visual:** fondo general blanco puro, encabezado blanco, fotografía sobre superficie neutra mínima, bordes discretos, tipografía y precio legibles, botones de 44–48px, variantes y especificaciones más claras; en móvil se respetan la galería, el orden del contenido, compartir, Intercambiar/Preguntar/Carrito, productos relacionados y retorno al catálogo. No se han modificado cálculos de precio, eventos del carrito, imágenes, stock, selección de variantes, productos relacionados ni Supabase.
+
+**Pruebas locales pendientes:** con `npm run dev`, abrir `/vista-previa`, buscar un producto, tocar su ficha y confirmar ruta independiente. Verificar a 320, 390, 440 y 1280px: imagen, controles anterior/siguiente, ampliar, título completo, precio, condición/stock, variantes (cuando existan), enlaces de intercambio y preguntas, compartir y regresar a los mismos resultados. No realizar compras ni escrituras sobre base de datos productiva durante la revisión. Para actualizar una copia ZIP, descargar **dos archivos** de la rama: `src/app/vista-previa/producto/[productKey]/page.tsx` y el nuevo `premium-product-detail.css` en la misma carpeta.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
