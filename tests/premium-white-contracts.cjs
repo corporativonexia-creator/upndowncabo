@@ -1,0 +1,101 @@
+"use strict";
+
+// Premium White regression contracts: static, offline, read-only.
+// Run: node --test tests/premium-white-contracts.cjs
+// Not a replacement for live browser E2E or backend/checkout tests.
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const ROOT = path.resolve(__dirname, "..");
+const read = file => fs.readFileSync(path.join(ROOT, file), "utf8");
+const files = {
+  home: read("src/app/vista-previa/page.tsx"),
+  detail: read("src/app/vista-previa/producto/[productKey]/page.tsx"),
+  bridge: read("src/app/vista-previa/preview-local-product-navigation.tsx"),
+  focus: read("src/app/vista-previa/preview-desktop-search-focus.tsx"),
+  collapse: read("src/app/vista-previa/preview-filter-auto-collapse.tsx"),
+  css: read("src/app/vista-previa/premium-white.css"),
+  productCss: read("src/app/vista-previa/producto/[productKey]/premium-product-detail.css"),
+  runtime: read("public/updown-parity-runtime.js"),
+  product: read("src/components/store/product-detail.tsx"),
+  search: read("src/components/store/responsive/store-search.tsx"),
+  proxy: read("src/proxy.ts"),
+  services: read("public/updown-preview-services-stage7.js"),
+};
+function has(file, ...parts) { for (const x of parts) assert.ok(file.includes(x), "Missing contract: " + x); }
+function braces(css) {
+  return [...css.replace(/\/\*[\s\S]*?\*\//g, "")].reduce(
+    (count, c) => count + Number(c === "{") - Number(c === "}"), 0
+  );
+}
+
+test("admin-only home and independent product routes", () => {
+  has(files.home, 'requireRole("admin"', "PreviewLocalProductNavigation");
+  has(files.detail, "ensurePreviewAdmin()", "<ProductDetail product={product} preview />");
+});
+test("the public launch gate remains independent of preview", () => {
+  has(files.proxy, "const UNDER_CONSTRUCTION = true", '"/vista-previa"');
+});
+test("premium styling stays scoped and syntactically balanced", () => {
+  assert.equal(braces(files.css), 0);
+  assert.equal(braces(files.productCss), 0);
+  has(files.css, "#updown-store.uds-preview", ".uds-search-focus #udsServices");
+  has(files.productCss, ".ud-preview-product-skin");
+});
+test("live search and independent navigation remain connected", () => {
+  has(files.search, "window.__UPDOWN_SEARCH_PRODUCTS__?.(query)",
+    "__UPDOWN_OPEN_SEARCH_PRODUCT__?.(product.id)");
+  has(files.runtime, "window.__UPDOWN_SEARCH_PRODUCTS__=(query)=>",
+    "window.__UPDOWN_OPEN_SEARCH_PRODUCT__=id=>",
+    'new CustomEvent("updown:product-navigate"');
+});
+test("existing catalog filters still own apply/clear operations", () => {
+  has(files.runtime, '"udsCatalogApply").onclick=()=>applyCatalogFilters(false)',
+    '"udsCatalogClear").onclick=clearCommerceFilters;');
+  has(files.collapse, "document.addEventListener", 'panel.classList.remove("is-open")',
+    'toggle.setAttribute("aria-expanded", "false")');
+  has(files.css, "PW-UX-03B / MOBILE FILTER ACCESS");
+});
+test("desktop focus keeps services out of the filtered product list", () => {
+  has(files.css, ".uds-search-focus #udsServices", "position: sticky !important");
+  has(files.focus, "--pw-preview-header-height", "--pw-preview-search-height");
+});
+test("gallery/list and paging controls are retained", () => {
+  has(files.runtime, 'grid.classList.toggle("uds-preview-list"',
+    "function movePreviewCatalogPage", "PREVIEW_CATALOG.view");
+});
+test("independent products and related links stay on current preview host", () => {
+  has(files.bridge, 'event.preventDefault()', "router.push(path)",
+    'detailRoot.addEventListener("click", onDetailProductClick, true)',
+    "event.stopPropagation()", "event.ctrlKey", "event.metaKey",
+    'detailRoot?.removeEventListener("click", onDetailProductClick, true)');
+  has(files.detail, "RelatedProductsServer", "premium-product-detail.css");
+});
+test("quantity +1 and stock cap persist across catalog and product page", () => {
+  has(files.runtime, "ex.quantity=quantity+1",
+    "quantity>=Number(product.stock)",
+    "row.querySelector(\".uds-minus\").onclick",
+    "row.querySelector(\".uds-remove\").onclick");
+  has(files.product, "const next = Number(match?.quantity || 0) + 1",
+    "if (next > product.stock)", "updown:cart-update",
+    "product.hasVariants && !product.variantId");
+});
+test("preview cart reconciliation validates variant stock and price", () => {
+  has(files.runtime, "async function reconcilePreviewCart",
+    'db.from("product_variants")',
+    "quantity!==Number(item.quantity)||price!==Number(item.price)");
+});
+test("checkout is blocked by default in preview", () => {
+  has(files.runtime, 'if(PREVIEW_CATALOG&&window.__UPDOWN_CHECKOUT_ENABLED__!==true)',
+    "previewCartWhatsAppUrl()");
+});
+test("services and languages remain connected", () => {
+  has(files.services, 'root?.classList.contains("uds-preview")');
+  has(files.search, 'label("Cerrar búsqueda", "Close search")');
+  has(files.runtime, 'currentLanguage=lang==="en"?"en":"es"');
+});
+
+// Known launch blockers, intentionally not recorded as passing tests:
+test.todo("Public sharing links must not send guests to admin-only /vista-previa/producto");
+test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
