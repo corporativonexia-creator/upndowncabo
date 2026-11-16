@@ -151,6 +151,9 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Corrección posterior de superposición (15-nov-2026):** la captura de Chrome confirmó filtro pegado debajo del menú y colección filtrada visible (66 resultados para `wed`), pero el encabezado «Colección completa» aparecía parcialmente detrás del filtro sticky al finalizar el scroll. Se sustituyó el segundo desplazamiento suave que competía con el `scrollIntoView` original por una alineación instantánea al inicio del área de resultados; el helper también mide la altura real del encabezado y del buscador para el `scroll-margin-top` dinámico. En Premium White CSS, el catálogo aumenta el respiro superior a 42 px y se desactiva el scroll anchoring únicamente mientras la búsqueda de escritorio está activa. Se conserva el buscador pegado, todo el estado de filtros y el orden de secciones fuera de búsqueda. **Pendiente de comprobación visual tras actualizar únicamente CSS y el helper de escritorio.**
 
+**Ajuste fino posterior:** otra captura confirmó que aún se cortaba ligeramente la descripción derecha del encabezado de colección, aunque el título izquierdo casi se veía completo. Se agregaron **34 px de separación propia** al bloque `.uds-section-head` exclusivamente en el modo de búsqueda enfocada de escritorio (`>=1024px`), para desplazar título y descripción conjuntamente debajo del buscador sticky. No se cambia el scroll, la búsqueda, ni la posición de productos o estado de filtros; queda pendiente comprobación visual local.
+
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
