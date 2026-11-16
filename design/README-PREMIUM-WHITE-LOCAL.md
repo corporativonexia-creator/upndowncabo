@@ -222,7 +222,7 @@ Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/bac
 
 **Autorización:** el administrador solicitó usar el fondo verde aterciopelado aprobado, con logotipo canónico hundido, **solamente en productos que no tienen fotografías cargadas**. La imagen aprobada es `updown_canonical_deboss_verde.png`, comprimida desde 1254×1254 px a una versión WebP de 400×400 px y **embebida en el SVG público** `public/assets/updown-product-placeholder.svg`. El archivo ya no utiliza un placeholder blanco de texto.
 
-- **Catálogo (Galería y Lista) / Novedades y ofertas:** `public/updown-parity-runtime.js` asigna el SVG por defecto cuando `cover_image_url` está vacío o no es un enlace utilizable; si una fotografía real falla, la sustituye por el mismo recurso.
+- **Catálogo (Galería y Lista) / Novedades y ofertas:** `public/updown-parity-runtime.js` elige primero una fotografía real disponible mediante `productGallery(product)` (portada o imágenes anexas). Asigna el SVG verde solo cuando no hay ninguna imagen utilizable o cuando falla la carga. El carrito también utiliza la primera foto real disponible.
 - **Fichas independientes / productos relacionados:** ya utilizaban `/assets/updown-product-placeholder.svg`, así que adoptan la imagen aprobada automáticamente, en localhost y en la futura ruta pública.
 - **Buscador inteligente:** `src/components/store/responsive/store-search.tsx` dejó de usar el placeholder de categorías para resultados sin foto y ahora utiliza el mismo placeholder de producto.
 - **Carrito:** la miniatura sin foto también utiliza el mismo archivo tanto en vista previa como en la ruta pública, sin alterar cantidades, descuentos ni checkout.
