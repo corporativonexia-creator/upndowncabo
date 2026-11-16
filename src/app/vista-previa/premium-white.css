@@ -969,11 +969,15 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
   /* Keep the top of the collection adjacent to the sticky search. */
   #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog {
     margin-top: 0 !important;
-    padding-top: 28px !important;
-    scroll-margin-top: calc(var(--pw-preview-header-height, 80px) + 145px) !important;
+    padding-top: 42px !important;
+    scroll-margin-top: calc(var(--pw-preview-header-height, 80px) + var(--pw-preview-search-height, 145px) + 20px) !important;
   }
   #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog .uds-section-head {
     margin-top: 0 !important;
+  }
+  /* Avoid browser scroll anchoring when hero and editorial bands collapse. */
+  #updown-store.uds-preview.uds-search-focus main {
+    overflow-anchor: none !important;
   }
 }
 @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
