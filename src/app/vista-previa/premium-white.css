@@ -974,6 +974,9 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
   }
   #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog .uds-section-head {
     margin-top: 0 !important;
+    /* Reserve breathing room below the fixed search tier for BOTH the
+       collection title and its right-hand description, not just the section. */
+    padding-top: 34px !important;
   }
   /* Avoid browser scroll anchoring when hero and editorial bands collapse. */
   #updown-store.uds-preview.uds-search-focus main {
