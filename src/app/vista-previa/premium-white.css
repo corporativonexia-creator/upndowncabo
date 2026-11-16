@@ -988,3 +988,21 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
     scroll-behavior: auto !important;
   }
 }
+
+/* PW-UX-07 · Approved green-velvet artwork on photo-less PRODUCT cards only.
+ * The real image remains untouched; this class is assigned only when an image
+ * is absent or its URL fails. No effect on category tiles or service photos.
+ */
+#updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder {
+  background: #003e27 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder img,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  padding: 0 !important;
+}
