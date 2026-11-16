@@ -539,7 +539,7 @@
     if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
     const ex=cart.find(i=>i.id===product.id);
     if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:productGallery(product)[0]||"",price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -843,7 +843,8 @@
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
     const fallback="/assets/updown-product-placeholder.svg";
-    const cover=typeof product.cover_image_url==="string"?product.cover_image_url.trim():"";
+    // Respect gallery photos even when the product lacks a designated cover.
+    const cover=productGallery(product)[0]||"";
     const imageSrc=cover&&(/^https?:\/\//i.test(cover)||cover.startsWith("/"))?cover:fallback;
     const placeholder=imageSrc===fallback;
     return `<div class="uds-card-media${placeholder?" is-product-placeholder":""}"><img src="${escapeHtml(imageSrc)}" alt="${placeholder?"":escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
