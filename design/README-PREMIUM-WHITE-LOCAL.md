@@ -122,7 +122,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 5. Revisar móviles a 320, 390 y 440 px; controles sin cortes, textos legibles, selección y cierre funcionando.
 6. No completar pedidos ni modificar datos de producción desde la sesión local.
 
-### PW-UX-04 · Autocierre suave de filtros móviles — Implementado, pendiente de verificación local
+### PW-UX-04 · Autocierre suave de filtros móviles — VALIDADO por el usuario
 
 **Solicitud (15-nov-2026):** al pulsar «Aplicar filtros» o «Borrar filtros» dentro del panel del catálogo móvil, ejecutar primero la acción existente y después contraer suavemente el panel para mostrar los productos debajo.
 
@@ -154,7 +154,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 **Ajuste fino posterior:** otra captura confirmó que aún se cortaba ligeramente la descripción derecha del encabezado de colección, aunque el título izquierdo casi se veía completo. Se agregaron **34 px de separación propia** al bloque `.uds-section-head` exclusivamente en el modo de búsqueda enfocada de escritorio (`>=1024px`), para desplazar título y descripción conjuntamente debajo del buscador sticky. No se cambia el scroll, la búsqueda, ni la posición de productos o estado de filtros; queda pendiente comprobación visual local.
 
 
-### PW-UX-06 · Ficha canónica independiente — estilo Premium White (por validar localmente)
+### PW-UX-06 · Ficha canónica independiente — VALIDADO visualmente por el usuario
 
 **Objetivo:** mejorar visualmente la página independiente que se abre al tocar un producto en la vista previa. En este proyecto el producto **NO** abre el modal legado: el runtime `openProduct` utiliza la ruta estable `/vista-previa/producto/[productKey]`.
 
@@ -164,7 +164,7 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Pruebas locales pendientes:** con `npm run dev`, abrir `/vista-previa`, buscar un producto, tocar su ficha y confirmar ruta independiente. Verificar a 320, 390, 440 y 1280px: imagen, controles anterior/siguiente, ampliar, título completo, precio, condición/stock, variantes (cuando existan), enlaces de intercambio y preguntas, compartir y regresar a los mismos resultados. No realizar compras ni escrituras sobre base de datos productiva durante la revisión. Para actualizar una copia ZIP, descargar **dos archivos** de la rama: `src/app/vista-previa/producto/[productKey]/page.tsx` y el nuevo `premium-product-detail.css` en la misma carpeta.
 
-### PW-UX-06B · Localhost en fichas individuales — Corrección de navegación experimental
+### PW-UX-06B · Localhost en fichas individuales — VALIDADO por el usuario
 
 **Incidente 15-nov-2026:** al seleccionar un producto del catálogo en localhost, se abría `https://upndowncabo.com/vista-previa/producto/...` (dominio online). Causa técnica comprobada: el runtime original genera una URL canónica absoluta, pero `StorefrontParity` solo admite navegación interna cuando el origen coincide con el host actual; por tanto el evento no se interceptaba y el fallback abría el dominio remoto.
 
@@ -175,6 +175,16 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 **Para actualizar la copia ZIP local:** descargar tres archivos: `src/app/vista-previa/preview-local-product-navigation.tsx`, `src/app/vista-previa/page.tsx`, `src/app/vista-previa/producto/[productKey]/page.tsx`. Para la última ruta, PowerShell interpreta `[productKey]` como comodín; usar `[System.IO.File]::Copy` con una ruta literal construida mediante `Join-Path`, o `Copy-Item -LiteralPath`, evitando `Invoke-WebRequest -OutFile` directamente sobre esa carpeta.
 
 **Comprobaciones locales pendientes:** en `http://localhost:3000/vista-previa`, seleccionar cualquier producto y confirmar que la barra de URL permanece en `localhost:3000/vista-previa/producto/...`. Probar volver al catálogo, seleccionar variante, abrir artículo relacionado y verificar que el dominio sigue siendo localhost. Comprobar que compartir copia una URL pública de `upndowncabo.com`. No usar botones de compra durante las pruebas de interfaz.
+
+## Confirmaciones en localhost · 15-nov-2026
+
+El usuario confirmó expresamente los siguientes resultados tras sus pruebas locales:
+- **Noticias móviles:** una noticia por renglón — visualmente correcto. Aún falta regresión del lector y cierre/expansión en todos los tipos de noticia.
+- **PW-UX-04:** al pulsar «Aplicar filtros» o «Borrar filtros», el panel móvil se cierra automáticamente — correcto.
+- **PW-UX-06:** ficha individual independiente con nuevo estilo — correcto.
+- **PW-UX-06B:** navegación de fichas desde localhost permanece en localhost — correcto.
+
+Estas confirmaciones validan los comportamientos indicados, **no** equivalen a una auditoría completa de variantes, carrito, facturación, checkout, enlaces compartidos, lector, traducciones ES/EN ni todos los tamaños de pantalla.
 
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
