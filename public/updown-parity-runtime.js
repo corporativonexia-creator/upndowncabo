@@ -1732,12 +1732,15 @@
   }
   // Stage 4: only the admin preview receives share actions.
   // Stable UUIDs ensure links keep working when a product's title changes.
-  function previewShareUrl(product){
+  function previewShareUrl(product,forPublicShare=false){
     if(!PREVIEW_CATEGORY_GROUPS?.length)return "";
     const id=String(product.variant_id||product.id||"").replace(/^variant:/,"").toLowerCase();
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))return "";
     const slug=(String(product.name||"producto").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,64).replace(/-+$/g,""))||"producto";
-    const url=new URL("/vista-previa/producto/"+slug+"--"+(product.variant_id?"v":"p")+"-"+id,"https://upndowncabo.com");
+    // Public share links use the launch-ready canonical product route.
+    // Preview clicks/prefetch continue using the admin-only preview route.
+    const productRoute=(forPublicShare?"/producto/":"/vista-previa/producto/")+slug+"--"+(product.variant_id?"v":"p")+"-"+id;
+    const url=new URL(productRoute,"https://upndowncabo.com");
     const code=getStoredAffiliate()?.code;
     if(code)url.searchParams.set("ref",code);
     return url.toString();
@@ -1757,7 +1760,7 @@
       area.before(tools);
     }
     tools.replaceChildren();
-    const url=previewShareUrl(product);
+    const url=previewShareUrl(product,true);
     if(!url)return;
     const label=currentLanguage==="en"?"Share product":"Compartir producto";
     const b=(title,handler)=>{
@@ -1782,7 +1785,7 @@
       catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
     });
     const direct=document.createElement("a");
-    direct.href=url;direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
+    direct.href=previewShareUrl(product);direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
     direct.className="uds-preview-product-link";
     tools.appendChild(direct);
   }
