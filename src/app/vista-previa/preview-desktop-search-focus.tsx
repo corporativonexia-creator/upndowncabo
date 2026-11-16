@@ -37,8 +37,10 @@ export default function PreviewDesktopSearchFocus() {
           if (!isFocused()) return;
           window.scrollTo({
             top: 0,
-            behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-              .matches ? "auto" : "smooth",
+            // Cancel the legacy smooth scrollIntoView animation and settle
+            // at the start of the results. Two competing smooth scrolls
+            // left the catalog title underneath the sticky search.
+            behavior: "instant",
           });
         });
       });
@@ -52,6 +54,13 @@ export default function PreviewDesktopSearchFocus() {
         "--pw-preview-header-height",
         `${Math.ceil(header.getBoundingClientRect().height)}px`,
       );
+      const search = root.querySelector<HTMLElement>(".uds-discovery");
+      if (search) {
+        root.style.setProperty(
+          "--pw-preview-search-height",
+          `${Math.ceil(search.getBoundingClientRect().height)}px`,
+        );
+      }
     };
 
     const attach = () => {
@@ -74,9 +83,11 @@ export default function PreviewDesktopSearchFocus() {
         attributeFilter: ["class"],
       });
       const header = next.querySelector<HTMLElement>(".uds-header");
-      if (header && typeof ResizeObserver !== "undefined") {
+      if (typeof ResizeObserver !== "undefined") {
         headerObserver = new ResizeObserver(measureHeader);
-        headerObserver.observe(header);
+        if (header) headerObserver.observe(header);
+        const search = next.querySelector<HTMLElement>(".uds-discovery");
+        if (search) headerObserver.observe(search);
       }
       measureHeader();
       if (isFocused()) showFocusedResults();
