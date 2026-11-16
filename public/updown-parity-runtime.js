@@ -523,14 +523,13 @@
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
       const fallback="/assets/updown-product-placeholder.svg";
-      const imageSrc=PREVIEW_CATALOG&&(!item.image||typeof item.image!=="string"||!/^https?:\/\//i.test(item.image))?fallback:item.image||"";
+      const validImage=typeof item.image==="string"&&(/^https?:\/\//i.test(item.image)||item.image.startsWith("/"));
+      const imageSrc=validImage?item.image:fallback;
       row.innerHTML=`<img src="${escapeHtml(imageSrc)}" alt="${PREVIEW_CATALOG?"":escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
-      if(PREVIEW_CATALOG){
-        const image=row.querySelector("img");
-        image?.addEventListener("error",()=>{
-          if(image.getAttribute("src")!==fallback)image.src=fallback;
-        });
-      }
+      const image=row.querySelector("img");
+      image?.addEventListener("error",()=>{
+        if(image.getAttribute("src")!==fallback)image.src=fallback;
+      });
       row.querySelector(".uds-minus").onclick=()=>changeQty(item.id,-1);row.querySelector(".uds-plus").onclick=()=>changeQty(item.id,1);row.querySelector(".uds-remove").onclick=()=>removeFromCart(item.id);el("udsCartList").appendChild(row)
     })
   }
@@ -843,7 +842,11 @@
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
+    const fallback="/assets/updown-product-placeholder.svg";
+    const cover=typeof product.cover_image_url==="string"?product.cover_image_url.trim():"";
+    const imageSrc=cover&&(/^https?:\/\//i.test(cover)||cover.startsWith("/"))?cover:fallback;
+    const placeholder=imageSrc===fallback;
+    return `<div class="uds-card-media${placeholder?" is-product-placeholder":""}"><img src="${escapeHtml(imageSrc)}" alt="${placeholder?"":escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
@@ -857,9 +860,18 @@
   function markImageFallback(img,host){
     if(!img||!host)return;
     img.addEventListener("error",()=>{
-      img.style.display="none";
-      host.classList.add("is-media-fallback");
-    },{once:true});
+      const fallback="/assets/updown-product-placeholder.svg";
+      if(img.getAttribute("src")!==fallback){
+        // Broken uploaded photo: use the approved velvet placeholder instead.
+        img.src=fallback;
+        img.alt="";
+        host.classList.add("is-product-placeholder");
+      }else{
+        // Last-resort fallback if the static asset itself cannot load.
+        img.style.display="none";
+        host.classList.add("is-media-fallback");
+      }
+    });
   }
   function bindCard(card,product){
     const media=card.querySelector(".uds-card-media");
