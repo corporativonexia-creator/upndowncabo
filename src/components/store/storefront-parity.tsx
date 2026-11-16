@@ -221,7 +221,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
       // Stage 7 runs only in the protected preview and never alters managed DB rows.
       if (previewMode) {
         previewServicesScript = document.createElement("script");
-        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-stage7-v3-20261108";
+        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116";
         previewServicesScript.dataset.updownPreviewServices = "stage7";
         previewServicesScript.async = false;
         previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
