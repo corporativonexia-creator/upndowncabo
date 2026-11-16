@@ -65,7 +65,7 @@ export default function PreviewLocalProductNavigation() {
     // links generated as canonical absolute URLs. Localize only their
     // *navigation hrefs* in the private page, including streamed links.
     // Share text and WhatsApp destinations remain public URLs.
-    const detailRoot = document.querySelector(".ud-preview-product-skin");
+    const detailRoot = document.querySelector(".ud-premium-product-skin");
     let observer: MutationObserver | null = null;
     const onDetailProductClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 ||
