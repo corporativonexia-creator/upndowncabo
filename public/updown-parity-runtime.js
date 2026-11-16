@@ -4229,12 +4229,28 @@
       {label:txt("Ver categorías","View categories"),onClick:()=>scrollToId("udsCategories")}
     ]));
 
-    menu.appendChild(makeGroup(txt("Servicios","Services"),[
-      {label:txt("Reparación","Repair"),onClick:()=>openService(/reparaci|repair/i)},
-      {label:txt("Intercambios","Trade-ins"),onClick:()=>openService(/intercambio|trade/i)},
-      {label:txt("Mantenimiento","Maintenance"),onClick:()=>openService(/mantenimiento|maintenance/i)},
-      {label:txt("Restauración de Putters","Putter Restoration"),onClick:()=>openService(/putter/i)},
-    ]));
+    // Service shortcuts are driven by the same ordered, active database rows
+    // used by the storefront cards. Never hardcode old service names or keys.
+    const managedServiceLinks=Array.isArray(window.__UPDOWN_SERVICES__)
+      ?window.__UPDOWN_SERVICES__.filter(row=>row&&typeof row.key==="string")
+      :[];
+    const serviceActions=managedServiceLinks.map(row=>({
+      label:(isEnglish()?row.title_en:row.title_es)||row.title_es||row.key,
+      onClick:()=>{
+        closeMenu();
+        setTimeout(()=>{
+          if(!window.__UPDOWN_OPEN_SERVICE__?.(row.key)){
+            el("udsServices")?.scrollIntoView({behavior:"smooth",block:"start"});
+          }
+        },70);
+      },
+    }));
+    menu.appendChild(makeGroup(txt("Servicios","Services"),
+      serviceActions.length?serviceActions:[{
+        label:txt("Ver servicios","View services"),
+        onClick:()=>scrollToId("udsServices")
+      }]
+    ));
 
     menu.appendChild(makeGroup(txt("Golf en Los Cabos","Golf in Los Cabos"),[
       {label:txt("Campos de golf","Golf courses"),onClick:()=>scrollToId("udsCourses")},
