@@ -119,9 +119,9 @@ test("runtime preview and public share paths retain the same UUID and seller cod
   const matched = files.runtime.match(/  function previewShareUrl\(product,forPublicShare=false\)\{[\s\S]*?\n  \}/);
   assert.ok(matched, "previewShareUrl function not found");
   const getUrl = new Function(
-    "PREVIEW_CATEGORY_GROUPS", "getStoredAffiliate",
+    "PREVIEW_CATEGORY_GROUPS", "getStoredAffiliate", "URL",
     matched[0] + "\nreturn previewShareUrl;"
-  )([{slug:"wedges"}], () => ({code:"TEST01"}));
+  )([{slug:"wedges"}], () => ({code:"TEST01"}), URL);
   const product = {
     id:"123e4567-e89b-42d3-a456-426614174000",
     name:"Wedge Tour 56°", variant_id:null
