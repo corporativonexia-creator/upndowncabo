@@ -149,6 +149,8 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Para actualizar ZIP local:** reemplazar `src/app/vista-previa/premium-white.css` y `src/app/vista-previa/page.tsx`; agregar `src/app/vista-previa/preview-desktop-search-focus.tsx`.
 
+**Corrección posterior de superposición (15-nov-2026):** la captura de Chrome confirmó filtro pegado debajo del menú y colección filtrada visible (66 resultados para `wed`), pero el encabezado «Colección completa» aparecía parcialmente detrás del filtro sticky al finalizar el scroll. Se sustituyó el segundo desplazamiento suave que competía con el `scrollIntoView` original por una alineación instantánea al inicio del área de resultados; el helper también mide la altura real del encabezado y del buscador para el `scroll-margin-top` dinámico. En Premium White CSS, el catálogo aumenta el respiro superior a 42 px y se desactiva el scroll anchoring únicamente mientras la búsqueda de escritorio está activa. Se conserva el buscador pegado, todo el estado de filtros y el orden de secciones fuera de búsqueda. **Pendiente de comprobación visual tras actualizar únicamente CSS y el helper de escritorio.**
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
