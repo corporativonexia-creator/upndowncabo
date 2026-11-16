@@ -25,6 +25,8 @@ const files = {
   search: read("src/components/store/responsive/store-search.tsx"),
   proxy: read("src/proxy.ts"),
   services: read("public/updown-preview-services-stage7.js"),
+  productFallback: read("public/assets/updown-product-placeholder.svg"),
+  related: read("src/components/store/related-products-rail.tsx"),
   parity: read("src/components/store/storefront-parity.tsx"),
   adminServices: read("src/components/admin/services-admin.tsx"),
 };
@@ -170,6 +172,29 @@ test("admin continues to edit source records and protected classes content", () 
     'service.key === "classes"');
   has(files.parity,
     "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116");
+});
+
+test("no-photo cards use approved velvet image without touching real product photos", () => {
+  const match=files.productFallback.match(/base64,([A-Za-z0-9+/=]+)/);
+  assert.ok(match, "Product fallback must embed the approved green velvet artwork");
+  const b64=match[1];
+  assert.equal(b64.length, 2384);
+  let fingerprint=2166136261;
+  for(const ch of b64) fingerprint=Math.imul(fingerprint^ch.charCodeAt(0),16777619)>>>0;
+  assert.equal(fingerprint, 886123458); // approved canonical PNG, resized and WebP-compressed
+  has(files.productFallback, 'width="400" height="400"');
+
+  has(files.runtime,
+    'const cover=typeof product.cover_image_url==="string"?product.cover_image_url.trim():""',
+    'const imageSrc=cover&&(/^https?:\\/\\//i.test(cover)||cover.startsWith("/"))?cover:fallback;',
+    'class="uds-card-media${placeholder?" is-product-placeholder":""}"',
+    'img.src=fallback',
+    'host.classList.add("is-product-placeholder")');
+  has(files.runtime, 'const imageSrc=validImage?item.image:fallback;');
+  has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: cover !important');
+  has(files.search, 'product.image || "/assets/updown-product-placeholder.svg"');
+  has(files.product, 'product.images[active] || "/assets/updown-product-placeholder.svg"');
+  has(files.related, 'item.image || "/assets/updown-product-placeholder.svg"');
 });
 
 // Still pending: requires an actual browser session and fixture backend.
