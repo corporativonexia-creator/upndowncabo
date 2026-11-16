@@ -134,6 +134,21 @@ console.table([...document.querySelectorAll('#udsServices .uds-service-card.has-
 
 **Actualización de copia ZIP:** esta mejora requiere descargar **dos archivos** desde la misma rama: `src/app/vista-previa/page.tsx` y `src/app/vista-previa/preview-filter-auto-collapse.tsx`. No se requiere actualizar `premium-white.css` para esta solicitud si ya se descargó la corrección móvil del filtro.
 
+### PW-UX-05 · Búsqueda enfocada en escritorio — implementada, pendiente de validación local
+
+**Solicitud 15-nov-2026:** en la vista normal de escritorio, los laterales blancos del buscador sobre el hero deben ser transparentes. Al confirmar una búsqueda (p.ej. `wedge`), ocultar hero, «Encuentra lo que buscas», marquesina de marcas, «Novedades y ofertas» y «Servicios», y mostrar la colección filtrada inmediatamente debajo del buscador. El buscador debe quedar pegado bajo el menú superior al desplazar la página, para permitir refinar categoría, marca y otras condiciones sin volver a subir.
+
+**Hallazgo:** el runtime ya activa la clase `uds-search-focus` al confirmar búsquedas y ya oculta varias secciones. Sin embargo, Servicios Etapa 7 reubica `#udsServices` **entre Novedades y Colección**; antes quedaba visible y el scroll terminaba en medio de esa sección.
+
+**Implementación:** solo en la rama `offline-premium-white-20261114`:
+- Reglas CSS finales en `src/app/vista-previa/premium-white.css`, limitadas a pantallas >=1024 px y raíz `.uds-preview`: laterales transparentes sobre hero normal, ocultación de Servicios y demás secciones durante búsqueda confirmada, encabezado + buscador en dos niveles sticky, colección inmediatamente después.
+- Nuevo componente cliente `src/app/vista-previa/preview-desktop-search-focus.tsx`, montado exclusivamente en `src/app/vista-previa/page.tsx`: mide la altura real del encabezado para el offset sticky y alinea el scroll al principio de los resultados tras confirmar búsqueda. No sustituye `confirmPreviewSearch`, `applyFilters` ni sus eventos; no lee ni escribe Supabase.
+- El panel inteligente de escritorio mantiene los mismos inputs/selectores, contador, URL, opciones de ordenamiento y botones. Se preserva el autocierre de filtros móviles de PW-UX-04.
+
+**Pruebas por hacer en localhost:** comprobar que al entrar sin búsqueda se ve el hero detrás de los laterales del buscador; escribir `wedge` y pulsar Buscar; confirmar que desaparecen las secciones indicadas, que la colección está justo debajo del buscador, y que el buscador permanece disponible al hacer scroll. Modificar texto, categoría/condición y pulsar Aplicar; cambiar Lista/Galería, orden y límite; usar «Cerrar búsqueda» y navegación del menú para recuperar secciones. Probar en escritorio a 1024/1280/1600 px y verificar que el móvil mantiene el modal de búsqueda en tiempo real y el panel de filtros actual. **No se han ejecutado pruebas de navegador automáticamente**, queda la validación local del usuario.
+
+**Para actualizar ZIP local:** reemplazar `src/app/vista-previa/premium-white.css` y `src/app/vista-previa/page.tsx`; agregar `src/app/vista-previa/preview-desktop-search-focus.tsx`.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
