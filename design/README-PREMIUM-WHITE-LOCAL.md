@@ -218,6 +218,20 @@ La tienda y el submenú móvil ahora consumen los títulos y orden de Supabase, 
 
 Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/backups/storefront_services_20261116_pre_unification.json`. SQL ejecutado una sola vez: `design/sql/STORE_SERVICES_SIX_UNIFICATION_20261116_ONE_TIME.sql`.
 
+## PW-UX-07 · Fondo verde canónico como placeholder de productos — 16-nov-2026
+
+**Autorización:** el administrador solicitó usar el fondo verde aterciopelado aprobado, con logotipo canónico hundido, **solamente en productos que no tienen fotografías cargadas**. La imagen aprobada es `updown_canonical_deboss_verde.png`, comprimida desde 1254×1254 px a una versión WebP de 400×400 px y **embebida en el SVG público** `public/assets/updown-product-placeholder.svg`. El archivo ya no utiliza un placeholder blanco de texto.
+
+- **Catálogo (Galería y Lista) / Novedades y ofertas:** `public/updown-parity-runtime.js` asigna el SVG por defecto cuando `cover_image_url` está vacío o no es un enlace utilizable; si una fotografía real falla, la sustituye por el mismo recurso.
+- **Fichas independientes / productos relacionados:** ya utilizaban `/assets/updown-product-placeholder.svg`, así que adoptan la imagen aprobada automáticamente, en localhost y en la futura ruta pública.
+- **Buscador inteligente:** `src/components/store/responsive/store-search.tsx` dejó de usar el placeholder de categorías para resultados sin foto y ahora utiliza el mismo placeholder de producto.
+- **Carrito:** la miniatura sin foto también utiliza el mismo archivo tanto en vista previa como en la ruta pública, sin alterar cantidades, descuentos ni checkout.
+- **CSS Premium White:** estilos limitados a la clase `.is-product-placeholder` en tarjetas, para llenar el área fotográfica sin bordes blancos ni sobrescribir fotos reales. Las fotos de servicios y categorías no se modificaron.
+
+**Verificaciones:** contenido embebido del SVG confirmado idéntico al WebP comprimido del arte aprobado mediante huella FNV-1a; imagen renderizada en Chromium aislado; 17 pruebas estáticas de contratos aprobadas (1 prueba E2E en localhost pendiente). Sin actualización de Supabase, sin despliegue ni cambio a `main`.
+
+**Para actualizar ZIP local:** sincronizar estos cuatro archivos: `public/assets/updown-product-placeholder.svg`, `public/updown-parity-runtime.js`, `src/components/store/responsive/store-search.tsx` y `src/app/vista-previa/premium-white.css`. Tras actualizar, recargar con Ctrl+Shift+R y revisar un producto sin foto y otro con foto, en la vista Galería/Lista y en Novedades.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
