@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
-  buildReceptionPdf, receptionDate, receptionFileName, receptionFolio,
+  buildReceptionPdf, normalizeReceptionFolio, receptionDate, receptionFileName, receptionFolio,
   type ServiceReception,
 } from "@/lib/pos/reception-receipt";
 import styles from "./receptions.module.css";
@@ -102,7 +102,7 @@ export default function ServiceRecepcionesPage() {
   async function searchHistory(e: FormEvent) {
     e.preventDefault();
     setBusy(true); setError("");
-    try { await refreshHistory(search.trim()); }
+    try { await refreshHistory(normalizeReceptionFolio(search) || search.trim()); }
     catch (e) { setError("No se pudo consultar el historial: " + errorText(e)); }
     finally { setBusy(false); }
   }
