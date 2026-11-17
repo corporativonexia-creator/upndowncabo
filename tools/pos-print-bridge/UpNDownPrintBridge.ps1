@@ -79,16 +79,145 @@ function BuildBody($sale,$access,[string]$copy){
  AddBytes $b $CENTER;if($sale.is_test){AddText $b "`n*** PRUEBA TECNICA ***`nNO ES UN COMPROBANTE DE VENTA`nNO EXISTE TRANSACCION REAL`n"}else{AddText $b "`nESCANEA Y VISITANOS`n";AddQR $b;AddText $b "upndowncabo.com`nGRACIAS POR TU COMPRA`nConserva este comprobante para`ncualquier aclaracion.`n"};AddBytes $b (B @(10,10,10,10,10));return $b.ToArray()
 }
 # Reception receipts never open the cash drawer.
-# Code39: GS k 4 data NUL. Scannable workshop folio on both thermal copies.
+# Raster Code39 uses the SAME GS v 0 mechanism as the already working shop logo.
+# Some POS-80C clones print GS k 69 but stop consuming commands after that barcode.
+# Drawing the bars in software avoids the printer's GS k parser altogether.
 function AddReceptionBarcode($b,[string]$folio){
- if($folio -notmatch '^SR-[0-9]{6,12}$'){throw 'FOLIO_BARCODE_INVALIDO'}
- AddBytes $b $CENTER
- # Explicit-length Code39 (GS k 69 n data) prevents ESC/POS clones from
- # consuming the rest of the receipt as barcode data.
- $barcode=[Text.Encoding]::ASCII.GetBytes($folio)
- AddBytes $b (B @($GS,72,2,$GS,119,2,$GS,104,70,$GS,107,69,$barcode.Length))
- AddBytes $b $barcode
- AddBytes $b (B @(10))
+ if($folio -notmatch '^SR-[0-9]{6,12}
+function ReceptionLine($b,[string]$value){AddText $b ($value+[char]10)}
+function ReceptionText($b,[string]$label,[string]$value){
+ $clean=[regex]::Replace([string]$value,'[\x00-\x1F\x7F]',' ')
+ $clean=$clean.Trim();if(-not $clean){$clean='No especificado'}
+ AddBytes $b $BOLDON;ReceptionLine $b ($label+':');AddBytes $b $BOLDOFF
+ for($offset=0;$offset -lt $clean.Length;$offset+=42){
+  ReceptionLine $b $clean.Substring($offset,[Math]::Min(42,$clean.Length-$offset))
+ }
+}
+function BuildReceptionBody($r,[string]$copy){
+ $number=[int64]$r.receipt_number
+ if($number -le 0 -or -not $r.customer_name -or -not $r.equipment_description -or -not $r.service_name -or -not $r.work_description){throw 'RECEPCION_INVALIDA'}
+ $folio='SR-'+$number.ToString('000000')
+ $b=New-Object 'System.Collections.Generic.List[byte]'
+ AddBytes $b $INIT;AddLogo $b
+ AddBytes $b $CENTER;AddBytes $b $BOLDON
+ if($r.is_test){ReceptionLine $b '*** PRUEBA NO REGISTRADA ***'}
+ ReceptionLine $b 'RECEPCION DE EQUIPO'
+ ReceptionLine $b ('FOLIO '+$folio)
+ AddReceptionBarcode $b $folio
+ ReceptionLine $b ('COPIA '+$copy)
+ AddBytes $b $BOLDOFF;AddBytes $b $LEFT
+ ReceptionLine $b (Line '=')
+ ReceptionLine $b ('Fecha: '+([datetime]$r.received_at).ToLocalTime().ToString('dd/MM/yyyy HH:mm'))
+ ReceptionText $b 'CLIENTE' $r.customer_name
+ ReceptionText $b 'TELEFONO' $r.customer_phone
+ ReceptionText $b 'EQUIPO' $r.equipment_description
+ ReceptionText $b 'SERVICIO' $r.service_name
+ ReceptionText $b 'TRABAJO SOLICITADO' $r.work_description
+ ReceptionText $b 'CONDICION AL RECIBIR' $r.condition_notes
+ ReceptionText $b 'ACCESORIOS' $r.accessories
+ ReceptionText $b 'RECIBIO' ('#'+$r.employee_number+' '+$r.employee_name)
+ ReceptionText $b 'TERMINAL' $r.terminal_name
+ ReceptionLine $b (Line '-')
+ AddBytes $b $CENTER;AddBytes $b $BOLDON
+ if($copy -eq 'CLIENTE'){ReceptionLine $b 'CONSERVE ESTE COMPROBANTE'}else{ReceptionLine $b 'MANTENER JUNTO AL EQUIPO'}
+ AddBytes $b $BOLDOFF
+ ReceptionLine $b 'NO ES COMPROBANTE DE PAGO'
+ if($r.is_test){ReceptionLine $b 'FOLIO FICTICIO - NO ENTREGAR'}
+ if($copy -eq 'CLIENTE'){ReceptionLine $b 'Firma de quien entrega: ______________'}
+ # Feed past the blade before cutting; do not open the cash drawer.
+ # Keep feed and cut inside the same RAW spool job as all ticket data.
+ AddBytes $b $LEFT;AddBytes $b (B @(10,10,10,10))
+ AddBytes $b (B @($ESC,100,8))
+ AddBytes $b $CUT
+ return $b.ToArray()
+}
+function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
+function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
+# Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
+# inventory changes or sale creation. The cash drawer is opt-in with -TestDrawer.
+if($TestDrawer -and -not $TestReceipt){throw '-TestDrawer requires -TestReceipt'}
+if($TestReceipt -and $TestReception){throw 'Select only one test mode'}
+if($TestReceipt){
+ $testSale=[pscustomobject]@{
+   is_test=$true; sale_number='QA22-NO-VENTA'; created_at=[datetime]::Now
+   subtotal=5000.00; discount_amount=1020.00; total=3980.00
+   items=@(
+     [pscustomobject]@{category_name='PELOTAS';product_name='Pelotas de golf';sku='QA-PELOTA';quantity=1;unit_price=200.00;line_subtotal=200.00;line_total=180.00;discount_amount=20.00;promotion_mode='percent';promotion_value=10},
+     [pscustomobject]@{category_name='WEDGES';product_name='Wedge simulacion';sku='QA-WEDGE';quantity=1;unit_price=4800.00;line_subtotal=4800.00;line_total=4800.00;discount_amount=0.00;promotion_mode='none';promotion_value=0}
+   )
+   payments=@()
+ }
+ Write-Host 'TEST POS 2.2 (NO VENTA): 2 copias, 2 cortes; cajon solo con -TestDrawer.' -ForegroundColor Cyan
+ SendRaw (BuildBody $testSale $null 'CLIENTE') 'QA POS22 CLIENTE';Start-Sleep -Milliseconds 700
+ SendRaw $CUT 'QA POS22 CORTE CLIENTE';Start-Sleep -Milliseconds 700
+ SendRaw (BuildBody $testSale $null 'COMERCIO') 'QA POS22 COMERCIO';Start-Sleep -Milliseconds 700
+ SendRaw $CUT 'QA POS22 CORTE COMERCIO'
+ if($TestDrawer){Start-Sleep -Milliseconds 700;SendRaw $DRAWER 'QA POS22 CAJON'}
+ Write-Host 'Prueba enviada a la cola de impresion: verificar las 2 copias y ambos cortes.' -ForegroundColor Green
+ exit 0
+}
+# Offline thermal reception proof: no website, Supabase, folio creation or cash drawer.
+if($TestReception){
+ $testReception=[pscustomobject]@{
+   receipt_number=999999;is_test=$true;received_at=[datetime]::Now
+   customer_name='CLIENTE FICTICIO';customer_phone='0000000000'
+   equipment_description='Driver de prueba';service_name='Revision general'
+   work_description='Verificar texto, folio, lectura y corte'
+   condition_notes='Equipo ficticio sin ingreso real';accessories='Ninguno'
+   employee_number='000';employee_name='PRUEBA';terminal_name='POS-80C'
+ }
+ Write-Host 'PRUEBA RECEPCION: dos copias con corte, sin cobro ni inventario ni cajon.' -ForegroundColor Cyan
+ SendRaw (BuildReceptionBody $testReception 'CLIENTE') 'QA RECEPCION CLIENTE'
+ Start-Sleep -Milliseconds 900
+ SendRaw (BuildReceptionBody $testReception 'TALLER') 'QA RECEPCION TALLER'
+ Write-Host 'Revisar ambas copias completas, cortes y teclado del lector; folio ficticio SR-999999.' -ForegroundColor Green
+ exit 0
+}
+$l=New-Object Net.HttpListener;$l.Prefixes.Add("http://127.0.0.1:$Port/");$l.Start();Write-Host "Up & Down Print Bridge listo -> $PrinterName @ 127.0.0.1:$Port" -ForegroundColor Green
+while($l.IsListening){$c=$l.GetContext();try{if($c.Request.HttpMethod -eq 'OPTIONS'){Reply $c 204 '{}';continue};if($c.Request.Url.AbsolutePath -eq '/health'){Reply $c 200 ('{"ok":true,"printer":"'+$PrinterName+'","receipt":"retail-v8","reception":"service-reception-v1","cut_fix":"raster-code39-feed-v2"}');continue};if($c.Request.HttpMethod -ne 'POST' -or ($c.Request.Url.AbsolutePath -ne '/print-sale' -and $c.Request.Url.AbsolutePath -ne '/print-reception')){Reply $c 404 '{"ok":false}';continue};$r=New-Object IO.StreamReader($c.Request.InputStream,$c.Request.ContentEncoding);$p=$r.ReadToEnd()|ConvertFrom-Json;if($c.Request.Url.AbsolutePath -eq '/print-reception'){$reception=$p.reception;if(-not $reception){throw 'RECEPCION_REQUERIDA'};SendRaw (BuildReceptionBody $reception 'CLIENTE') ("Recepcion "+$reception.receipt_number+" CLIENTE");Start-Sleep -Milliseconds 900;SendRaw (BuildReceptionBody $reception 'TALLER') ("Recepcion "+$reception.receipt_number+" TALLER");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":0,"receipt":"service-reception-v1"}';continue};$sale=$p.sale;$access=$p.access;if(-not $sale -or -not $sale.sale_number){throw 'Venta invalida'};SendRaw (BuildBody $sale $access 'CLIENTE') ("Venta "+$sale.sale_number+" CLIENTE");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE CLIENTE");Start-Sleep -Milliseconds 1200;SendRaw (BuildBody $sale $access 'COMERCIO') ("Venta "+$sale.sale_number+" COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $CUT ("Venta "+$sale.sale_number+" CORTE COMERCIO");Start-Sleep -Milliseconds 700;SendRaw $DRAWER ("Venta "+$sale.sale_number+" CAJON");Reply $c 200 '{"ok":true,"copies":2,"cuts":2,"drawer":1,"receipt":"retail-v8"}'}catch{Reply $c 500 ('{"ok":false,"error":'+(ConvertTo-Json $_.Exception.Message -Compress)+'}')}}
+){throw 'FOLIO_BARCODE_INVALIDO'}
+ $patterns=@{
+  '*'='nwnnwnwnn';'-'='nwnnnnwnw'
+  'S'='nnwnnnwwn';'R'='wnnnnnwwn'
+  '0'='nnnwwnwnn';'1'='wnnwnnnnw';'2'='nnwwnnnnw'
+  '3'='wnwwnnnnn';'4'='nnnwwnnnw';'5'='wnnwwnnnn'
+  '6'='nnwwwnnnn';'7'='nnnwnnwnw';'8'='wnnwnnwnn';'9'='nnwwnnwnn'
+ }
+ $text='*'+$folio+'*'
+ # Wide bars are at least 2.5x the narrow bars; center in 384 dots (48 bytes).
+ $narrow=2;$wide=5
+ if($text.Length -gt 11){$narrow=1;$wide=3}
+ $gap=$narrow;$total=0
+ foreach($c in $text.ToCharArray()){
+  $p=$patterns[[string]$c]
+  if(-not $p){throw 'CODE39_CARACTER_NO_ADMITIDO'}
+  for($i=0;$i -lt 9;$i++){$total+=$(if($p[$i] -eq 'w'){$wide}else{$narrow})}
+  $total+=$gap
+ }
+ $total-=$gap
+ if($total -gt 344){throw 'CODE39_SIN_ESPACIO'}
+ $widthBytes=48;$height=104
+ $raster=New-Object byte[] ($widthBytes*$height)
+ $x=[int][Math]::Floor((384-$total)/2)
+ foreach($c in $text.ToCharArray()){
+  $p=$patterns[[string]$c]
+  for($i=0;$i -lt 9;$i++){
+   $barWidth=$(if($p[$i] -eq 'w'){$wide}else{$narrow})
+   if(($i % 2) -eq 0){
+    for($dx=0;$dx -lt $barWidth;$dx++){
+     $pixel=$x+$dx
+     $mask=[byte](128 -shr ($pixel % 8))
+     for($y=0;$y -lt $height;$y++){
+      $index=$y*$widthBytes+[int][Math]::Floor($pixel/8)
+      $raster[$index]=[byte]($raster[$index] -bor $mask)
+     }
+    }
+   }
+   $x+=$barWidth
+  }
+  $x+=$gap
+ }
+ AddRaster $b $raster $widthBytes $height
 }
 function ReceptionLine($b,[string]$value){AddText $b ($value+[char]10)}
 function ReceptionText($b,[string]$label,[string]$value){
