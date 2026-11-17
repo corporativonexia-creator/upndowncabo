@@ -200,5 +200,25 @@ test("no-photo cards use approved velvet image without touching real product pho
   has(files.related, 'item.image || "/assets/updown-product-placeholder.svg"');
 });
 
+test("premium logo prominence preserves both native and desktop header heights", () => {
+  const at=files.css.indexOf("PW-UX-08 · More brand presence");
+  assert.ok(at>0, "Missing PW-UX-08 brand scope");
+  const block=files.css.slice(at);
+  has(block,
+    "grid-template-columns: minmax(280px, 298px)",
+    "width: 92px !important",
+    "font-size: 22px !important",
+    "@media (min-width: 390px) and (max-width: 1023px)",
+    "font-size: clamp(12px, 3.18vw, 16px)",
+    "@media (max-width: 389px)",
+    "font-size: 17px !important");
+  assert.ok(!block.includes("--uds-mobile-header-height:"),
+    "Native header height must remain unchanged");
+  assert.ok(!block.includes("--pw-preview-header-height:"),
+    "Sticky search header offsets must remain unchanged");
+  assert.ok(!block.includes("#udsMenuButton")&&!block.includes("#udsCartButton"),
+    "Menu and cart controls must not change");
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
