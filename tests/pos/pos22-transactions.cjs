@@ -393,9 +393,15 @@ test('POS Taller: thermal bridge has separate two-copy route and no cash drawer 
  const route=bridge.slice(start,end);
  assert.match(route,/BuildReceptionBody \$reception 'CLIENTE'/);
  assert.match(route,/BuildReceptionBody \$reception 'TALLER'/);
- assert.equal((route.match(/SendRaw \$CUT/g)||[]).length,2);
+ // The cutter is now inline inside BuildReceptionBody, not a separate RAW job.
+ assert.equal((route.match(/SendRaw \$CUT/g)||[]).length,0);
  assert.doesNotMatch(route,/\$DRAWER/);
  assert.match(route,/"drawer":0/);
+ const body=bridge.slice(bridge.indexOf('function BuildReceptionBody('),bridge.indexOf('function SendRaw('));
+ assert.match(body,/AddBytes \$b \(B @\(\$ESC,100,8\)\)/);
+ assert.match(body,/AddBytes \$b \$CUT/);
  assert.match(bridge,/AddReceptionBarcode \$b \$folio/);
- assert.match(bridge,/\$GS,107,4/);
+ const barcode=bridge.slice(bridge.indexOf('function AddReceptionBarcode('),bridge.indexOf('function ReceptionLine('));
+ assert.match(barcode,/AddRaster \$b \$raster \$widthBytes \$height/);
+ assert.doesNotMatch(barcode,/\$GS,107,(69|4)/);
 });
