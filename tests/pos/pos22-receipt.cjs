@@ -140,3 +140,26 @@ test('POS reception: local proof uses a fake folio without a sale or inventory',
   }
   assert.doesNotMatch(testOnly,/pos_create_sale|inventory_movements|SendRaw \$DRAWER|https?:\/\//i);
 });
+
+test('POS reception: HID scan with apostrophe and extra zeroes resolves to canonical folio',()=>{
+ const src=fs.readFileSync('src/lib/pos/reception-receipt.ts','utf8');
+ const from=src.indexOf('export function receptionFolio(');
+ const until=src.indexOf('export function receptionFileName(',from);
+ assert.ok(from>=0&&until>from);
+ const fn={};
+ new Function('exports',compile(src.slice(from,until)))(fn);
+ assert.equal(fn.normalizeReceptionFolio("SR'0000001"),"SR-000001");
+ assert.equal(fn.normalizeReceptionFolio('SR-000001'),"SR-000001");
+ assert.equal(fn.normalizeReceptionFolio("sr’000128"),"SR-000128");
+ assert.equal(fn.normalizeReceptionFolio('SR-000000000999'),"SR-000999");
+ assert.equal(fn.normalizeReceptionFolio('1234567890123'),null);
+ assert.equal(fn.normalizeReceptionFolio('SR/000128'),null);
+ assert.equal(fn.normalizeReceptionFolio('SR-000000'),null);
+});
+test('POS reception: both cashier scanner and workshop search normalize folios',()=>{
+ const pos=fs.readFileSync('src/app/pos/page.tsx','utf8');
+ const workshop=fs.readFileSync('src/app/pos/recepciones/page.tsx','utf8');
+ assert.match(pos,/const code = normalizeReceptionFolio\(rawValue\)/);
+ assert.match(pos,/const receptionCode = normalizeReceptionFolio\(code\)/);
+ assert.match(workshop,/refreshHistory\(normalizeReceptionFolio\(search\) \|\| search\.trim\(\)\)/);
+});
