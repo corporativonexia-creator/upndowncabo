@@ -178,11 +178,11 @@ test("no-photo cards use approved velvet image without touching real product pho
   const match=files.productFallback.match(/base64,([A-Za-z0-9+/=]+)/);
   assert.ok(match, "Product fallback must embed the approved green velvet artwork");
   const b64=match[1];
-  assert.equal(b64.length, 2384);
+  assert.equal(b64.length, 5840);
   let fingerprint=2166136261;
   for(const ch of b64) fingerprint=Math.imul(fingerprint^ch.charCodeAt(0),16777619)>>>0;
-  assert.equal(fingerprint, 886123458); // approved canonical PNG, resized and WebP-compressed
-  has(files.productFallback, 'width="400" height="400"');
+  assert.equal(fingerprint, 3030130964); // user-supplied canonical 1536×1024 image, resized to 600×400 WebP
+  has(files.productFallback, 'width="600" height="400"');
 
   has(files.runtime,
     'const cover=productGallery(product)[0]||"";',
@@ -192,7 +192,7 @@ test("no-photo cards use approved velvet image without touching real product pho
     'host.classList.add("is-product-placeholder")');
   has(files.runtime, 'image:productGallery(product)[0]||""');
   has(files.runtime, 'const imageSrc=validImage?item.image:fallback;');
-  has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: cover !important');
+  has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: contain !important');
   has(files.search, 'product.image || "/assets/updown-product-placeholder.svg"');
   has(files.product, 'product.images[active] || "/assets/updown-product-placeholder.svg"');
   has(files.related, 'item.image || "/assets/updown-product-placeholder.svg"');
