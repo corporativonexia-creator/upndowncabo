@@ -232,6 +232,18 @@ Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/bac
 
 **Para actualizar ZIP local a partir de una copia anterior:** sincronizar `public/assets/updown-product-placeholder.svg`, `public/updown-parity-runtime.js`, `src/components/store/responsive/store-search.tsx`, `src/app/vista-previa/premium-white.css` y `src/app/globals.css`. Si el runtime y el buscador ya están actualizados, solamente hacen falta el SVG y los dos CSS. Tras actualizar, recargar con Ctrl+Shift+R y revisar un producto sin foto y otro con foto, en la vista Galería/Lista y en Novedades.
 
+## PW-UX-08 · Mayor presencia del logotipo — sin aumentar altura de encabezado
+
+El administrador solicitó agrandar el **logotipo vectorial canónico** (bandera y ondulación, sin añadir bolas ni alterar sus trazos) y el nombre UP AND DOWN en **escritorio y móvil**, sin incrementar la altura actual del menú ni afectar ES/EN, GHIN, VS GOLF, buscar, carrito o menú.
+
+**Aplicación controlada:** únicamente reglas CSS de `src/app/vista-previa/premium-white.css` bajo `#updown-store.uds-preview` para escritorio y `.uds-native-mobile-header.uds-preview-mobile-header` para móvil. Sin cambios a SVG, TSX, rutas, lógica de navegación, tamaño de los botones o posición sticky. Los tres rangos de escritorio dan prioridad a la marca según el espacio disponible; la marca en móvil crece moderadamente entre 390–1023 px y más entre 320–389 px, donde ya existe un encabezado de dos filas.
+
+**Medidas originales preservadas:** encabezado principal de escritorio con su altura de 84 px, encabezado móvil de una fila de 64 px y disposición móvil de dos filas de 104 px bajo 390 px. Ninguna de estas alturas, ni el cálculo de posición del buscador fijo, se modificó.
+
+**Validación técnica:** CSS balanceado, selectors aislados a vista previa, prueba de disposición aislada en Chromium a 320/360/375/389/390/393/400/409/414/430/440/500/768 px sin desbordamiento horizontal; los controles permanecen en la fila existente a partir de 390 px. Falta comprobar visualmente con los logotipos y fuentes reales en localhost a 390, 430, 1024 y 1485 px.
+
+**Para actualizar el archivo local:** descargar únicamente `src/app/vista-previa/premium-white.css`, refrescar con Ctrl+Shift+R. No se realizó despliegue, publicación o merge a main. La promoción de estos estilos a la tienda pública deberá incluirse en la integración definitiva aprobada.
+
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
 `design/UPNDOWN_PREMIUM_WHITE_LOCAL.html` es solo una maqueta autónoma previa, no el código funcional: no usarlo para validar filtros, carrito o inventario reales.
