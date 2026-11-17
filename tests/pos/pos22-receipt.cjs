@@ -118,25 +118,25 @@ test('POS Retail V8: PowerShell grammar parses on runners with pwsh available',t
 
 test('POS reception: explicit-length Code39 preserves following fields',()=>{
   const fn=bridge.slice(bridge.indexOf('function AddReceptionBarcode('),bridge.indexOf('function ReceptionLine('));
-  assert.match(fn,/\\$GS,107,69,\\$barcode\\.Length/);
-  assert.match(fn,/AddBytes \\$b \\$barcode/);
-  assert.doesNotMatch(fn,/\\$GS,107,4\\)/);
-  assert.doesNotMatch(fn,/B @\\(0,10\\)/);
+  assert.match(fn,/\$GS,107,69,\$barcode\.Length/);
+  assert.match(fn,/AddBytes \$b \$barcode/);
+  assert.doesNotMatch(fn,/\$GS,107,4\)/);
+  assert.doesNotMatch(fn,/B @\(0,10\)/);
 });
 test('POS reception: cutter rides with each RAW receipt and never opens drawer',()=>{
   const body=bridge.slice(bridge.indexOf('function BuildReceptionBody('),bridge.indexOf('function SendRaw('));
-  assert.match(body,/AddBytes \\$b \\$CUT/);
+  assert.match(body,/AddBytes \$b \$CUT/);
   const handler=bridge.slice(bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')"));
-  assert.match(handler,/BuildReceptionBody \\$reception 'CLIENTE'/);
-  assert.match(handler,/BuildReceptionBody \\$reception 'TALLER'/);
-  assert.doesNotMatch(handler.split("continue};$sale=")[0],/SendRaw \\$CUT|SendRaw \\$DRAWER/);
+  assert.match(handler,/BuildReceptionBody \$reception 'CLIENTE'/);
+  assert.match(handler,/BuildReceptionBody \$reception 'TALLER'/);
+  assert.doesNotMatch(handler.split("continue};$sale=")[0],/SendRaw \$CUT|SendRaw \$DRAWER/);
   assert.match(handler,/drawer":0/);
 });
 test('POS reception: local proof uses a fake folio without a sale or inventory',()=>{
-  assert.match(bridge, /\\[switch\\]\\$TestReception/);
+  assert.match(bridge, /\[switch\]\$TestReception/);
   const testOnly=bridge.slice(bridge.indexOf('if($TestReception){'),bridge.indexOf('$l=New-Object Net.HttpListener;'));
   for(const term of ["receipt_number=999999","is_test=$true","BuildReceptionBody $testReception 'CLIENTE'","BuildReceptionBody $testReception 'TALLER'","exit 0"]){
     assert.ok(testOnly.includes(term),term);
   }
-  assert.doesNotMatch(testOnly,/pos_create_sale|inventory_movements|SendRaw \\$DRAWER|https?:\\/\\//i);
+  assert.doesNotMatch(testOnly,/pos_create_sale|inventory_movements|SendRaw \$DRAWER|https?:\/\//i);
 });
