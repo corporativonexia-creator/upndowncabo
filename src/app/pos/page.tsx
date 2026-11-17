@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
 import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
-import { receptionFolio, type ServiceReception } from "@/lib/pos/reception-receipt";
+import { normalizeReceptionFolio, receptionFolio, type ServiceReception } from "@/lib/pos/reception-receipt";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
 
 type Access = {
@@ -540,8 +540,8 @@ export default function PosPage() {
   }
 
   async function openReceptionByFolio(rawValue: string) {
-    const code = rawValue.trim().toUpperCase();
-    if (!/^SR-[0-9]{1,12}$/.test(code)) {
+    const code = normalizeReceptionFolio(rawValue);
+    if (!code) {
       setMessage("Folio inválido. Escribe o escanea un código como SR-000128.");
       return;
     }
@@ -598,8 +598,9 @@ export default function PosPage() {
   function handleBarcodeScan(rawValue: string) {
     const code = rawValue.trim();
     if (!code) return false;
-    if (/^SR-[0-9]{1,12}$/i.test(code)) {
-      void openReceptionByFolio(code);
+    const receptionCode = normalizeReceptionFolio(code);
+    if (receptionCode) {
+      void openReceptionByFolio(receptionCode);
       return true;
     }
 

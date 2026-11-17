@@ -25,6 +25,20 @@ export function receptionFolio(number: number) {
   return "SR-" + String(number).padStart(6, "0");
 }
 
+/**
+ * Canonicalizes workshop folios from HID barcode scanners with an alternate
+ * keyboard layout (some scanners type apostrophe in place of the dash).
+ * Only reception folios are normalized; regular product barcodes are untouched.
+ */
+export function normalizeReceptionFolio(rawValue: string): string | null {
+  const match = /^SR[-'’][0-9]{1,12}$/i.exec(rawValue.trim());
+  if (!match) return null;
+  const digits = rawValue.trim().slice(3);
+  const value = Number(digits);
+  if (!Number.isSafeInteger(value) || value <= 0) return null;
+  return receptionFolio(value);
+}
+
 export function receptionFileName(reception: ServiceReception) {
   return "UPNDOWN-Recepcion-" + receptionFolio(reception.receipt_number) + ".pdf";
 }

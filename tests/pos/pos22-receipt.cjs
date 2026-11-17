@@ -94,7 +94,7 @@ test('POS Retail V8: local simulation invokes existing BuildBody without network
  assert.match(bridge,/BuildBody \$testSale \$null 'CLIENTE'/);
  assert.match(bridge,/BuildBody \$testSale \$null 'COMERCIO'/);
  assert.match(bridge,/if\(\$TestDrawer\)\{/);
- const diagnostic=bridge.slice(bridge.indexOf('if($TestReceipt){'),bridge.indexOf('$l=New-Object Net.HttpListener;'));
+ const diagnostic=bridge.slice(bridge.indexOf('if($TestReceipt){'),bridge.indexOf('# Offline thermal reception proof:'));
  assert.doesNotMatch(diagnostic,/fetch\(|supabase|https?:\/\/|pos_create_sale|inventory_movements/i);
  assert.match(diagnostic,/exit 0/);
  assert.equal((diagnostic.match(/SendRaw \$CUT/g)||[]).length,2);
@@ -113,4 +113,56 @@ test('POS Retail V8: PowerShell grammar parses on runners with pwsh available',t
  const result=spawnSync('pwsh',['-NoProfile','-NonInteractive','-Command',cmd],{encoding:'utf8',timeout:20000});
  if(result.error?.code==='ENOENT'){t.skip('PowerShell is unavailable on this runner');return;}
  assert.equal(result.status,0,[result.stdout,result.stderr,result.error?.message].filter(Boolean).join('\n'));
+});
+
+
+test('POS reception: Code39 is rendered in software, not ESC/POS GS k',()=>{
+  const fn=bridge.slice(bridge.indexOf('function AddReceptionBarcode('),bridge.indexOf('function ReceptionLine('));
+  assert.match(fn, /AddRaster \$b \$raster \$widthBytes \$height/);
+  assert.match(fn, /'S'='nnwnnnwwn'/);
+  assert.match(fn, /'R'='wnnnnnwwn'/);
+  assert.match(fn, /'-'='nwnnnnwnw'/);
+  assert.doesNotMatch(fn, /\$GS,107,(69|4)/);
+  assert.match(bridge, /raster-code39-feed-v2/);
+});
+test('POS reception: both copies feed before in-job cut and never open drawer',()=>{
+  const body=bridge.slice(bridge.indexOf('function BuildReceptionBody('),bridge.indexOf('function SendRaw('));
+  assert.match(body,/AddBytes \$b \(B @\(\$ESC,100,8\)\)/);
+  assert.match(body,/AddBytes \$b \$CUT/);
+  const handler=bridge.slice(bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')"));
+  assert.match(handler,/BuildReceptionBody \$reception 'CLIENTE'/);
+  assert.match(handler,/BuildReceptionBody \$reception 'TALLER'/);
+  assert.doesNotMatch(handler.split("continue};$sale=")[0],/SendRaw \$CUT|SendRaw \$DRAWER/);
+  assert.match(handler,/drawer":0/);
+});
+test('POS reception: local proof uses a fake folio without a sale or inventory',()=>{
+  assert.match(bridge, /\[switch\]\$TestReception/);
+  const testOnly=bridge.slice(bridge.indexOf('if($TestReception){'),bridge.indexOf('$l=New-Object Net.HttpListener;'));
+  for(const term of ["receipt_number=999999","is_test=$true","BuildReceptionBody $testReception 'CLIENTE'","BuildReceptionBody $testReception 'TALLER'","exit 0"]){
+    assert.ok(testOnly.includes(term),term);
+  }
+  assert.doesNotMatch(testOnly,/pos_create_sale|inventory_movements|SendRaw \$DRAWER|https?:\/\//i);
+});
+
+test('POS reception: HID scan with apostrophe and extra zeroes resolves to canonical folio',()=>{
+ const src=fs.readFileSync('src/lib/pos/reception-receipt.ts','utf8');
+ const from=src.indexOf('export function receptionFolio(');
+ const until=src.indexOf('export function receptionFileName(',from);
+ assert.ok(from>=0&&until>from);
+ const fn={};
+ new Function('exports',compile(src.slice(from,until)))(fn);
+ assert.equal(fn.normalizeReceptionFolio("SR'0000001"),"SR-000001");
+ assert.equal(fn.normalizeReceptionFolio('SR-000001'),"SR-000001");
+ assert.equal(fn.normalizeReceptionFolio("sr’000128"),"SR-000128");
+ assert.equal(fn.normalizeReceptionFolio('SR-000000000999'),"SR-000999");
+ assert.equal(fn.normalizeReceptionFolio('1234567890123'),null);
+ assert.equal(fn.normalizeReceptionFolio('SR/000128'),null);
+ assert.equal(fn.normalizeReceptionFolio('SR-000000'),null);
+});
+test('POS reception: both cashier scanner and workshop search normalize folios',()=>{
+ const pos=fs.readFileSync('src/app/pos/page.tsx','utf8');
+ const workshop=fs.readFileSync('src/app/pos/recepciones/page.tsx','utf8');
+ assert.match(pos,/const code = normalizeReceptionFolio\(rawValue\)/);
+ assert.match(pos,/const receptionCode = normalizeReceptionFolio\(code\)/);
+ assert.match(workshop,/refreshHistory\(normalizeReceptionFolio\(search\) \|\| search\.trim\(\)\)/);
 });
