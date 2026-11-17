@@ -1008,3 +1008,81 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
   object-position: center !important;
   padding: 0 !important;
 }
+
+/* PW-UX-08 · More brand presence, unchanged header height.
+ * Scoped to Premium White only. Desktop and native mobile use the
+ * original SVG geometry; only its display dimensions and wordmark grow.
+ * Header, menu, search, cart, language and service hit targets are intact.
+ */
+@media (min-width: 1211px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(246px, 266px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo { gap: 9px !important; }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 82px !important; max-width: 82px !important;
+    height: 43px !important; flex: 0 0 82px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: clamp(17.5px, 1.48vw, 20px) !important;
+    line-height: 1.05 !important; letter-spacing: .032em !important;
+  }
+}
+@media (min-width: 1380px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(280px, 298px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 92px !important; max-width: 92px !important;
+    height: 46px !important; flex: 0 0 92px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: 22px !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1210px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(172px, 198px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo { gap: 6px !important; }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 58px !important; max-width: 58px !important;
+    height: 38px !important; flex: 0 0 58px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: 13.5px !important; line-height: 1.05 !important;
+    letter-spacing: .015em !important;
+  }
+}
+@media (min-width: 390px) and (max-width: 1023px) {
+  .uds-native-mobile-header.uds-preview-mobile-header {
+    padding-inline: 9px !important; gap: 4px !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo {
+    min-width: 0 !important; gap: 4px !important; flex: 0 1 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo > svg {
+    width: clamp(32px, 8.5vw, 44px) !important;
+    height: 30px !important; flex: 0 0 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-wordmark {
+    font-size: clamp(12px, 3.18vw, 16px) !important;
+    line-height: 1 !important; letter-spacing: .015em !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-actions {
+    gap: 3px !important; flex: 0 0 auto !important;
+  }
+}
+@media (max-width: 389px) {
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo {
+    gap: 6px !important; justify-content: center !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo > svg {
+    width: 42px !important; height: 28px !important;
+    flex: 0 0 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-wordmark {
+    font-size: 17px !important; line-height: 1 !important;
+    letter-spacing: .025em !important;
+  }
+}
