@@ -94,7 +94,7 @@ test('POS Retail V8: local simulation invokes existing BuildBody without network
  assert.match(bridge,/BuildBody \$testSale \$null 'CLIENTE'/);
  assert.match(bridge,/BuildBody \$testSale \$null 'COMERCIO'/);
  assert.match(bridge,/if\(\$TestDrawer\)\{/);
- const diagnostic=bridge.slice(bridge.indexOf('if($TestReceipt){'),bridge.indexOf('$l=New-Object Net.HttpListener;'));
+ const diagnostic=bridge.slice(bridge.indexOf('if($TestReceipt){'),bridge.indexOf('if($TestReception){'));
  assert.doesNotMatch(diagnostic,/fetch\(|supabase|https?:\/\/|pos_create_sale|inventory_movements/i);
  assert.match(diagnostic,/exit 0/);
  assert.equal((diagnostic.match(/SendRaw \$CUT/g)||[]).length,2);
