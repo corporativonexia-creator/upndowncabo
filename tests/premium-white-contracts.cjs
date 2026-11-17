@@ -16,6 +16,7 @@ const files = {
   focus: read("src/app/vista-previa/preview-desktop-search-focus.tsx"),
   collapse: read("src/app/vista-previa/preview-filter-auto-collapse.tsx"),
   css: read("src/app/vista-previa/premium-white.css"),
+  sharedCss: read("src/app/globals.css"),
   productCss: read("src/components/store/premium-product-detail.css"),
   publicPage: read("src/app/producto/[productKey]/page.tsx"),
   share: read("src/lib/storefront/product-share.ts"),
@@ -193,6 +194,7 @@ test("no-photo cards use approved velvet image without touching real product pho
   has(files.runtime, 'image:productGallery(product)[0]||""');
   has(files.runtime, 'const imageSrc=validImage?item.image:fallback;');
   has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: contain !important');
+  has(files.sharedCss, "Canonical user-supplied no-photo product art", "object-fit: contain !important");
   has(files.search, 'product.image || "/assets/updown-product-placeholder.svg"');
   has(files.product, 'product.images[active] || "/assets/updown-product-placeholder.svg"');
   has(files.related, 'item.image || "/assets/updown-product-placeholder.svg"');
