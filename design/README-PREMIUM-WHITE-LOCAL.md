@@ -220,15 +220,15 @@ Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/bac
 
 ## PW-UX-07 · Fondo verde canónico como placeholder de productos — 16-nov-2026
 
-**Autorización:** el administrador solicitó usar el fondo verde aterciopelado aprobado, con logotipo canónico hundido, **solamente en productos que no tienen fotografías cargadas**. La imagen aprobada es `updown_canonical_deboss_verde.png`, comprimida desde 1254×1254 px a una versión WebP de 400×400 px y **embebida en el SVG público** `public/assets/updown-product-placeholder.svg`. El archivo ya no utiliza un placeholder blanco de texto.
+**Autorización:** el administrador solicitó usar el fondo verde aterciopelado aprobado, con logotipo canónico hundido, **solamente en productos que no tienen fotografías cargadas**. **Corrección de referencia canónica:** el administrador proporcionó el archivo definitivo `Fondo verde con logotipo de golf grabado(1).png` (1536×1024 px). El placeholder se reconstruyó directamente a partir de esa fotografía, reducida proporcionalmente a WebP 600×400 px (sin redibujar el logo) e **incrustada en el SVG público** `public/assets/updown-product-placeholder.svg`. La imagen anteriormente utilizada no era la referencia canónica y quedó sustituida. El archivo ya no utiliza un placeholder blanco de texto.
 
 - **Catálogo (Galería y Lista) / Novedades y ofertas:** `public/updown-parity-runtime.js` elige primero una fotografía real disponible mediante `productGallery(product)` (portada o imágenes anexas). Asigna el SVG verde solo cuando no hay ninguna imagen utilizable o cuando falla la carga. El carrito también utiliza la primera foto real disponible.
 - **Fichas independientes / productos relacionados:** ya utilizaban `/assets/updown-product-placeholder.svg`, así que adoptan la imagen aprobada automáticamente, en localhost y en la futura ruta pública.
 - **Buscador inteligente:** `src/components/store/responsive/store-search.tsx` dejó de usar el placeholder de categorías para resultados sin foto y ahora utiliza el mismo placeholder de producto.
 - **Carrito:** la miniatura sin foto también utiliza el mismo archivo tanto en vista previa como en la ruta pública, sin alterar cantidades, descuentos ni checkout.
-- **CSS Premium White:** estilos limitados a la clase `.is-product-placeholder` en tarjetas, para llenar el área fotográfica sin bordes blancos ni sobrescribir fotos reales. Las fotos de servicios y categorías no se modificaron.
+- **CSS Premium White:** estilos limitados a la clase `.is-product-placeholder` en tarjetas, con `object-fit: contain` y lienzo verde de fondo para conservar completo el logotipo horizontal, sin recortar letras ni sobrescribir fotos reales. Las fotos de servicios y categorías no se modificaron.
 
-**Verificaciones:** contenido embebido del SVG confirmado idéntico al WebP comprimido del arte aprobado mediante huella FNV-1a; imagen renderizada en Chromium aislado; 17 pruebas estáticas de contratos aprobadas (1 prueba E2E en localhost pendiente). Sin actualización de Supabase, sin despliegue ni cambio a `main`.
+**Verificaciones:** contenido embebido confirmado contra la nueva referencia del usuario mediante huella FNV-1a (3030130964 sobre la versión WebP 600×400); 17 pruebas estáticas de contratos aprobadas (1 prueba E2E en localhost pendiente). Sin actualización de Supabase, sin despliegue ni cambio a `main`.
 
 **Para actualizar ZIP local:** sincronizar estos cuatro archivos: `public/assets/updown-product-placeholder.svg`, `public/updown-parity-runtime.js`, `src/components/store/responsive/store-search.tsx` y `src/app/vista-previa/premium-white.css`. Tras actualizar, recargar con Ctrl+Shift+R y revisar un producto sin foto y otro con foto, en la vista Galería/Lista y en Novedades.
 
