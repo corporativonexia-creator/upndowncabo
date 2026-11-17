@@ -995,14 +995,16 @@ html:has(#updown-store.uds-preview) .uds-search-empty button {
  */
 #updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder,
 #updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder {
-  background: #003e27 !important;
+  /* Match the original green canvas around this 3:2 canonical artwork. */
+  background: #032d10 !important;
 }
 #updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder img,
 #updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder img {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  /* Never crop the canonical flag, lettering or embossed marks. */
+  object-fit: contain !important;
   object-position: center !important;
   padding: 0 !important;
 }
