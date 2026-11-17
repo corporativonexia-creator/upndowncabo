@@ -226,11 +226,11 @@ Informe: `design/SERVICES_UNIFICATION_RESULT_20261116.md`. Respaldo: `design/bac
 - **Fichas independientes / productos relacionados:** ya utilizaban `/assets/updown-product-placeholder.svg`, así que adoptan la imagen aprobada automáticamente, en localhost y en la futura ruta pública.
 - **Buscador inteligente:** `src/components/store/responsive/store-search.tsx` dejó de usar el placeholder de categorías para resultados sin foto y ahora utiliza el mismo placeholder de producto.
 - **Carrito:** la miniatura sin foto también utiliza el mismo archivo tanto en vista previa como en la ruta pública, sin alterar cantidades, descuentos ni checkout.
-- **CSS Premium White:** estilos limitados a la clase `.is-product-placeholder` en tarjetas, con `object-fit: contain` y lienzo verde de fondo para conservar completo el logotipo horizontal, sin recortar letras ni sobrescribir fotos reales. Las fotos de servicios y categorías no se modificaron.
+- **CSS Premium White:** estilos limitados a la clase `.is-product-placeholder` en tarjetas, con `object-fit: contain` y lienzo verde de fondo para conservar completo el logotipo horizontal, sin recortar letras ni sobrescribir fotos reales. La regla complementaria en `src/app/globals.css` prepara esta misma presentación completa para la futura página pública. Las fotos de servicios y categorías no se modificaron.
 
 **Verificaciones:** contenido embebido confirmado contra la nueva referencia del usuario mediante huella FNV-1a (3030130964 sobre la versión WebP 600×400); 17 pruebas estáticas de contratos aprobadas (1 prueba E2E en localhost pendiente). Sin actualización de Supabase, sin despliegue ni cambio a `main`.
 
-**Para actualizar ZIP local:** sincronizar estos cuatro archivos: `public/assets/updown-product-placeholder.svg`, `public/updown-parity-runtime.js`, `src/components/store/responsive/store-search.tsx` y `src/app/vista-previa/premium-white.css`. Tras actualizar, recargar con Ctrl+Shift+R y revisar un producto sin foto y otro con foto, en la vista Galería/Lista y en Novedades.
+**Para actualizar ZIP local a partir de una copia anterior:** sincronizar `public/assets/updown-product-placeholder.svg`, `public/updown-parity-runtime.js`, `src/components/store/responsive/store-search.tsx`, `src/app/vista-previa/premium-white.css` y `src/app/globals.css`. Si el runtime y el buscador ya están actualizados, solamente hacen falta el SVG y los dos CSS. Tras actualizar, recargar con Ctrl+Shift+R y revisar un producto sin foto y otro con foto, en la vista Galería/Lista y en Novedades.
 
 ## Límites
 La verificación estática no equivale a pruebas visuales o funcionales en navegador: es necesario recorrer el checklist local antes de declarar paridad funcional total.
