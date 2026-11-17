@@ -79,6 +79,29 @@ useEffect(()=>{load()},[]);
   };
   const color=(r:Row)=>r.attributes?.color?.trim()||r.attributes?.colour?.trim()||r.attributes?.tono?.trim()||"";
   const gender=(r:Row)=>r.attributes?.genero?.trim()||r.attributes?.gender?.trim()||"";
+  // Values are sale-price inventory valuations: sum(quantity * unit price).
+  // Never combine MXN with USD; unpriced quantities are disclosed separately.
+  const money=(value:number,currency:"MXN"|"USD")=>
+    new Intl.NumberFormat("es-MX",{style:"currency",currency}).format(value)+" "+currency;
+  const valuation=(items:Row[])=>{
+    const amounts:{MXN:number;USD:number}={MXN:0,USD:0};
+    let unpriced=0;
+    for(const row of items){
+      const qty=Number(row.stock)||0;
+      if(qty<=0)continue;
+      if(row.effective_price==null||!Number.isFinite(row.effective_price)){
+        unpriced++;continue;
+      }
+      const currency=row.currency==="USD"?"USD":"MXN";
+      amounts[currency]+=Math.round(qty*Number(row.effective_price)*100)/100;
+    }
+    return {
+      amounts,unpriced,variants:items.length,
+      products:new Set(items.map(row=>row.product_id)).size,
+      pieces:items.reduce((sum,row)=>sum+(Number(row.stock)||0),0),
+      currencies:(["MXN","USD"] as const).filter(currency=>items.some(row=>(row.currency==="USD"?"USD":"MXN")===currency))
+    };
+  };
   if(String(format)==="ticket"){
     const size=(r:Row)=>r.attributes?.talla||r.attributes?.size||"Sin talla";
     const normalize=(v:string)=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -87,19 +110,17 @@ useEffect(()=>{load()},[]);
     const cmp=(a:string,b:string)=>a.localeCompare(b,"es",{numeric:true,sensitivity:"base"});
     const ordered=[...printRows].sort((a,b)=>cmp(a.category_name||"",b.category_name||"")||rank(gender(a),genderOrder)-rank(gender(b),genderOrder)||cmp(gender(a),gender(b))||rank(size(a),sizeOrder)-rank(size(b),sizeOrder)||cmp(size(a),size(b))||cmp(a.product_name,b.product_name));
     const number=(n:number)=>new Intl.NumberFormat("es-MX",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
-    const totals={MXN:0,USD:0};let missing=0,content="",category="",currentGender="",currentSize="";
+    let content="",category="",currentGender="",currentSize="";
     let categoryRows:Row[]=[];
     const categorySummary=()=>{
       if(!categoryRows.length)return "";
-      const pieces=categoryRows.reduce((sum,r)=>sum+(Number(r.stock)||0),0);
-      const products=new Set(categoryRows.map(r=>r.product_id)).size;
-      const amounts={MXN:0,USD:0};let withoutPrice=0;
-      for(const r of categoryRows){
-        if(r.effective_price==null||!Number.isFinite(r.effective_price)){withoutPrice++;continue;}
-        amounts[r.currency==="USD"?"USD":"MXN"]+=(Number(r.stock)||0)*Number(r.effective_price);
-      }
-      const money=(currency:"MXN"|"USD")=>categoryRows.some(r=>(r.currency==="USD"?"USD":"MXN")===currency&&r.effective_price!=null&&Number.isFinite(r.effective_price))?'<div class="grand"><span>VALOR '+currency+'</span><b>$'+number(amounts[currency])+'</b></div>':"";
-      return '<div class="category-summary"><b>SUBTOTAL '+esc(category.toUpperCase())+'</b><div>PRODUCTOS: '+products+' · VARIANTES: '+categoryRows.length+'</div><div>PIEZAS: '+pieces+'</div>'+money("MXN")+money("USD")+(withoutPrice?'<div>'+withoutPrice+' variantes sin precio</div>':"")+'</div>';
+      const sum=valuation(categoryRows);
+      const moneyLine=(currency:"MXN"|"USD")=>sum.currencies.includes(currency)?
+        '<div class="grand"><span>TOTAL CATEGORÍA '+currency+'</span><b>'+esc(money(sum.amounts[currency],currency))+'</b></div>':"";
+      return '<div class="category-summary"><b>SUMATORIA · '+esc(category.toUpperCase())+'</b>'+
+        '<div>PRODUCTOS: '+sum.products+' · VARIANTES: '+sum.variants+'</div>'+
+        '<div>PIEZAS: '+sum.pieces+'</div>'+moneyLine("MXN")+moneyLine("USD")+
+        (sum.unpriced?'<div>ADVERTENCIA: '+sum.unpriced+' variantes con existencias sin precio (total parcial)</div>':"")+'</div>';
     };
     for(const r of ordered){
       const nextCategory=r.category_name||"Sin categoría",nextGender=gender(r)||"Sin género",nextSize=size(r);
@@ -110,35 +131,63 @@ useEffect(()=>{load()},[]);
       const count=Number(r.stock)||0;
       const exists=r.effective_price!==null&&r.effective_price!==undefined&&Number.isFinite(r.effective_price);
       const unit=exists?Number(r.effective_price):0;
-      const currency=r.currency==="USD"?"USD":"MXN";
-      if(exists)totals[currency]+=count*unit;else missing++;
       const description=[r.product_name,color(r),normalize(r.variant_title)!==normalize(nextSize)?r.variant_title:""].filter(Boolean).join(" · ");
       content+='<section class="item"><div>'+esc(description)+'</div><div class="columns"><span>'+count+'</span><span>'+(exists?number(unit):"—")+'</span><b>'+(exists?number(count*unit):"—")+'</b></div></section>';
     }
     content+=categorySummary();
-    const products=new Set(ordered.map(r=>r.product_id)).size;
-    const pieces=ordered.reduce((sum,r)=>sum+(Number(r.stock)||0),0);
-    const total=(currency:"MXN"|"USD")=>ordered.some(r=>r.currency===currency&&r.effective_price!=null)?'<div class="grand"><span>TOTAL '+currency+'</span><b>$'+number(totals[currency])+'</b></div>':"";
-    const summary='<div class="summary">PRODUCTOS: '+products+'<div>VARIANTES: '+ordered.length+' · PIEZAS: '+pieces+'</div>'+total("MXN")+total("USD")+(missing?'<div>'+missing+' variantes sin precio</div>':"")+'</div>';
+    const global=valuation(ordered);
+    const totalLine=(currency:"MXN"|"USD")=>global.currencies.includes(currency)?
+      '<div class="grand"><span>TOTAL GENERAL '+currency+'</span><b>'+esc(money(global.amounts[currency],currency))+'</b></div>':"";
+    const summary='<div class="summary">PRODUCTOS: '+global.products+
+      '<div>VARIANTES: '+global.variants+' · PIEZAS: '+global.pieces+'</div>'+
+      totalLine("MXN")+totalLine("USD")+
+      (global.unpriced?'<div>ADVERTENCIA: '+global.unpriced+' variantes con existencias sin precio (total parcial)</div>':"")+
+      '<div>VALOR A PRECIOS DE VENTA, NO COSTO CONTABLE</div></div>';
     const style='@page{size:80mm auto;margin:2mm}*{box-sizing:border-box}body{width:72mm;margin:0 auto;font:10px/1.2 Arial,sans-serif;color:#000}header{text-align:center;border-bottom:2px solid #000;padding:2mm 0}header h1{font-size:14px;margin:0}header small{font-size:9px}h2{font-size:12px;border-top:1px solid;border-bottom:1px solid;margin:3mm 0 1mm;padding:1mm 0}h3{font-size:11px;margin:2mm 0 1mm}h4{font-size:10px;margin:1mm 0}.columns,.head{display:grid;grid-template-columns:15% 38% 47%;text-align:right;font-variant-numeric:tabular-nums}.head{font-weight:bold;border-bottom:1px dashed #444;padding-top:2mm}.item{padding:1mm 0;border-bottom:1px dotted #ccc;break-inside:avoid;overflow-wrap:anywhere}.columns{margin-top:1mm}.category-summary{border-top:1px dashed #000;border-bottom:2px solid #000;margin:2mm 0 4mm;padding:2mm 0;font-size:10px;break-inside:avoid}.category-summary>b{display:block;margin-bottom:1mm}.summary{border-top:2px solid;margin-top:3mm;padding-top:2mm;font-size:11px;font-weight:bold}.grand{display:flex;justify-content:space-between;gap:2mm;border-top:1px dashed;margin-top:2mm;padding-top:1mm}.grand b{font-size:12px}footer{text-align:center;font-size:9px;margin:4mm 0 8mm}';
-    popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario · Ticket 80 mm</title><style>'+style+'</style></head><body><header><h1>UP AND DOWN</h1>INVENTARIO<br><small>'+esc(new Date().toLocaleString("es-MX"))+'</small></header><div class="head"><span>CANT.</span><span>P. UNIT.</span><span>IMPORTE</span></div>'+content+summary+'<footer>REPORTE DE EXISTENCIAS</footer></body></html>');
+    popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario · Ticket 80 mm</title><style>'+style+'</style></head><body><header><h1>UP AND DOWN</h1>INVENTARIO<br><small>'+esc(new Date().toLocaleString("es-MX"))+'</small></header><div class="head"><span>CANT.</span><span>P. UNIT.</span><span>IMPORTE</span></div>'+content+summary+'<footer>VALOR DE INVENTARIO A PRECIOS DE VENTA · REPORTE DE EXISTENCIAS</footer></body></html>');
     popup.document.close();
     popup.addEventListener("load",()=>popup.print(),{once:true});
     return;
   }
-  const details=printRows.map(r=>{
-   const data=[r.variant_title,color(r),gender(r)].filter(Boolean).join(" · ");
-   if(format==="ticket")return '<section class="item"><strong>'+esc(r.product_name)+'</strong><div>'+esc(data||"Única")+'</div><div>SKU: '+esc(r.sku)+'</div><div>CB: '+esc(r.barcode||"—")+'</div><div class="figures"><span>'+esc(price(r))+'</span><b>EXIST.: '+Number(r.stock||0)+'</b></div></section>';
-   return '<tr><td>'+esc(r.product_name)+'</td><td>'+esc(r.variant_title||"—")+'</td><td>'+esc(color(r))+'</td><td>'+esc(gender(r))+'</td><td>'+esc(r.sku)+'</td><td>'+esc(r.barcode||"—")+'</td><td class="right">'+esc(price(r))+'</td><td class="right">'+Number(r.stock||0)+'</td></tr>';
+  // A4 / PDF: show every chosen category separately and its monetary subtotal.
+  // The totals reflect the search filter and selected categories only.
+  const ordered=[...printRows].sort((a,b)=>(a.category_name||"Sin categoría").localeCompare(b.category_name||"Sin categoría","es")||
+    a.product_name.localeCompare(b.product_name,"es")||a.sku.localeCompare(b.sku,"es"));
+  const grouped=new Map<string,Row[]>();
+  for(const row of ordered){
+    const category=row.category_name||"Sin categoría";
+    if(!grouped.has(category))grouped.set(category,[]);
+    grouped.get(category)!.push(row);
+  }
+  const details=[...grouped.entries()].map(([category,items])=>{
+    const detailRows=items.map(row=>{
+      const amount=row.effective_price==null||!Number.isFinite(row.effective_price)?"Sin precio":
+        money((Number(row.stock)||0)*Number(row.effective_price),row.currency==="USD"?"USD":"MXN");
+      return '<tr><td>'+esc(row.product_name)+'</td><td>'+esc(row.variant_title||"—")+'</td>'+
+        '<td>'+esc(color(row))+'</td><td>'+esc(gender(row))+'</td><td>'+esc(row.sku)+'</td>'+
+        '<td>'+esc(row.barcode||"—")+'</td><td class="right">'+esc(price(row))+'</td>'+
+        '<td class="right">'+(Number(row.stock)||0)+'</td><td class="right"><b>'+esc(amount)+'</b></td></tr>';
+    }).join("");
+    const sum=valuation(items);
+    const amounts=sum.currencies.map(currency=>money(sum.amounts[currency],currency)).join(" · ");
+    const note=sum.unpriced?' · '+sum.unpriced+' variante(s) con existencias sin precio: total parcial':'';
+    return '<tr class="category-heading"><td colspan="9">CATEGORÍA: '+esc(category.toUpperCase())+'</td></tr>'+
+      detailRows+
+      '<tr class="category-subtotal"><td colspan="6"><b>SUMATORIA TOTAL · '+esc(category.toUpperCase())+'</b>'+
+      '<div>'+sum.products+' productos · '+sum.variants+' variantes · '+sum.pieces+' piezas'+esc(note)+'</div></td>'+
+      '<td colspan="3" class="right"><strong>'+esc(amounts)+'</strong></td></tr>';
   }).join("");
-  const count=printRows.reduce((sum,r)=>sum+Number(r.stock||0),0);
-  const footer='<div class="summary">Variantes: '+printRows.length+' · Piezas: '+count+(search.trim()?' · Filtro: '+esc(search.trim()):'')+'</div>';
-  const rows=format==="ticket"?details+footer:'<table><thead><tr><th>Producto</th><th>Variante</th><th>Color</th><th>Género</th><th>SKU</th><th>Código</th><th>Precio</th><th>Exist.</th></tr></thead><tbody>'+details+'</tbody></table>'+footer;
-  const css=format==="ticket"
-   ? '@page{size:80mm auto;margin:2mm}body{width:72mm;margin:0 auto;font:10px/1.35 Arial,sans-serif}h1{font-size:15px;margin:0 0 3mm}.meta{font-size:10px}.item{padding:3mm 0;border-bottom:1px dashed #444;break-inside:avoid;overflow-wrap:anywhere}.item strong{font-size:12px}.figures{display:flex;justify-content:space-between;gap:5px;margin-top:2px}.summary{font-size:12px;font-weight:700;padding:3mm 0;border-top:2px solid #000}@media screen{body{border:1px solid #ddd;padding:4mm}}'
-   : '@page{size:A4 landscape;margin:10mm}body{font:10px/1.4 Arial,sans-serif;margin:0}h1{font-size:19px;margin:0 0 7px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left;overflow-wrap:anywhere}th{background:#f2f2f2}.right{text-align:right;white-space:nowrap}.summary{font-size:12px;display:flex;gap:16px;font-weight:700}';
+  const overall=valuation(ordered);
+  const allAmounts=overall.currencies.map(currency=>money(overall.amounts[currency],currency)).join(" · ");
+  const foot='<div class="summary"><strong>TOTAL GENERAL DE CATEGORÍAS: '+esc(allAmounts)+'</strong>'+
+    '<span>'+overall.products+' productos · '+overall.variants+' variantes · '+overall.pieces+' piezas</span>'+
+    (overall.unpriced?'<span>ADVERTENCIA: '+overall.unpriced+' variantes con existencias sin precio (total parcial)</span>':"")+
+    '<small>Valor a precios de venta vigentes; no representa costo de adquisición. MXN y USD no se suman entre sí.</small></div>';
+  const rows='<table><thead><tr><th>Producto</th><th>Variante</th><th>Color</th><th>Género</th><th>SKU</th><th>Código</th><th>Precio unit.</th><th>Exist.</th><th>Importe</th></tr></thead>'+
+    '<tbody>'+details+'</tbody></table>'+foot;
+  const css='@page{size:A4 landscape;margin:10mm}body{font:10px/1.4 Arial,sans-serif;margin:0;color:#141414}h1{font-size:19px;margin:0 0 7px}table{width:100%;border-collapse:collapse;margin:12px 0}thead{display:table-header-group}th,td{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left;overflow-wrap:anywhere}th{background:#f2f2f2}.right{text-align:right;white-space:nowrap}.category-heading{font-weight:900;background:#eaf0ed;border-top:2px solid #000;break-after:avoid}.category-subtotal{border-top:2px solid #111;border-bottom:2px solid #111;background:#f5f5f5;break-inside:avoid;font-size:11px}.category-subtotal strong{font-size:13px}.summary{border-top:3px solid #111;padding-top:9px;font-size:13px;display:flex;flex-direction:column;gap:5px}.summary strong{font-size:16px}.summary small{font-size:10px;font-weight:normal}';
   const date=esc(new Date().toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}));
-  popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario UP AND DOWN</title><style>'+css+'</style></head><body><header><h1>UP AND DOWN · INVENTARIO</h1><div class="meta">Fecha: '+date+'<br>Existencias por variante · '+(format==="ticket"?"Ticket 80 mm":"Hoja A4")+'</div></header>'+rows+'<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>');
+  popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario UP AND DOWN</title><style>'+css+'</style></head><body><header><h1>UP AND DOWN · INVENTARIO</h1><div class="meta">Fecha: '+date+'<br>Existencias por variante · Hoja A4 · Subtotal por categoría</div></header>'+rows+'<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>');
   popup.document.close();
  }
  async function move(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);let qty=Number(f.get("qty"));const type=String(f.get("type"));if(["damage","supplier_return","adjustment_negative"].includes(type))qty=-qty;const movementType=type==="adjustment_negative"?"adjustment":type;const{error}=await db.rpc("admin_inventory_adjust",{p_variant_id:String(f.get("variant")),p_quantity_change:qty,p_reason:String(f.get("reason")),p_movement_type:movementType});setMsg(error?error.message:"Movimiento registrado correctamente.");if(!error){e.currentTarget.reset();load()}}
@@ -147,7 +196,7 @@ useEffect(()=>{load()},[]);
   <section className="inv-metrics"><Metric label="Unidades disponibles" value={total} hint="Existencia física total"/><Metric label="SKUs / variantes" value={rows.length} hint="Artículos controlados"/><Metric label="Disponibles" value={available} hint="Sobre stock mínimo"/><Metric label="Requieren atención" value={low} hint="Stock bajo o agotado" warn={low>0}/></section>
   <section className="inv-card"><div className="inv-toolbar"><div className="inv-tabs">{[["stock","Existencias"],["move","Entradas y salidas"],["log","Bitácora"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k as typeof tab)}>{l}</button>)}</div>{(tab==="stock"||tab==="log")&&<div className="inv-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar en todos los campos: niña, talla, color, SKU…"/></div>}</div>
   {msg&&<div className="inv-message">{msg}</div>}
-  {tab==="stock"&&<div className="inv-content"><div className="inv-section-head"><div><h2>Existencias actuales</h2><p>{filtered.length} SKU{filtered.length===1?"":"s"} visibles · etiquetas optimizadas para 50 × 30 mm</p></div><div className="inv-actions"><button type="button" className="inv-refresh" aria-expanded={categorySelectorOpen} onClick={()=>setCategorySelectorOpen(v=>!v)}>Categorías: {allCategoriesSelected?"Todas":selectedCategories.length} ▾</button><button type="button" onClick={()=>printInventory("ticket")} className="inv-refresh" disabled={loading||!filtered.length}>▣ Ticket 80 mm</button><button type="button" onClick={()=>printInventory("sheet")} className="inv-refresh" disabled={loading||!filtered.length}>Hoja / PDF</button><button onClick={load} className="inv-refresh">↻ Actualizar</button></div></div>{categorySelectorOpen&&<div className="inv-category-picker"><div className="inv-category-top"><strong>Categorías a imprimir</strong><button type="button" onClick={()=>setSelectedCategories([])}>Seleccionar todas</button></div><div className="inv-category-options">{categories.map(category=><label key={category}><input type="checkbox" checked={allCategoriesSelected||selectedCategories.includes(category)} onChange={()=>toggleCategory(category)}/><span>{category}</span></label>)}</div><small>{allCategoriesSelected?"Se imprimirán todas las categorías.":selectedCategories.length+" categorías seleccionadas."} Se respeta también la búsqueda actual.</small></div>}<div className="inv-tablebox"><table><thead><tr><th>Producto</th><th>Variante</th><th>SKU</th><th>Código de barras</th><th className="num">Existencia</th><th>Estado</th><th>Etiqueta</th></tr></thead><tbody>{filtered.map(r=><tr key={r.variant_id}><td><b>{r.product_name}</b><small>{[r.attributes?.color?.trim() || r.attributes?.colour?.trim() || r.attributes?.tono?.trim() || r.variant_title || "Sin variante", r.attributes?.genero?.trim() || r.attributes?.gender?.trim(), r.effective_price !== null && r.effective_price !== undefined && Number.isFinite(r.effective_price) ? `${new Intl.NumberFormat("es-MX",{style:"currency",currency:r.currency==="USD"?"USD":"MXN"}).format(r.effective_price)} ${r.currency==="USD"?"USD":"MXN"}` : "Precio no disponible"].filter(Boolean).join(" · ")}</small></td><td>{r.variant_title}{r.is_default&&<em>Principal</em>}</td><td className="mono">{r.sku}</td><td className="mono">{r.barcode||"—"}</td><td className="stock">{r.stock}</td><td><Status stock={r.stock} threshold={r.low_stock_threshold}/></td><td><button className="label-btn" onClick={()=>printLabels(r)} disabled={!r.barcode}>▣ Imprimir</button></td></tr>)}</tbody></table>{loading&&<div className="inv-empty">Actualizando inventario…</div>}{!loading&&!filtered.length&&<div className="inv-empty">No encontramos productos con esa búsqueda.</div>}</div></div>}
+  {tab==="stock"&&<div className="inv-content"><div className="inv-section-head"><div><h2>Existencias actuales</h2><p>{filtered.length} SKU{filtered.length===1?"":"s"} visibles · etiquetas optimizadas para 50 × 30 mm</p></div><div className="inv-actions"><button type="button" className="inv-refresh" aria-expanded={categorySelectorOpen} onClick={()=>setCategorySelectorOpen(v=>!v)}>Categorías: {allCategoriesSelected?"Todas":selectedCategories.length} ▾</button><button type="button" onClick={()=>printInventory("ticket")} className="inv-refresh" disabled={loading||!filtered.length}>▣ Ticket 80 mm · Sumatorias</button><button type="button" onClick={()=>printInventory("sheet")} className="inv-refresh" disabled={loading||!filtered.length}>Hoja / PDF · Sumatorias</button><button onClick={load} className="inv-refresh">↻ Actualizar</button></div></div>{categorySelectorOpen&&<div className="inv-category-picker"><div className="inv-category-top"><strong>Categorías a imprimir</strong><button type="button" onClick={()=>setSelectedCategories([])}>Seleccionar todas</button></div><div className="inv-category-options">{categories.map(category=><label key={category}><input type="checkbox" checked={allCategoriesSelected||selectedCategories.includes(category)} onChange={()=>toggleCategory(category)}/><span>{category}</span></label>)}</div><small>{allCategoriesSelected?"Se imprimirán todas las categorías.":selectedCategories.length+" categorías seleccionadas."} Se respeta también la búsqueda actual.</small></div>}<div className="inv-tablebox"><table><thead><tr><th>Producto</th><th>Variante</th><th>SKU</th><th>Código de barras</th><th className="num">Existencia</th><th>Estado</th><th>Etiqueta</th></tr></thead><tbody>{filtered.map(r=><tr key={r.variant_id}><td><b>{r.product_name}</b><small>{[r.attributes?.color?.trim() || r.attributes?.colour?.trim() || r.attributes?.tono?.trim() || r.variant_title || "Sin variante", r.attributes?.genero?.trim() || r.attributes?.gender?.trim(), r.effective_price !== null && r.effective_price !== undefined && Number.isFinite(r.effective_price) ? `${new Intl.NumberFormat("es-MX",{style:"currency",currency:r.currency==="USD"?"USD":"MXN"}).format(r.effective_price)} ${r.currency==="USD"?"USD":"MXN"}` : "Precio no disponible"].filter(Boolean).join(" · ")}</small></td><td>{r.variant_title}{r.is_default&&<em>Principal</em>}</td><td className="mono">{r.sku}</td><td className="mono">{r.barcode||"—"}</td><td className="stock">{r.stock}</td><td><Status stock={r.stock} threshold={r.low_stock_threshold}/></td><td><button className="label-btn" onClick={()=>printLabels(r)} disabled={!r.barcode}>▣ Imprimir</button></td></tr>)}</tbody></table>{loading&&<div className="inv-empty">Actualizando inventario…</div>}{!loading&&!filtered.length&&<div className="inv-empty">No encontramos productos con esa búsqueda.</div>}</div></div>}
   {tab==="move"&&<div className="inv-content"><div className="inv-formwrap"><div className="inv-kicker">MOVIMIENTO DE INVENTARIO</div><h2 className="inv-formtitle">Registrar entrada o salida</h2><p className="inv-desc">Las ventas del POS se descuentan automáticamente. Usa este formulario para recepción, ajustes, mermas o devoluciones.</p><form onSubmit={move} className="inv-form"><label>Producto / variante<select name="variant" required><option value="">Selecciona producto / variante…</option>{rows.map(r=><option key={r.variant_id} value={r.variant_id}>{r.product_name} · {r.variant_title} · {r.sku} · existencia {r.stock}</option>)}</select></label><div className="inv-formgrid"><label>Tipo de movimiento<select name="type"><option value="restock">Entrada · compra / recepción</option><option value="adjustment">Entrada · ajuste positivo</option><option value="damage">Salida · daño / merma</option><option value="supplier_return">Salida · devolución a proveedor</option><option value="adjustment_negative">Ajuste de inventario · disminuir existencia</option></select></label><label>Cantidad<input name="qty" type="number" min="1" required placeholder="Piezas"/></label></div><label>Referencia<input name="reason" minLength={3} required placeholder="Ej. Factura 1258 / recepción proveedor"/></label><div className="inv-submit"><span>Guardaremos existencia anterior, existencia nueva, fecha y referencia en la bitácora.</span><button>Registrar movimiento</button></div></form></div></div>}
   {tab==="log"&&<div className="inv-content"><div className="inv-section-head"><div><h2>Bitácora de movimientos</h2><p>Historial auditable de cambios de inventario.</p></div></div><div className="inv-tablebox"><table><thead><tr><th>Fecha</th><th>Producto</th><th>Movimiento</th><th className="num">Cant.</th><th className="num">Antes</th><th className="num">Después</th><th>Referencia</th></tr></thead><tbody>{filteredMovements.map(m=><tr key={m.id}><td>{new Date(m.created_at).toLocaleString("es-MX")}</td><td><b>{m.product_name||"Producto"}</b><small>{m.variant_title||"Principal"} · {m.sku||"—"}</small></td><td>{movementLabel[m.movement_type]||m.movement_type}</td><td className={m.quantity_change<0?"qty neg":"qty pos"}>{m.quantity_change>0?"+":""}{m.quantity_change}</td><td className="num">{m.stock_before}</td><td className="stock">{m.stock_after}</td><td>{m.note||"—"}</td></tr>)}</tbody></table>{!loading&&!filteredMovements.length&&<div className="inv-empty">Aún no hay movimientos que coincidan con la búsqueda.</div>}</div></div>}
   </section></div><style jsx global>{`
