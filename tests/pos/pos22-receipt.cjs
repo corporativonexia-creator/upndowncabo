@@ -116,15 +116,18 @@ test('POS Retail V8: PowerShell grammar parses on runners with pwsh available',t
 });
 
 
-test('POS reception: explicit-length Code39 preserves following fields',()=>{
+test('POS reception: Code39 is rendered in software, not ESC/POS GS k',()=>{
   const fn=bridge.slice(bridge.indexOf('function AddReceptionBarcode('),bridge.indexOf('function ReceptionLine('));
-  assert.match(fn,/\$GS,107,69,\$barcode\.Length/);
-  assert.match(fn,/AddBytes \$b \$barcode/);
-  assert.doesNotMatch(fn,/\$GS,107,4\)/);
-  assert.doesNotMatch(fn,/B @\(0,10\)/);
+  assert.match(fn, /AddRaster \$b \$raster \$widthBytes \$height/);
+  assert.match(fn, /'S'='nnwnnnwwn'/);
+  assert.match(fn, /'R'='wnnnnnwwn'/);
+  assert.match(fn, /'-'='nwnnnnwnw'/);
+  assert.doesNotMatch(fn, /\$GS,107,(69|4)/);
+  assert.match(bridge, /raster-code39-feed-v2/);
 });
-test('POS reception: cutter rides with each RAW receipt and never opens drawer',()=>{
+test('POS reception: both copies feed before in-job cut and never open drawer',()=>{
   const body=bridge.slice(bridge.indexOf('function BuildReceptionBody('),bridge.indexOf('function SendRaw('));
+  assert.match(body,/AddBytes \$b \(B @\(\$ESC,100,8\)\)/);
   assert.match(body,/AddBytes \$b \$CUT/);
   const handler=bridge.slice(bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')"));
   assert.match(handler,/BuildReceptionBody \$reception 'CLIENTE'/);
