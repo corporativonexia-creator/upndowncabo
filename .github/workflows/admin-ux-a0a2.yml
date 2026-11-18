@@ -63,6 +63,15 @@ jobs:
           PGPASSWORD: a36_fixture_password
           PGDATABASE: upndown_a36_fixture
         run: node --test tests/admin-gallery-a37-concurrency.pg.cjs
+      - name: A5.3 retirement contract against disposable PostgreSQL only
+        env:
+          A53_PG_ISOLATED: 'true'
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: a36_fixture_password
+          PGDATABASE: upndown_a36_fixture
+        run: node --test tests/admin-retirement-a53.pg.cjs
       - name: Legacy runtime syntax contract
         run: npm run check:admin-scripts
       - name: Lint

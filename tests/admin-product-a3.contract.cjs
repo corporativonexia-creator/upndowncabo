@@ -127,3 +127,18 @@ test("A5.2 retirement preview is read-only and changes no commercial value", () 
   assert.doesNotMatch(inspector,/\.update\(|\.delete\(|\.insert\(|\.upsert\(|\.rpc\(/);
   assert.match(read("src\/app\/admin\/admin-premium-white.css"),/\.ud-a52-preview/);
 });
+
+test("A5.3 retirement SQL is an isolated test contract, never an installed mutation", () => {
+  const sql=read("tests/sql/admin-retirement-a53-fixture.sql");
+  const testRunner=read("tests/admin-retirement-a53.pg.cjs");
+  const workflow=read(".github/workflows/admin-ux-a0a2.yml");
+  const runtime=read("public/updown-admin-legacy-runtime.js");
+  assert.match(sql,/LABORATORY ONLY/);
+  assert.match(sql,/security definer set search_path = ''/);
+  assert.match(sql,/for update/);
+  assert.match(sql,/revoke all on function private\.qa_retire_product_contract/);
+  assert.match(testRunner,/A53_PG_ISOLATED !== 'true'/);
+  assert.match(testRunner,/process\.env\.DATABASE_URL \|\| process\.env\.SUPABASE_DB_URL/);
+  assert.match(workflow,/A5\.3 retirement contract against disposable PostgreSQL only/);
+  assert.doesNotMatch(runtime,/qa_retire_product_contract/);
+});
