@@ -1,233 +1,101 @@
-/* UpNDown Web 2.0 / Stage 7 — presentation-only services. /vista-previa */
-(function(){
+/* UpNDown Premium White / Stage 7 — presentation only, database-led.
+ * Titles, bilingual descriptions, bullets, photos, CTAs, visibility and order
+ * come exclusively from public.storefront_services via updown-parity-runtime.js.
+ * This file must never rewrite product/service copy, hide registered services,
+ * or mutate Supabase. It only applies the existing preview card layout.
+ */
+(function () {
   "use strict";
-  if(typeof window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__==="function"){
+  if (typeof window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__ === "function") {
     window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__();
   }
 
-  const root=document.getElementById("updown-store");
-  if(!root?.classList.contains("uds-preview"))return;
+  const root = document.getElementById("updown-store");
+  if (!root?.classList.contains("uds-preview")) return;
+  const lang = () => document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "es";
+  const VS_GOLF_KEY = "27a30f4f-018e-460a-9b7d-b1dc1488143f";
 
-  const lang=()=>document.documentElement.lang.toLowerCase().startsWith("en")?"en":"es";
-  const byKind=(kind)=>root.querySelector('#udsServices [data-service-kind="'+kind+'"]');
-  const vsGolfServiceKey="27a30f4f-018e-460a-9b7d-b1dc1488143f";
-
-  const copies={
-    repair:{
-      es:{eyebrow:"Cuidado y reparación de equipo",title:"Reparación y mantenimiento",
-        description:"Preparamos y cuidamos tu equipo de golf para la próxima ronda. Los trabajos están sujetos a evaluación, disponibilidad y cotización.",
-        items:["Cambio de grips","Cambio de varilla","Limpieza profunda"],
-        action:"Consultar reparación o mantenimiento",
-        note:"Revisamos cada pieza y confirmamos las opciones antes de iniciar cualquier trabajo."},
-      en:{eyebrow:"Equipment care and repair",title:"Repair and maintenance",
-        description:"Care and service for your golf equipment. Work is subject to inspection, availability, and a quote.",
-        items:["Grip replacement","Shaft replacement","Deep cleaning"],
-        action:"Ask about repair or maintenance",
-        note:"We inspect each club and confirm the available options before starting."}
-    },
-    trade:{
-      es:{eyebrow:"Valoración presencial",title:"Intercambios y consignación",
-        description:"Podemos revisar tu equipo para explorar alternativas de intercambio o consignación, sujetas a evaluación y aceptación.",
-        items:["Intercambia tu equipo como parte de pago","Consignación de equipo sujeto a valoración","Condiciones acordadas antes de cualquier operación"],
-        action:"Consultar intercambio o consignación",
-        note:"La aceptación, valoración y condiciones se confirman directamente con el equipo de la tienda."},
-      en:{eyebrow:"In-store assessment",title:"Trade-ins and consignment",
-        description:"Bring your equipment for evaluation of potential trade-in or consignment options, subject to approval.",
-        items:["Trade equipment toward a purchase","Consignment subject to evaluation","Terms agreed before proceeding"],
-        action:"Ask about trade-ins or consignment",
-        note:"Acceptance, valuation, and terms are confirmed with the store."}
-    },
-    "putter-restoration":{
-      es:{eyebrow:"PRÓXIMAMENTE",title:"Ajuste de lie y loft",
-        description:"Estamos preparando el servicio de ajuste de lie y loft para palos de golf.",
-        items:["Servicio aún no disponible para solicitar o agendar"],
-        note:"Publicaremos más información cuando se encuentre disponible."},
-      en:{eyebrow:"COMING SOON",title:"Lie and loft adjustment",
-        description:"We are preparing a lie and loft adjustment service for golf clubs.",
-        items:["This service is not available to request or book yet"],
-        note:"More information will be available once the service launches."}
-    }
-  };
-
-  function setCard(key){
-    const card=byKind(key);
-    if(!card)return;
-    const data=copies[key]?.[lang()];
-    if(!data)return;
-    const head=card.querySelector(".uds-service-head");
-    const title=card.querySelector(".uds-service-title h3");
-    const eyebrow=card.querySelector(".uds-service-title small");
-    const body=card.querySelector(".uds-service-body");
-    if(!head||!title||!eyebrow||!body)return;
-
-    title.textContent=data.title;
-    eyebrow.textContent=data.eyebrow;
-    eyebrow.hidden=false;
-    card.classList.add("uds-preview-service-compact");
-    const comingSoon=key==="putter-restoration";
-    card.classList.toggle("uds-preview-service-coming",comingSoon);
-
-    // Old mobile shortcuts still target /putter/i; keep a hidden text alias,
-    // without exposing a misleading restoration service to shoppers.
-    if(comingSoon){
-      const alias=document.createElement("span");
-      alias.hidden=true;
-      alias.setAttribute("aria-hidden","true");
-      alias.textContent=" putter restoration";
-      title.appendChild(alias);
-      head.querySelector(".uds-service-photo")?.remove();
-      card.classList.remove("has-service-photo");
-    }
-
-    // Reuse the already-resolved WhatsApp anchor, preserving attribution.
-    // For a coming-soon service there must be no booking/contact CTA.
-    const action=comingSoon?null:body.querySelector(".uds-service-actions");
-    body.replaceChildren();
-    const description=document.createElement("p");
-    description.textContent=data.description;
-    body.appendChild(description);
-    const points=document.createElement("div");
-    points.className="uds-service-points";
-    data.items.forEach(label=>{
-      const point=document.createElement("div");
-      point.className="uds-service-point";
-      point.textContent=label;
-      points.appendChild(point);
-    });
-    body.appendChild(points);
-    if(action){
-      const link=action.querySelector("a");
-      if(link){
-        link.textContent=data.action;
-        body.appendChild(action);
-      }
-    }
-    const note=document.createElement("div");
-    note.className="uds-service-note";
-    note.textContent=data.note;
-    body.appendChild(note);
-    if(comingSoon){
-      head.setAttribute("aria-label",data.title+" · "+data.eyebrow);
-    }
+  function isComingSoon(card) {
+    const label = card.querySelector(".uds-service-title small")?.textContent || "";
+    const hasContact = Boolean(card.querySelector(".uds-service-actions a"));
+    // Status and contact eligibility are fully admin-managed text/CTA fields.
+    return !hasContact && /próximamente|coming soon/i.test(label);
   }
 
-  function apply(){
-    if(!root.isConnected)return;
-    const arrivals=root.querySelector("#udsNew");
-    const section=root.querySelector("#udsServices");
-    const catalog=root.querySelector("#udsCatalog");
-    const grid=section?.querySelector(".uds-services-grid");
-    if(!arrivals||!section||!catalog||!grid)return;
+  function apply() {
+    if (!root.isConnected) return;
+    const arrivals = root.querySelector("#udsNew");
+    const section = root.querySelector("#udsServices");
+    const catalog = root.querySelector("#udsCatalog");
+    const grid = section?.querySelector(".uds-services-grid");
+    if (!arrivals || !section || !catalog || !grid) return;
 
-    // Preserve every existing DOM node and the protected classes lead form.
-    if(arrivals.nextElementSibling!==section)arrivals.insertAdjacentElement("afterend",section);
-    const intro=section.querySelector(".uds-section-intro");
-    if(intro){
-      intro.textContent=lang()==="en"
-        ?"Equipment care, trade-ins, consignment and guidance in one place."
-        :"Cuidado de equipo, intercambios, consignación y asesoría en un solo lugar.";
+    if (arrivals.nextElementSibling !== section) arrivals.insertAdjacentElement("afterend", section);
+
+    // Intro is page copy; service records and their order remain untouched.
+    const intro = section.querySelector(".uds-section-intro");
+    if (intro) {
+      intro.textContent = lang() === "en"
+        ? "Equipment care, trade-ins, consignment and guidance in one place."
+        : "Cuidado de equipo, intercambios, consignación y asesoría en un solo lugar.";
     }
 
-    for(const kind of ["repair","trade","putter-restoration"])setCard(kind);
-
-    // The additional GHIN badge duplicates the USGA logo already in the photo.
-    // Keep the original DOM and assets intact for the main site.
-    const ghin=byKind("ghin");
-    ghin?.querySelector(".uds-service-ghin-logo")?.setAttribute("aria-hidden","true");
-
-    // One visual hierarchy across all six cards; only the preview copy changes.
-    const vs=byKind(vsGolfServiceKey);
-    if(vs){
-      const title=vs.querySelector(".uds-service-title h3");
-      const subtitle=vs.querySelector(".uds-service-title small");
-      if(title)title.textContent=lang()==="en"?"Restoration and customization":"Restauración y personalización";
-      if(subtitle){
-        subtitle.textContent=lang()==="en"?"VS GOLF · Putters and wedges":"VS GOLF · Putters y wedges";
-        subtitle.hidden=false;
-      }
-      vs.classList.add("uds-preview-vs-card");
+    for (const card of grid.querySelectorAll(":scope > [data-service-card]")) {
+      card.classList.add("uds-preview-service-compact");
+      card.classList.remove("uds-preview-service-merged");
+      card.removeAttribute("aria-hidden");
+      card.classList.toggle("uds-preview-service-coming", isComingSoon(card));
+      card.classList.toggle("uds-preview-vs-card", card.dataset.serviceKind === VS_GOLF_KEY);
+      // Do not touch title, subtitle, description, image, CTA, body or aria.
     }
-    const repair=byKind("repair");
-    const maintenance=byKind("maintenance");
-    if(maintenance){
-      const merge=Boolean(repair?.isConnected);
-      maintenance.classList.toggle("uds-preview-service-merged",merge);
-      maintenance.setAttribute("aria-hidden",String(merge));
-      if(merge){
-        maintenance.classList.remove("is-open");
-        maintenance.querySelector(".uds-service-head")?.setAttribute("aria-expanded","false");
+    // The runtime queries ordered active rows; preserve that order exactly.
+    const rows = window.__UPDOWN_SERVICES__;
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        if (!row?.key) continue;
+        const card = [...grid.querySelectorAll(":scope > [data-service-card]")]
+          .find(node => node.dataset.serviceKind === row.key);
+        if (card) grid.appendChild(card);
       }
     }
-
-    // Commercial order; keep all admin-created and third-party services.
-    const prioritized=["repair","trade","putter-restoration","classes","ghin"];
-    const extraCards=[...grid.querySelectorAll(":scope > [data-service-card]")]
-      .filter(card=>!prioritized.includes(card.dataset.serviceKind));
-    for(const kind of prioritized){
-      const card=byKind(kind);
-      if(card&&card.parentElement===grid)grid.appendChild(card);
-    }
-    // Custom admin-managed services stay visible after the main grouped cards.
-    // The hidden maintenance node remains connected for legacy integrations.
-    for(const card of extraCards)grid.appendChild(card);
+    // The GHIN graphic already includes the USGA mark; avoid duplicate
+    // decoration without changing its admin-managed photo.
+    section.querySelector('[data-service-kind="ghin"] .uds-service-ghin-logo')
+      ?.setAttribute("aria-hidden", "true");
     root.classList.add("uds-preview-services-stage7");
+    // Mobile links are rendered from the same DB rows by the shared runtime.
   }
 
-  function updateMobileServiceMenu(){
-    const menu=document.getElementById("udsMobileMenu53");
-    if(!menu)return;
-    for(const btn of menu.querySelectorAll(".uds53-group .uds53-sub > button")){
-      const label=(btn.textContent||"").trim().toLowerCase();
-      if(["reparación","repair"].includes(label)){
-        btn.textContent=lang()==="en"?"Repair and maintenance":"Reparación y mantenimiento";
-      }else if(["intercambios","trade-ins"].includes(label)){
-        btn.textContent=lang()==="en"?"Trade-ins and consignment":"Intercambios y consignación";
-      }else if(["mantenimiento","maintenance"].includes(label)){
-        btn.hidden=true;
-      }else if(["restauración de putters","putter restoration"].includes(label)){
-        btn.textContent=lang()==="en"?"Lie and loft · Coming soon":"Ajuste de lie y loft · Próximamente";
-      }
-    }
-  }
-  function onMobileMenuClick(event){
-    if(event.target.closest("#udsMenuButton, #udsDockMenu")){
-      requestAnimationFrame(updateMobileServiceMenu);
-    }
-  }
-  root.addEventListener("click",onMobileMenuClick,true);
-
-  // Closing a card should return the visitor to the full service selection.
-  // Listen in capture phase so the legacy delegated toggle can stay unchanged.
-  function onServiceToggle(event){
-    const trigger=event.target.closest?.("#udsServices .uds-service-head");
-    const section=root.querySelector("#udsServices");
-    if(!trigger||!section)return;
-    const card=trigger.closest("[data-service-card]");
-    if(!card?.classList.contains("is-open"))return;
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      if(card.classList.contains("is-open")||!section.isConnected)return;
+  function onServiceToggle(event) {
+    const trigger = event.target?.closest?.("#udsServices .uds-service-head");
+    const section = root.querySelector("#udsServices");
+    if (!trigger || !section) return;
+    const card = trigger.closest("[data-service-card]");
+    if (!card?.classList.contains("is-open")) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (card.classList.contains("is-open") || !section.isConnected) return;
       section.scrollIntoView({
-        behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",
-        block:"start"
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
       });
     }));
   }
-  root.addEventListener("click",onServiceToggle,true);
+  root.addEventListener("click", onServiceToggle, true);
 
-  const onReady=()=>apply();
-  window.addEventListener("updown:services-ready",onReady);
-  window.addEventListener("updown:language-change",onReady);
-  const dispose=()=>{
-    window.removeEventListener("updown:services-ready",onReady);
-    window.removeEventListener("updown:language-change",onReady);
-    root.removeEventListener("click",onMobileMenuClick,true);
-    root.removeEventListener("click",onServiceToggle,true);
-    window.removeEventListener("updown:preview-services-dispose",dispose);
-    if(window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__===dispose){
-      window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__=null;
+  const onReady = () => apply();
+  window.addEventListener("updown:services-ready", onReady);
+  window.addEventListener("updown:language-change", onReady);
+
+  const dispose = () => {
+    window.removeEventListener("updown:services-ready", onReady);
+    window.removeEventListener("updown:language-change", onReady);
+    root.removeEventListener("click", onServiceToggle, true);
+    window.removeEventListener("updown:preview-services-dispose", dispose);
+    if (window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__ === dispose) {
+      window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__ = null;
     }
   };
-  window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__=dispose;
-  window.addEventListener("updown:preview-services-dispose",dispose,{once:true});
+  window.__UPDOWN_STAGE7_SERVICES_TEARDOWN__ = dispose;
+  window.addEventListener("updown:preview-services-dispose", dispose, { once: true });
   apply();
 })();
