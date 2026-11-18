@@ -36,12 +36,13 @@ test("A3 preserves isolation and does not introduce data-layer or deployment edi
   assert.match(read("public/updown-product-smart-entry-v1.js"), /data-product-capture-link=""/);
 });
 
-test("A3.2 prepares advanced fields without changing the quick-create RPC or automatic commercial writes", () => {
+test("A3.3 saves the complete ficha in one user action without changing quick-create identifiers or inventory", () => {
   const quick = read("src/components/admin/quick-product-entry.tsx");
   assert.match(quick, /type AdvancedDraft/);
   assert.match(quick, /advanced: \{ \.\.\.advanced \}/);
-  assert.match(quick, /Los borradores ya están creados, pero estos campos siguen únicamente en esta sesión/);
-  assert.match(quick, /updown:admin-product-details-saved/);
+  assert.match(quick, /Guardar ficha completa/);
+  assert.match(quick, /productMetadata\(capture\.advanced/);
+  assert.doesNotMatch(quick, /Revisar y completar ficha|pendingDetails|recentProduct/);
   assert.match(quick, /updown:admin-product-edit-request/);
   const rpc = quick.match(/db\.rpc\("admin_quick_product_create", \{([\s\S]*?)\}\);/);
   assert.ok(rpc, "Must continue calling the existing idempotent quick-create RPC");
@@ -49,8 +50,18 @@ test("A3.2 prepares advanced fields without changing the quick-create RPC or aut
   assert.doesNotMatch(quick, /\.update\(\{[^}]*brand|\.insert\(\{[^}]*brand/);
 
   const legacy = read("public/updown-admin-legacy-runtime.js");
-  assert.match(legacy, /applyAdvancedProductDraft/);
+  assert.doesNotMatch(legacy, /applyAdvancedProductDraft/);
   assert.match(legacy, /window\.addEventListener\("updown:admin-product-edit-request"/);
-  assert.match(legacy, /if\(product\.status==="draft"\)applyAdvancedProductDraft/);
+  assert.match(legacy, /Para crear productos utiliza Nueva ficha/);
   assert.match(read("public/updown-product-tabs-v1.js"), /updown:admin-product-editor-opened/);
+});
+
+test("A3.3 UPC photo attachment updates gallery only, with explicit retries and no destructive operations", () => {
+  const quick = read("src/components/admin/quick-product-entry.tsx");
+  assert.match(quick, /attachExistingPhotos/);
+  assert.match(quick, /db\.from\("product_images"\)\.insert\(inserts\)/);
+  assert.match(quick, /photoRequestRef/);
+  assert.match(quick, /products\/upc\/\$\{request\.productId\}/);
+  assert.match(quick, /Galería|galería/);
+  assert.doesNotMatch(quick, /db\.from\("product_images"\)\.delete\(/);
 });

@@ -11,19 +11,20 @@ const baseVariants = [
   {id:'v3',product_id:'p2',title:'M azul',sku:'ROP-0010-M',barcode:'2000000000060',attributes:{talla:'M'}},
   {id:'v4',product_id:'p3',title:'Única',sku:'PAL-001-U',barcode:'2000000000077',attributes:{}},
 ].map(v=>({...v,stock:5,price:null,sale_price:null,is_active:true,low_stock_threshold:2,created_at:'2026-01-01T00:00:00Z'}));
-let products,variants,events,options;
-function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);events=[];options={};}reset();
+let products,variants,gallery,events,options;
+function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};}reset();
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.test',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 function token(){const enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');return `${enc({alg:'HS256',typ:'JWT'})}.${enc({sub:user.id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)})}.${Buffer.from('fixture-signature').toString('base64url')}`;}
 http.createServer(async(req,res)=>{
   res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Headers','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,PATCH,DELETE,OPTIONS');
   if(req.method==='OPTIONS'){res.writeHead(204);return res.end();}
   const url=new URL(req.url,'http://127.0.0.1:4319');
-  let raw='';for await(const c of req)raw+=c;const body=raw?JSON.parse(raw):{};
+  let raw='';for await(const c of req)raw+=c;
+  const body=raw&&String(req.headers['content-type']||'').includes('application/json')?JSON.parse(raw):{};
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization});
   if(url.pathname==='/auth/v1/token'){
     if(body.password!=='fixture-password')return send({message:'Invalid login credentials',error_code:'invalid_credentials'},400);
@@ -46,6 +47,27 @@ http.createServer(async(req,res)=>{
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
     if(req.method==='PATCH'){const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
     return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
+  }
+  if(url.pathname==='/rest/v1/product_images'){
+    if(req.method==='POST'){
+      if(options.galleryError)return send({message:'Fixture image insert failure',code:'FIXTURE'},503);
+      const rows=Array.isArray(body)?body:[body];
+      for(const row of rows){
+        const saved={...row,id:`img-${gallery.length+1}`};gallery.push(saved);
+        const parent=products.find(p=>p.id===row.product_id);
+        if(parent)parent.product_images.push(saved);
+      }
+      return send(rows.map((_,index)=>({id:`img-${gallery.length-rows.length+index+1}`})),201);
+    }
+    if(req.method==='GET'){
+      const productId=url.searchParams.get('product_id')?.slice(3);
+      return send(productId?gallery.filter(image=>image.product_id===productId):gallery);
+    }
+    return send([]);
+  }
+  if(url.pathname.startsWith('/storage/v1/object/product-media/')){
+    if(req.method==='POST')return send({Key:url.pathname.slice('/storage/v1/object/'.length)});
+    return send([]);
   }
   if(url.pathname==='/rest/v1/product_variants'){
     if(req.method==='DELETE'){

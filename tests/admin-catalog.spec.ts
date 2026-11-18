@@ -169,7 +169,7 @@ test('A3 catalog edit still uses original full editor',async({page})=>{
   await expect(page.locator('#udUnifiedProductHost')).toBeHidden();
 });
 
-test('A3.2 stages advanced fields locally and uses the original editor only after confirmation',async({page,request})=>{
+test('A3.3 creates one complete product ficha with one explicit save action',async({page,request})=>{
   await login(page);await ready(page);
   await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
   const host=page.locator('#udUnifiedProductHost');
@@ -177,7 +177,6 @@ test('A3.2 stages advanced fields locally and uses the original editor only afte
   await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption('c2');
   await host.locator('input[placeholder="0.00"]').fill('499');
   await host.locator('#quick-barcode').fill('2001234000001');
-  await host.locator('details > summary').first().click();
   await host.getByLabel('Marca',{exact:true}).fill('Marca simulada');
   await host.getByLabel('Modelo',{exact:true}).fill('Modelo QA');
   await host.getByRole('combobox',{name:'Condición',exact:true}).selectOption('demo');
@@ -185,45 +184,59 @@ test('A3.2 stages advanced fields locally and uses the original editor only afte
   await host.locator('details details summary').click();
   await host.getByLabel('Loft',{exact:true}).fill('10.5°');
   await host.getByRole('combobox',{name:'Mano',exact:true}).selectOption('Right');
+  await host.getByLabel('Tiene variantes (talla, color u otras)').check();
+  await host.getByLabel('Nombre de variante',{exact:true}).fill('RH / 10.5');
+  await host.getByLabel('Cantidad inicial',{exact:true}).fill('0');
   await page.getByRole('button',{name:'Catálogo',exact:true}).click();
   await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
   await expect(host.getByLabel('Marca',{exact:true})).toHaveValue('Marca simulada');
   const before=await (await request.get(`${fixture}/__events`)).json();
   expect(before.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(0);
-  await host.getByRole('button',{name:'Guardar + siguiente producto'}).click();
-  await expect(host.getByText(/registrado como borrador/)).toBeVisible();
-  await expect(host.getByText(/Los borradores ya están creados, pero estos campos siguen únicamente en esta sesión/)).toBeVisible();
-  const staged=await (await request.get(`${fixture}/__events`)).json();
-  const create=staged.find((e:{path:string})=>e.path.endsWith('/admin_quick_product_create'));
-  expect(create.body).toMatchObject({p_name:'Driver de prueba A3',p_category_id:'c2',p_price:499,p_barcode:'2001234000001',p_quantity:0});
-  expect(create.body).not.toHaveProperty('brand');
-  const patches=staged.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products');
-  expect(patches).toHaveLength(1);
-  expect(patches[0].body).toEqual({currency:'MXN',online_visible:true,pos_visible:true});
-
-  await host.getByRole('button',{name:/Revisar y completar ficha/}).click();
-  await expect(page.locator('#udProductWorkspaceTabs button[data-view="form"]')).toHaveClass(/is-active/);
-  await expect(page.locator('#udName')).toHaveValue('Driver de prueba A3');
-  await expect(page.locator('#udSku')).toHaveValue('SIM-0001');
-  await expect(page.locator('#udStatus')).toHaveValue('draft');
-  await expect(page.locator('#udBrand')).toHaveValue('Marca simulada');
-  await expect(page.locator('#udModel')).toHaveValue('Modelo QA');
-  await expect(page.locator('#udCondition')).toHaveValue('demo');
-  await expect(page.locator('#udSpecLoft')).toHaveValue('10.5°');
-  await expect(page.locator('#udSpecHand')).toHaveValue('Right');
-  const opened=await (await request.get(`${fixture}/__events`)).json();
-  expect(opened.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(1);
-  await page.locator('#udSave').click();
-  await expect(page.locator('#udToast')).toContainText('Producto actualizado');
-  await expect(host.locator('section[aria-label="Fichas con detalles avanzados pendientes"]')).toHaveCount(0);
+  await host.getByRole('button',{name:'Guardar ficha completa'}).click();
+  await expect(host.getByText(/Ficha completa guardada como borrador/)).toBeVisible();
   const saved=await (await request.get(`${fixture}/__events`)).json();
-  const advancedUpdate=saved.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products').at(-1);
-  expect(advancedUpdate.body).toMatchObject({
-    name:'Driver de prueba A3',sku:'SIM-0001',barcode:'2001234000001',price:499,stock:0,
-    status:'draft',brand:'Marca simulada',model:'Modelo QA',item_condition:'demo',
+  const create=saved.find((e:{path:string})=>e.path.endsWith('/admin_quick_product_create'));
+  expect(create.body).toMatchObject({p_name:'Driver de prueba A3',p_category_id:'c2',p_price:499,p_barcode:'2001234000001',p_quantity:0});
+  expect(create.body.p_variants).toMatchObject([{title:'RH / 10.5',quantity:0}]);
+  expect(create.body).not.toHaveProperty('brand');
+  const patches=saved.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products');
+  expect(patches).toHaveLength(1);
+  expect(patches[0].body).toMatchObject({
+    currency:'MXN',online_visible:true,pos_visible:true,
+    brand:'Marca simulada',model:'Modelo QA',item_condition:'demo',
     short_description:'Texto local sin persistir',specifications:{hand:'Right',loft:'10.5°'}
   });
+  for(const forbidden of ['name','sku','barcode','price','stock','status'])expect(patches[0].body).not.toHaveProperty(forbidden);
   expect(saved.some((e:{path:string})=>/admin_inventory_adjust|admin_inventory_receive/.test(e.path))).toBe(false);
+});
+
+test('A3.3 adds photos to a scanned UPC gallery without replacing historical images or stock',async({page,request})=>{
+  await configure(request,{existingPhoto:true,galleryError:true});
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await expect(photos).toBeVisible();
+  await photos.locator('input[type=file][capture=environment]').setInputFiles({
+    name:'foto-qa.png',mimeType:'image/png',
+    buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64')
+  });
+  await expect(photos.locator('img[alt="Nueva foto 1"]')).toBeVisible();
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture image insert failure');
+  await configure(request,{galleryError:false});
+  await photos.getByRole('button',{name:'Reintentar fotos'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico/)).toBeVisible();
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(2);
+  expect(images[0]).toMatchObject({id:'img-old',is_primary:true});
+  expect(images[1]).toMatchObject({product_id:'p1',is_primary:false,sort_order:2});
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(1);
+  expect(events.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(0);
+  expect(events.some((e:{path:string})=>/admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
 });
 
 test('A3.2 opening a scanned existing product is read-only until the original editor saves',async({page,request})=>{
