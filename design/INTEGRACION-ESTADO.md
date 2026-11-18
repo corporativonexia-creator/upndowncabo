@@ -426,3 +426,32 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 - **Seguridad:** prohibido fusionar a `main`, crear PR, desplegar, alterar POS, Supabase real, pagos, inventarios o `UNDER_CONSTRUCTION=true` en esta fase. `vercel.json` temporal permanece exclusivamente en la candidata. **Protección de main sigue pendiente**, igual que controles Vercel para una futura rama de release.
 
 **Dictamen:** GO para validación focalizada del parche y de release local; NO-GO para PR/merge/despliegue hasta cierre Chromium y protección de `main`.
+
+## 24. Lote 7D — Auditoría asíncrona y preparación de preproducción (18-nov-2026)
+
+**Resultado: AVANCE TÉCNICO CONTROLADO, QA REAL PENDIENTE.** No es autorización para PR, merge, desplegar o abrir la tienda.
+
+### A. Corrección puntual de consultas tardías
+
+La auditoría de `loadStore()` encontró que una instancia del runtime desmontada podía terminar consultas de categorías/productos/promociones y continuar con `renderCatalogState()`, `saveCatalogCache()`, `revealCatalog()` o `reconcileCart()`, aunque `renderProducts()` ya estaba protegido. Esta situación deriva directamente de la causa de intermitencia responsive documentada en la sección 23.
+
+- **Cambio mínimo en candidata:** `public/updown-parity-runtime.js`, commit `ce6f5ef2e5328f5528ff596a1b1cb6807d5ba144`. Se añadieron cuatro guards de ciclo de vida: `refreshCampaignsForCheckout()` después de su RPC, `loadStore()` al iniciar, tras `Promise.all` y tras la consulta de variantes. No se tocaron contratos SQL, esquema, precios, stock, campañas ni lógica de pago.
+- **Prueba automatizada:** `tests/premium-white-contracts.cjs`, commit `c04513dabb8192aee9f555bbfb29583a116ece07`. Un nuevo test de regresión ejecuta las funciones reales extraídas del runtime con respuestas asíncronas controladas; comprueba que las respuestas tardías de catálogo y promociones no alteran render, caché ni carrito, y que una ejecución activa sigue funcionando. **1/1 test nuevo PASS** aisladamente en V8 con fuente recuperada de GitHub. No equivale a `node --test` ni Chromium E2E completos.
+- **Ensamblador repinneado:** `scripts/prepare-release-local.py`, commit `7e9566267c90ef7ededac7d0d608eb66e1fdd936`, fuente congelada `c04513dabb8192aee9f555bbfb29583a116ece07`, base main `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. El manifiesto permanece en **24 rutas exactas**: 21 aplicación y 3 suites, con `vercel.json` excluido del worktree local. Se requiere nuevo ensamblaje y QA por Work antes de release.
+- **Expectativa de suite**: **40 PASS y 1 TODO** (37 aprobados en Work del release anterior + 3 controles añadidos de ciclo de vida). Esta expectativa **no está verificada en la suite Node del nuevo SHA**; el último build de Work también corresponde a una versión anterior.
+
+### B. Plan de lanzamiento: fase de deploy técnico, fase comercial
+
+1. **Puerta de QA:** en nuevo worktree local (sin push), repetir `npm ci`, 40 contratos + TODO, `npm run check:admin-scripts`, `npx tsc --noEmit`, `npm run lint`, `npm run build`. Chromium debe pasar la **matriz completa de 320/390/760/1024/1440** más **al menos 20 ciclos acumulados de 760→1024→1440** sin perder click Lista, sin re-render obsoleto y sin duplicar listener. Repetir smoke de carrito/stock, clases y autorización. Si hay FAIL, detener.
+2. **Puerta GitHub:** `main` continúa `protected=false`; crear y confirmar ruleset efectivo de `main` antes de cualquier PR/push/merge. Prohibir force push/borrado y exigir PR con validación. La conexión actual no dispone de acción administrativa para aplicar reglas; requiere cuenta administradora de GitHub.
+3. **Puerta Vercel:** el proyecto `upndowncabo` reporta despliegues de otras ramas. Antes de publicar una rama remota sin `vercel.json` temporal, comprobar política de preview, protección de despliegues, dominio y destino de release; definir procedimiento que no publique automáticamente sin aprobación. No quitar el bloqueo de la candidata.
+4. **Puerta diff:** aprobar exclusivamente 21 archivos de aplicación y 3 suites adaptadas del manifiesto; excluir los documentos, utilidades locales y el `vercel.json` temporal. La rama de release debe nacer del SHA autorizado de main, no ser un merge masivo de la candidata. No incluir modificaciones de POS, recepción, inventarios ni migraciones.
+5. **Deploy técnico autorizado:** solo tras una autorización nueva, crear PR, validar checks, integrar de manera controlada y verificar que el primer despliegue **mantenga `const UNDER_CONSTRUCTION = true`**; comprobar /proximamente, /login, /admin, /pos y protección de /vista-previa. Registrar SHA y destino Vercel.
+6. **Rollback:** la referencia de producción antes de integración es `main` `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`; la consulta de Vercel encontró un despliegue target=production asociado a ese SHA. Antes de un despliegue nuevo obtener ID exacto y disponibilidad para revertir/promover con seguridad; no ejecutar rollback preventivo.
+7. **Apertura comercial (separada):** retirar `UNDER_CONSTRUCTION` solo con nueva autorización posterior, prueba de stock real/no ventas duplicadas, variantes, pagos, referencias, SEO y seguimiento; no confundir deploy técnico con apertura pública.
+
+### C. Límites de lo comprobado
+
+**Comprobado aquí:** sintaxis JS del runtime corregido; test nuevo dinámico con respuestas simuladas tardías PASS; 24 rutas congeladas en ensamblador; fuente `main` sin modificación; barrera Próximamente y bloqueo de despliegue en candidata; referencia Vercel de producción existente. **No comprobado aquí:** build real del nuevo SHA, suite completa Node 40/40, Chromium después de 7D, privilegios efectivos de GitHub para branch protection y estado de checkout/pago en producción.
+
+**Dictamen:** **GO para QA final aislado**; **NO-GO para PR/merge/deploy/apertura** hasta satisfacer puertas.
