@@ -468,3 +468,15 @@ La auditoría de `loadStore()` encontró que una instancia del runtime desmontad
 **Puertas todavía pendientes:** QA final del release local repinneado a `c04513dabb8192aee9f555bbfb29583a116ece07` (40 contratos + 1 TODO esperados, TypeScript, lint, build y matriz Chromium 20 ciclos); revisión de política Vercel para nuevas ramas y preview; aprobación del diff y autorización explícita de integración. Mantener `UNDER_CONSTRUCTION=true`, POS, inventario, pagos y Supabase sin cambios.
 
 **Dictamen:** **GO control GitHub**; **NO-GO integración/despliegue** hasta las otras puertas.
+
+## 26. Lote 8A — GitHub Actions automatizado y QA de release PASS (18-nov-2026)
+
+**Estado: GO DE QA AUTOMÁTICO, NO-GO PARA DESPLIEGUE SIN PUERTAS AMBIENTALES.** Informe detallado: [LOTE8A-QA-GITHUB-20261118.md](./LOTE8A-QA-GITHUB-20261118.md). Run aprobado: [GitHub Actions 44274494221](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44274494221), commit `8b4b7e3fbe4ea262f67cc80cffe00b51dc627167`.
+
+- **Nuevo workflow aislado:** `.github/workflows/upndown-premium-release-qa.yml`, con disparo por cambios limitados en la candidata, permiso `contents: read` y servidores `127.0.0.1`, sin secretos ni despliegue. Ensambla un worktree detached desde `main=44e3f10...` con fuente `c04513d...`, **24 rutas exactas, sin `vercel.json`**, e incorpora únicamente dos assets de test adicionales en el checkout temporal.
+- **Resultados reales:** 40 PASS de contratos, 0 FAIL, 1 TODO preexistente; scripts admin PASS; TypeScript PASS; ESLint 0 errores/9 warnings; build Next PASS; Playwright admin **14 PASS**; Playwright Premium **3 PASS**, incluyendo **20/20 ciclos acumulados 760→1024→1440** de Galería/Lista, `copy-ready`, URL, almacenamiento y control de estados; Playwright POS **2 PASS**. Todo en backend simulado.
+- **Corrección del primer intento:** el primer run rechazó, por diseño, los archivos CI añadidos después del SHA fuente. En `scripts/prepare-release-local.py` se permitieron exclusivamente esas rutas como **QA-only**, manteniendo la restricción de las 24 rutas copiadas al release. El segundo run fue SUCCESS en todas las etapas.
+- **Integridad:** `main` protegido con ruleset ID 27534656; candidata mantiene `UNDER_CONSTRUCTION=true` y bloqueo de auto-deploy; ningún merge, PR o despliegue de candidata. Vercel Preview expone configuración pública de Supabase no aislada/verificada todavía; **no hacer pruebas de escritura real allí**.
+- **Pendientes:** controlar Preview de Vercel antes de permitir rama release remota sin guardia temporal; decidir adopción de QA workflow en PR final; asegurar diff selectivo y autorizar PR/merge explícitamente. La retirada de «Próximamente» requerirá autorización posterior.
+
+**Dictamen:** **GO técnico para iniciar Lote 8B** (auditoría de Preview/plan de PR, sin deploy). **NO-GO para PR/merge/deploy/apertura** hasta la revisión ambiental y nueva aprobación.
