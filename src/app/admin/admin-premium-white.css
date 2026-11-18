@@ -103,6 +103,14 @@
 #updown-admin.ud-premium-white .ud-a5-inspector p { margin: 8px 0; }
 #updown-admin.ud-premium-white .ud-a5-inspector ul { padding-left: 20px; margin: 10px 0; }
 #updown-admin.ud-premium-white .ud-a5-inspector li { margin: 3px 0; }
+#updown-admin.ud-premium-white .ud-a52-preview {
+  margin: 14px 0; padding: 12px; border: 1px solid #cbded1;
+  border-radius: 10px; background: #fff; overflow-x: auto;
+}
+#updown-admin.ud-premium-white .ud-a52-preview table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+#updown-admin.ud-premium-white .ud-a52-preview th,
+#updown-admin.ud-premium-white .ud-a52-preview td { padding: 6px 9px; border-bottom: 1px solid #e7efe9; }
+#updown-admin.ud-premium-white .ud-a52-preview thead { color: #2f7058; }
 #updown-admin.ud-premium-white .ud-a5-inspector .ud-a5-warning {
   display: block; margin: 14px 0; padding: 10px 12px; border-radius: 8px;
   background: #fff3df; color: #6d4c16;

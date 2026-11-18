@@ -1997,9 +1997,9 @@
     }
   });
 
-  // A5.1: advisory only. Browser-visible rows cannot establish whether a
+  // A5.1-A5.2: advisory only. Browser-visible rows cannot establish whether a
   // product is unreferenced: RLS may hide sale, order or movement records.
-  // Never execute a physical DELETE based on this client-side inspection.
+  // Never execute an archive UPDATE or a physical DELETE from this inspection.
   async function inspectProductRetirement(product,item){
     const previous=item.querySelector(".ud-a5-inspector");
     if(previous){previous.remove();return;}
@@ -2007,12 +2007,31 @@
     panel.className="ud-a5-inspector";
     panel.setAttribute("role","region");
     panel.setAttribute("aria-label",`Auditoría de baja de ${product.name}`);
+    const visibility=value=>value===true?"Visible":value===false?"Oculto":"Sin verificar";
+    const activation=value=>value===true?"Activado":value===false?"Desactivado":"Sin verificar";
+    const previewRows=[
+      ["Estado",escapeHtml(product.status||"Sin verificar"),"archived"],
+      ["Tienda online",visibility(product.online_visible),"Oculto"],
+      ["POS",visibility(product.pos_visible),"Oculto"],
+      ["Destacado",activation(product.featured),"Desactivado"],
+      ["Novedades",activation(product.new_arrival_enabled),"Desactivado"]
+    ];
+    const appearsArchived=product.status==="archived"&&product.online_visible===false&&product.pos_visible===false;
     panel.innerHTML=`<h4>Revisión previa a la baja</h4>
       <p><strong>${escapeHtml(product.name)}</strong> · UPC ${escapeHtml(product.barcode||"Sin UPC")}</p>
       <p>Estado: ${escapeHtml(product.status||"Sin estado")} · Existencia registrada: <strong>${product.stock==null?"No informada":escapeHtml(String(product.stock))}</strong>.</p>
       <p class="ud-a5-pending" role="status">Comprobando referencias visibles…</p>
       <ul class="ud-a5-checks"></ul>
-      <p><strong>Retirar de tienda y POS:</strong> conserva el artículo, sus identificadores, existencias y movimientos históricos. Preparación A5; todavía no ejecutable aquí.</p>
+      <div class="ud-a52-preview" role="group" aria-label="Vista previa de retiro sin guardar">
+        <strong>Vista previa de retiro · sin guardar</strong>
+        <p>${appearsArchived?"El catálogo ya muestra este artículo retirado; el servidor deberá verificarlo.":"Cambios propuestos para una futura operación autorizada:"}</p>
+        <table><thead><tr><th>Campo</th><th>Actual</th><th>Objetivo</th></tr></thead><tbody>
+          ${previewRows.map(([label,current,target])=>`<tr><th scope="row">${label}</th><td>${current}</td><td>${target}</td></tr>`).join("")}
+        </tbody></table>
+        <p><strong>Intactos:</strong> SKU, UPC, precios, descuentos, costos, existencias, variantes, fotografías, ventas, reservas e historial.</p>
+        <p>Los valores actuales provienen del catálogo cargado y pueden haber cambiado. Antes de habilitar el retiro, el servidor deberá revalidar identidad, permisos y estado dentro de una transacción.</p>
+      </div>
+      <p><strong>Retirar de tienda y POS:</strong> requiere una operación separada que preserve el artículo y sus movimientos históricos. No ejecutable aquí.</p>
       <p><strong>Eliminar definitivamente:</strong> solo tras una auditoría transaccional con acceso a todas las relaciones, políticas y restricciones. No disponible desde el navegador.</p>
       <strong class="ud-a5-warning">Ninguna baja se ejecutó. Las lecturas del navegador no autorizan una eliminación definitiva.</strong>
       <button type="button" class="u-btn u-secondary u-small ud-a5-close">Cerrar revisión</button>`;

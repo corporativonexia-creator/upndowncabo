@@ -114,3 +114,16 @@ test("A5.1 product retirement review cannot execute a client-side product DELETE
   assert.doesNotMatch(legacy, /db\.from\("products"\)\.delete\(\)/);
   assert.match(read("src\/app\/admin\/admin-premium-white.css"), /\.ud-a5-inspector/);
 });
+
+test("A5.2 retirement preview is read-only and changes no commercial value", () => {
+  const legacy=read("public/updown-admin-legacy-runtime.js");
+  const inspector=legacy.split("async function inspectProductRetirement(product,item){")[1]?.split('el("udProductsTab").onclick')[0];
+  assert.ok(inspector,"A5.2 inspector must exist");
+  assert.match(inspector,/Vista previa de retiro · sin guardar/);
+  assert.match(inspector,/\["Estado",escapeHtml\(product.status/);
+  assert.match(inspector,/\["Tienda online",visibility\(product.online_visible\),"Oculto"\]/);
+  assert.match(inspector,/\["POS",visibility\(product.pos_visible\),"Oculto"\]/);
+  assert.match(inspector,/Intactos:<\/strong> SKU, UPC, precios, descuentos, costos, existencias, variantes/);
+  assert.doesNotMatch(inspector,/\.update\(|\.delete\(|\.insert\(|\.upsert\(|\.rpc\(/);
+  assert.match(read("src\/app\/admin\/admin-premium-white.css"),/\.ud-a52-preview/);
+});

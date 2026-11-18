@@ -126,6 +126,35 @@ test('A5.1 restricted historical reads never imply a product can be deleted',asy
   expect(events.some((e:{method:string,path:string})=>e.method==='DELETE'&&e.path==='/rest/v1/products')).toBe(false);
 });
 
+test('A5.2 retirement preview shows only publication fields and preserves commercial data',async({page,request})=>{
+  await login(page);await ready(page);
+  await card(page,'p2').getByRole('button',{name:'Revisar baja'}).click();
+  const preview=card(page,'p2').getByRole('group',{name:'Vista previa de retiro sin guardar'});
+  await expect(preview).toBeVisible();
+  await expect(preview.locator('tbody tr').nth(0)).toContainText('active');
+  await expect(preview.locator('tbody tr').nth(0)).toContainText('archived');
+  await expect(preview.locator('tbody tr').nth(1)).toContainText('Visible');
+  await expect(preview.locator('tbody tr').nth(1)).toContainText('Oculto');
+  await expect(preview.locator('tbody tr').nth(2)).toContainText('Visible');
+  await expect(preview.locator('tbody tr').nth(2)).toContainText('Oculto');
+  await expect(preview).toContainText('SKU, UPC, precios, descuentos, costos, existencias, variantes, fotografías, ventas, reservas e historial');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>['POST','PUT','PATCH','DELETE'].includes(e.method)&&
+    /\/rest\/v1\//.test(e.path))).toHaveLength(0);
+});
+
+test('A5.2 an already archived product offers no action or repeated mutation',async({page,request})=>{
+  await configure(request,{retirementArchivedProduct:true});await login(page);await ready(page);
+  await card(page,'p2').getByRole('button',{name:'Revisar baja'}).click();
+  const preview=card(page,'p2').getByRole('group',{name:'Vista previa de retiro sin guardar'});
+  await expect(preview).toContainText('El catálogo ya muestra este artículo retirado');
+  await expect(preview.locator('tbody tr').nth(0)).toContainText('archived');
+  await expect(preview.locator('tbody tr').nth(1)).toContainText('Oculto');
+  await expect(preview.locator('tbody tr').nth(2)).toContainText('Oculto');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.some((e:{method:string,path:string})=>e.path==='/rest/v1/products'&&e.method!=='GET')).toBe(false);
+});
+
 test('A3.8 metadata-only edits preserve gallery IDs and UPC photos added by another operator',async({page,request})=>{
   await configure(request,{existingPhoto:true});await login(page);await ready(page);
   await card(page,'p1').locator('.ud-edit').click();
