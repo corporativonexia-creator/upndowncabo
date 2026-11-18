@@ -199,3 +199,53 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 Se ejecutaron **las 6 aserciones del contrato Lote 2A** en un harness JS V8 con archivos extraídos de GitHub: **6 PASS/0 FAIL** (no el proceso de Node), y se conservaron los **7 PASS de controles de Lote 2C**. En Lote 2B se contaba con **28 verificaciones estáticas**; la suite formal de **18 contratos + 1 TODO** continúa por ejecutar en Node con Work.
 
 **Handoff exacto:** [LOTE3-QA-WORK-20261117.md](./LOTE3-QA-WORK-20261117.md). Este runbook incluye comandos y matriz de QA con fixtures/mocks sin datos de producción, guardas, P1 pendiente de Galería/Lista en público, criterios de GO/NO GO y actualización del registro maestro. Work es ahora la siguiente etapa; el usuario debe iniciar Work con el enlace/documento y rama exacta. Ni main ni Vercel ni Supabase se tocaron en esta preauditoría.
+
+## 13. Lote 3 · QA ejecutado en Work (17-nov-2026)
+
+**Decisión: NO-GO para avanzar con la candidata como validada comercialmente.** El build pasa y el paginador móvil público quedó restaurado. La paridad Galería/Lista y la localización de la ficha siguen abiertas.
+
+- Rama local exclusiva: `integracion/premium-white-candidata-20261117`.
+- SHA de entrada, checkout limpio: `59928d3b1ec70ce5263a18992e0a2c1a4681833a`.
+- SHA final de código probado: `35b27cd50a409000d92c11a7be56ee15003519bf`. El HEAD de entrega añade únicamente esta entrada documental. Su SHA se obtiene con `git rev-parse HEAD`.
+- El HEAD remoto de la candidata sigue en el SHA de entrada. Los commits de QA se conservaron localmente.
+
+### Comandos y resultados
+
+| Comando, en orden de ejecución | Checkout inicial | Código final |
+| --- | --- | --- |
+| `npm ci` | PASS, 405 paquetes instalados | Mismo lockfile y dependencias |
+| `node --test tests/integration-lot2a-style.cjs tests/premium-white-contracts.cjs tests/integration-lot2c-shared-skin.cjs` | PASS, 31 contratos, 0 fallos, 1 TODO | PASS, 31 contratos, 0 fallos, mismo TODO de la suite |
+| `npm run check:admin-scripts` | PASS, sintaxis de 10 scripts | PASS, 10 scripts |
+| `npx tsc --noEmit` | FAIL, TS2769 en alta y baja del listener de ficha privada | PASS |
+| `npm run lint` | PASS, 0 errores y 9 advertencias | PASS, 0 errores y las mismas 9 advertencias |
+| `npm run build` | FAIL, compiló y falló en el typecheck por el mismo TS2769 | PASS, Next.js 16.3.3, incluido prebuild |
+
+### Correcciones comprobadas
+
+1. `8bc1d9f019257d26721596b02596dc1c0cc8394a` · `src/app/vista-previa/preview-local-product-navigation.tsx`. `querySelector` infería `Element` y sus overloads de eventos rechazaban el listener `MouseEvent`. Se tipó el `div` real de la ficha. Pasaron TypeScript, build, contratos y navegación local entre producto, variante y relacionados.
+2. `35b27cd50a409000d92c11a7be56ee15003519bf` · `src/app/vista-previa/preview-header.css` y `tests/integration-lot2c-shared-skin.cjs`. El selector compartido del Lote 2C ocultaba `#udsMobileCatalogPager58` incluso en público. El runtime mostraba solo cuatro tarjetas en móvil y el visitante no podía avanzar. La regla quedó limitada a `.uds-preview` y se añadió la aserción al contrato existente. Se repitieron los comandos afectados y el flujo en Chromium.
+
+### Matriz comercial ejecutada
+
+Chromium local con servidor Next compilado, catálogo de 32 artículos, variante de $475 MXN con stock de dos y seis servicios activos simulados. La portada pública se probó sirviendo el HTML compilado mediante otro servidor de fixtures en loopback. La aplicación sirvió `/proximamente` en su origen normal durante todo el QA. Las imágenes externas se simularon y las fuentes remotas quedaron fuera de la prueba. Resultado final de navegador: 30 PASS, 1 FAIL y 0 excepciones de página capturadas.
+
+| Prueba | Resultado |
+| --- | --- |
+| Premium White y responsive privado | PASS a 320, 390, 760, 1024 y 1440 px para SVG de encabezado visible, categorías y tarjetas, CSS tipográfico y ancho sin desbordamiento |
+| Buscador inteligente privado | PASS para coincidencia en vivo, foco en escritorio, buscador móvil, navegación a ficha local e imagen canónica de respaldo |
+| Filtros privados | PASS a 390 y 1440 px para categoría, marca, condición, mano, flex, loft, orden, aplicar y limpiar. Autocierre comprobado a 390 px |
+| Galería/Lista y paginación privada | PASS en los cinco anchos. Móvil 4/8/16/32/64 y escritorio 12/24/48/96 |
+| Catálogo público compilado | PASS para la diferencia entre canales en los cinco anchos. El paginador público muestra cuatro tarjetas y permite avanzar a 320, 390 y 760 px. A 1024 y 1440 px se muestran las 32 tarjetas de prueba. El selector Galería/Lista sigue ausente |
+| Ficha y compartir | PASS para ficha de producto, variante, dos fotos navegables y relacionado en localhost. Copia y destino de WhatsApp comprobados con URL pública, ID de variante y `ref=QA2026`. Apertura de WhatsApp interceptada |
+| Servicios privados | PASS para seis tarjetas activas y su orden. Cinco reprodujeron título, foto, descripción y CTA del fixture. Clases conservó su formulario y título local, y tomó su foto del fixture |
+| Carrito privado | PASS para agregar, tope de dos unidades, precio unitario de $475 MXN, disminuir y eliminar |
+| Idioma | PASS para cambio ES/EN del catálogo privado en los cinco anchos. FAIL en la ficha: con EN guardado, continúa mostrando «Envío no incluido» |
+| Seguridad | PASS para barrera pública con `ref` intacto y redirecciones anónimas desde `/admin`, `/vista-previa` y ficha privada. También se verificaron `/admin/inventario` y `/admin-afiliados` por HTTP. El acceso con administrador simulado habilitó la vista privada |
+
+### Pendientes y protección
+
+- **P1 — Galería/Lista pública.** La raíz pública lleva `.uds-premium-white` y el modo privado se mantiene desactivado. Su runtime usa el paginador móvil legado y no instala el selector de vista ni el paginador avanzado. `PREVIEW_CATALOG` controla también carga de productos/variantes, navegación y el comportamiento del botón de pedido sin checkout. Para compartir los controles, separar el estado de vista y paginación de esa bandera, usar la misma colección ya filtrada de cada canal y sustituir el paginador legado únicamente donde el nuevo esté activo. Repetir pruebas de ambos canales con fixtures antes de aprobarlo.
+- **P1 — Ficha en inglés.** Al guardar EN en el catálogo y abrir la ficha privada, la etiqueta de envío permanece en español. `src/components/store/product-detail.tsx` contiene etiquetas y acciones en español y aún no consume el idioma del catálogo. Validar la ficha bilingüe como conjunto.
+- **P2 — Servicio Clases.** El runtime excluye deliberadamente el título, la descripción y el CTA de la fila `classes` del render administrable para preservar el flujo de reserva. Alinear los campos editables que deban respetarse con el flujo de clases antes de cambiar su contrato.
+- **P0 operativo — Publicación accidental.** `main` sigue en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. El endpoint de rama GitHub devolvió `protected=false` para `main`. La consulta de reglas administrativas devolvió 403. No hubo escritura en `main` ni cambios de configuración.
+- **Vercel:** 0 despliegues para la candidata, consultados por proyecto y rama. `git.deploymentEnabled=false` y `UNDER_CONSTRUCTION=true` comprobados. **Supabase:** solo fixtures locales. Sin migraciones, datos reales, pedidos, pagos ni cambios de POS, inventario, recepción o impresión.
