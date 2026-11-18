@@ -260,5 +260,65 @@ test("Protected lesson registration retains consent and instructor tracking", ()
     "Stage7 must not rebuild the lesson DOM or delete registered forms");
 });
 
+test("first instructor click and second learner use current registration without stale tokens", () => {
+  const start = files.runtime.indexOf('  el("udsTeachers")?.addEventListener("click",event=>{');
+  const end = files.runtime.indexOf("  // H80: service content", start);
+  assert.ok(start > 0 && end > start, "Expected a delegated listener on the original teachers node");
+  const listenerSource = files.runtime.slice(start, end);
+  let clickHandler = null;
+  const calls = [];
+  const teachers = { addEventListener(type, callback) {
+    assert.equal(type, "click");
+    assert.equal(clickHandler, null, "Exactly one listener must be attached");
+    clickHandler = callback;
+  }};
+  const db = { rpc(name, args) {
+    calls.push({ name, args });
+    return Promise.resolve({ error: null });
+  }};
+  const setLead = new Function("el", "db", `
+    let udsGolfLessonLeadId = null;
+    let udsGolfLessonLeadToken = null;
+    ${listenerSource}
+    return (id, token) => {
+      udsGolfLessonLeadId = id;
+      udsGolfLessonLeadToken = token;
+    };
+  `)(id => id === "udsTeachers" ? teachers : null, db);
+  assert.equal(typeof clickHandler, "function");
+  const click = (slug = "instructor-test") =>
+    clickHandler({ target: { closest(selector) {
+      assert.equal(selector, ".uds-teacher-whatsapp");
+      return slug ? { getAttribute: attribute =>
+        attribute === "data-instructor-slug" ? slug : null } : null;
+    }}});
+  click();
+  assert.equal(calls.length, 0, "Unregistered visitors must not be attributed");
+  setLead("lead-one", "token-one");
+  click();
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], { name: "record_golf_instructor_interest",
+    args: { p_lead_id: "lead-one", p_lead_token: "token-one",
+      p_instructor_slug: "instructor-test" } });
+  setLead("lead-two", "token-two");
+  click("instructor-next");
+  assert.equal(calls.length, 2, "Second registration must produce one new interest");
+  assert.deepEqual(calls[1].args, { p_lead_id: "lead-two",
+    p_lead_token: "token-two", p_instructor_slug: "instructor-next" });
+  click("");
+  assert.equal(calls.length, 2, "No instructor slug means no interest");
+});
+
+test("managed instructor renderer never captures a lead token or adds duplicate click handlers", () => {
+  const from = files.runtime.indexOf("  function mcUpdateInstructorLinks(){");
+  const to = files.runtime.indexOf("  function mcCourseCard(", from);
+  assert.ok(from > 0 && to > from);
+  const implementation = files.runtime.slice(from, to);
+  assert.ok(implementation.includes('link.href='));
+  assert.ok(!implementation.includes("const access=mcLessonAccess()"));
+  assert.ok(!implementation.includes("link.onclick"));
+  assert.ok(!implementation.includes('record_golf_instructor_interest'));
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
