@@ -120,7 +120,12 @@ test('query errors remain visible and retry recovers the catalog',async({page,re
 });
 
 test('variant summary failure leaves parent search usable and offers retry',async({page,request})=>{
-  await configure(request,{summaryError:true});await login(page);await ready(page);
+  await login(page);await ready(page);
+  // Trigger the optional summary request *after* the catalog is ready, so a
+  // competing bootstrap refresh cannot make this error-injection test racy.
+  await configure(request,{summaryError:true});
+  await page.evaluate(()=>window.dispatchEvent(new Event('updown:admin-products-refresh')));
+  await ready(page);
   await expect(page.getByRole('button',{name:'Reintentar variantes'})).toBeVisible();
   await page.locator('#udCatalogSearch').fill('Marca aguila');await expect(card(page,'p1')).toBeVisible();
   await configure(request,{summaryError:false});await page.getByRole('button',{name:'Reintentar variantes'}).click();

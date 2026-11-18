@@ -118,5 +118,7 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Primera corrida de A3.5:** [GitHub Actions #44395062707](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44395062707) **23/25 Chromium PASS, 2 NO GO**. Ambos fallos correspondieron exclusivamente al enlace legado redirigido: el instalador de pestañas activó la captura antes de que el efecto React suscribiera `updown:admin-product-view`. Se corrigió en `admin-parity.tsx` releyendo el estado real (`!host.hidden`) después de registrar el listener, manteniendo la carga diferida normal. **Requiere nueva corrida integral antes de GO.**
 
+**Segunda corrida A3.5:** [GitHub Actions #44395891479](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44395891479) **24/25 Chromium PASS**. Ambas pruebas del enlace legado pasaron. Único caso intermitente: inyección de error al cargar el resumen opcional de variantes durante el arranque, donde la consulta podía ser reemplazada por una recarga de catálogo. La prueba ahora activa el fallo **después** de confirmar el catálogo listo y provoca explícitamente `updown:admin-products-refresh`, para validar el manejo de errores y reintento sin depender del orden de inicialización. No se cambia lógica comercial. **Pendiente de nueva matriz.**
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
