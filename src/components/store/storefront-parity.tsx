@@ -213,7 +213,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     let previewServicesScript: HTMLScriptElement | null = null;
     let previewLocationScript: HTMLScriptElement | null = null;
     const script = document.createElement("script");
-    script.src = previewMode ? "/updown-parity-runtime.js?v=preview-web2-stage9-perf-security-review-v9-20261108" : "/updown-parity-runtime.js?v=2B.1-UX5.3-electronics-20261102"; script.async = false; script.dataset.updownParity = "true";
+    script.src = previewMode ? "/updown-parity-runtime.js?v=preview-services-dbledger-v10-20261116" : "/updown-parity-runtime.js?v=public-services-dbledger-v10-20261116"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
@@ -221,7 +221,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
       // Stage 7 runs only in the protected preview and never alters managed DB rows.
       if (previewMode) {
         previewServicesScript = document.createElement("script");
-        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-stage7-v3-20261108";
+        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116";
         previewServicesScript.dataset.updownPreviewServices = "stage7";
         previewServicesScript.async = false;
         previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
