@@ -73,7 +73,7 @@ test("desktop focus keeps services out of the filtered product list", () => {
 });
 test("gallery/list and paging controls are retained", () => {
   has(files.runtime, 'grid.classList.toggle("uds-preview-list"',
-    "function movePreviewCatalogPage", "PREVIEW_CATALOG.view");
+    "function movePreviewCatalogPage", "catalogPresentation.view");
 });
 test("independent products and related links stay on current preview host", () => {
   has(files.bridge, 'event.preventDefault()', "router.push(path)",

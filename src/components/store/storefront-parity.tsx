@@ -213,7 +213,7 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
     let previewServicesScript: HTMLScriptElement | null = null;
     let previewLocationScript: HTMLScriptElement | null = null;
     const script = document.createElement("script");
-    script.src = previewMode ? "/updown-parity-runtime.js?v=preview-services-dbledger-v10-20261116" : "/updown-parity-runtime.js?v=public-services-dbledger-v10-20261116"; script.async = false; script.dataset.updownParity = "true";
+    script.src = previewMode ? "/updown-parity-runtime.js?v=preview-catalog-presentation-v11-20261117" : "/updown-parity-runtime.js?v=public-catalog-presentation-v11-20261117"; script.async = false; script.dataset.updownParity = "true";
     script.onload = () => {
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
