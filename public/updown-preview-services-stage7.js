@@ -2,7 +2,7 @@
  * Titles, bilingual descriptions, bullets, photos, CTAs, visibility and order
  * come exclusively from public.storefront_services via updown-parity-runtime.js.
  * This file must never rewrite product/service copy, hide registered services,
- * or mutate Supabase. It only applies the existing preview card layout.
+ * or mutate Supabase. It applies one shared visual card layout to both storefronts.
  */
 (function () {
   "use strict";
@@ -11,7 +11,7 @@
   }
 
   const root = document.getElementById("updown-store");
-  if (!root?.classList.contains("uds-preview")) return;
+  if (!root?.classList.contains("uds-premium-white")) return;
   const lang = () => document.documentElement.lang.toLowerCase().startsWith("en") ? "en" : "es";
   const VS_GOLF_KEY = "27a30f4f-018e-460a-9b7d-b1dc1488143f";
 
