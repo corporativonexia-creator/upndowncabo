@@ -139,7 +139,7 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 - **Imagen faltante:** portada y miniaturas muestran el asset canónico del Lote 2A cuando no hay fotografía válida, sin reemplazar imágenes reales.
 - **Seguridad comercial:** se contrastaron y conservaron idénticas las funciones `storefrontPricing`, `reconcilePreviewCart` (precios/existencias por variante) y `stockCopy` frente a la base de candidata. No se modificó esquema/datos de Supabase, ni cantidades de venta.
 
-### Archivos cambiados (11 funcionales + 1 suite)
+### Archivos cambiados (10 funcionales + 1 suite)
 1. `src/app/vista-previa/preview-desktop-search-focus.tsx` — nuevo
 2. `src/app/vista-previa/preview-filter-auto-collapse.tsx` — nuevo
 3. `src/app/vista-previa/preview-local-product-navigation.tsx` — nuevo
