@@ -126,5 +126,25 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Repetición de estabilidad A3.5:** se ejecutó nuevamente el job `admin-ux` de [#44397560628, intento 2](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44397560628/attempts/2), con el **mismo código**, y terminó **SUCCESS**. La matriz de navegador se aprobó en dos ejecuciones sucesivas (25/25 en cada una); se conserva la traza condicional en el escenario de reintento para investigar cualquier recurrencia futura. Esto permite cerrar el QA aislado del lote sin afirmar que un resultado de CI sustituya pruebas reales de iPhone, PostgreSQL multi-sesión o políticas de Storage.
 
+**Cierre documental A3.5:** [GitHub Actions #44402306905](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44402306905) **SUCCESS** en el commit de documentación `89ba1b7bd16f86c6cc995bbbc4492304910ccd1f`, nuevamente Chromium 25/25, contratos 10/10 y PGlite 7/7. Los tres resultados consecutivos permitieron iniciar el lote de endurecimiento siguiente sin integrar la candidata.
+
+### A3.6 · Validación preproductiva aislada (sin conexión a Supabase real)
+
+**Alcance:** reproducir bloqueos del asignador de SKU en transacciones PostgreSQL independientes y auditar riesgos de fotografía. No se autoriza aplicar la migración SQL, cambiar las funciones alojadas, despliegues o alteraciones comerciales.
+
+- `tests/admin-sku-a36-concurrency.pg.cjs` usa **dos conexiones PostgreSQL reales y una tercera de observación** contra un contenedor efímero `postgres:16-alpine` en GitHub Actions. Antes de conectarse exige nombre, host, usuario, contraseña y marca de entorno **exactamente iguales a los de la base simulada**; rechaza cualquier conexión distinta. No usa secretos ni URLs de Supabase.
+- Primer escenario: la transacción A genera `WED-0001` y retiene el bloqueo del contador; la conexión B debe esperar. Tras insertar y confirmar A, B omite los SKU heredados `wed-0002` y `WED-0003` presentes en el fixture y obtiene `WED-0004`. Se comprueba el contador y que ninguna consulta haya devuelto dos veces el mismo SKU.
+- Segundo escenario: A genera `WED-0001-ROM` y mantiene el bloqueo de aviso transaccional; B espera. Después de insertar y confirmar A, B genera e inserta `WED-0001-ROM02`. En ambos casos se inspecciona `pg_stat_activity` para confirmar la espera real de la segunda sesión, no solo concurrencia de promesas en una sesión PGlite.
+- La prueba instala solamente **tablas simuladas**, el generador histórico de sufijos y la migración candidata **en el contenedor desechable de CI**. La máscara SKU no cambia; los SKU reales no se consultan ni modifican.
+
+**Auditoría estática de fotografía (riesgos que siguen abiertos):**
+
+1. `QuickProductEntry` usa objetos Storage nuevos con `upsert:false`, ruta UUID de operación y de imagen, y luego inserta `product_images`. No requiere reemplazar objetos. Las políticas de `storage.objects`, el bucket `product-media` y los permisos de `product_images` **no están definidos en las migraciones inspeccionadas**, por lo que no se puede declarar RLS/Storage verificado sin un entorno de staging equivalente al real.
+2. El límite de diez imágenes se verifica con una **lectura previa de la galería y una inserción posterior**. Dos operadores pueden leer nueve imágenes a la vez y añadir una cada uno, llegando a once. Sin bloqueo o restricción transaccional en servidor no existe garantía fuerte del máximo; no se altera el SQL en este lote. El campo `sort_order` también podría repetirse bajo esa carrera.
+3. La interfaz acepta `.heic/.heif`, transforma a JPEG en cliente mediante `heic-to/next`, comprime y sube como `image/jpeg`; la cámara usa `capture="environment"`. **La compatibilidad en Safari/iPhone físico sigue sin prueba**, por falta de dispositivo real en el laboratorio. No confundir una prueba de Chromium con esa validación.
+4. La alta completa mantiene su frontera transaccional conocida: RPC idempotente para identificadores/variantes/stock y PATCH acotado a metadatos. Reintentos tienen prueba simulada; la atomicidad total no está garantizada.
+
+**Puertas para solicitar integración:** recibir QA verde del nuevo PostgreSQL multi-sesión; después ejecutar una prueba de Storage y RLS en staging no productivo expresamente aprobado, validación manual de iPhone y solución transaccional del límite de galería. Ninguno de esos puntos justifica tocar datos comerciales reales o fusionar ahora.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

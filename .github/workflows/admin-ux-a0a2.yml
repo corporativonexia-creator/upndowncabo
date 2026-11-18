@@ -16,6 +16,20 @@ jobs:
   admin-ux:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: a36_fixture_password
+          POSTGRES_DB: upndown_a36_fixture
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d upndown_a36_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4319
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-publishable-key
@@ -31,6 +45,15 @@ jobs:
         run: node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs
       - name: A3.4 SKU allocation against isolated PostgreSQL
         run: node --test tests/admin-sku-a34.pg.cjs
+      - name: A3.6 SKU locking with independent PostgreSQL transactions
+        env:
+          A36_PG_ISOLATED: 'true'
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: a36_fixture_password
+          PGDATABASE: upndown_a36_fixture
+        run: node --test tests/admin-sku-a36-concurrency.pg.cjs
       - name: Legacy runtime syntax contract
         run: npm run check:admin-scripts
       - name: Lint
