@@ -2218,6 +2218,8 @@
 
   async function refreshCampaignsForCheckout(){
     const {data,error}=await db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal());
+    // A response from a disposed responsive mount must not change a newer cart.
+    if(!parityIsCurrent())return;
     const missing=error&&["PGRST202","42883"].includes(String(error.code||""));
     if(error&&!missing)throw error;
     storefrontPromotions=Array.isArray(data)?data:[];
@@ -2226,6 +2228,7 @@
   }
 
   async function loadStore(){
+    if(!parityIsCurrent())return;
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe},{data:activeCampaigns,error:campaignError}]=await Promise.all([
@@ -2233,6 +2236,7 @@
       PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal()),
       db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal())
     ]);
+    if(!parityIsCurrent())return;
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
       if(PREVIEW_CATALOG){
@@ -2252,6 +2256,9 @@
         }
       }
     }
+    // Variant queries can also finish after a responsive remount.
+    // Do not publish results, save cache or reconcile a stale cart.
+    if(!parityIsCurrent())return;
     // Preview may still target the POS 2.1 database until the additive SQL deploy.
     // An absent new RPC means no campaign prices, not a broken product catalog.
     const missingCampaignRpc=campaignError&&["PGRST202","42883"].includes(String(campaignError.code||""));
