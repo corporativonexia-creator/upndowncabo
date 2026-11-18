@@ -72,3 +72,27 @@
 4. Preservar el fichero local de protección de Vercel y verificar **0 deployments** en cada etapa.
 5. Ejecutar las pruebas posibles y registrar los límites reales; guardar conclusiones aquí y en `INTEGRACION-ESTADO.md`.
 6. No empezar los PRs de POS/inventario hasta terminar al menos la candidata web.
+
+## F. Avance efectivo del Lote 2A (17-nov-2026)
+
+**Código visual integrado en candidata:** 7 de los 16 archivos fuente, sin importar en bloque la rama Premium White.
+
+| Archivo | Estado al cierre de 2A |
+|---|---|
+| `public/assets/updown-product-placeholder.svg` | **Integrado**, asset canónico exacto, sin re-dibujar. |
+| `src/app/globals.css` | **Integrado parcialmente**, únicamente +504 caracteres de CSS scoped al placeholder de producto. |
+| `src/app/vista-previa/premium-white.css` | **Integrado**, hojas de estilo de portada y menú responsive privado, sin lógica JS. |
+| `src/components/store/premium-product-detail.css` | **Integrado**, hoja compartida de ficha. |
+| `src/app/vista-previa/page.tsx` | **Integrado parcialmente**, solo import CSS; helpers funcionales pendientes. |
+| `src/app/producto/[productKey]/page.tsx` | **Integrado parcialmente**, solo wrapper y estilo; no se tocó SEO ni ficha. |
+| `src/app/vista-previa/producto/[productKey]/page.tsx` | **Integrado parcialmente**, solo wrapper y estilo; helper de localhost pendiente. |
+
+**Test nuevo en candidata:** `tests/integration-lot2a-style.cjs` — 6 contratos estáticos aprobados. Esta prueba verifica barrera de despliegue temporal y no debe trasladarse sin adaptar a `main`.
+
+**Todavía pendientes:** `public/updown-parity-runtime.js`, `public/updown-preview-services-stage7.js`, `src/app/vista-previa/preview-desktop-search-focus.tsx`, `src/app/vista-previa/preview-filter-auto-collapse.tsx`, `src/app/vista-previa/preview-local-product-navigation.tsx`, `src/components/store/product-detail.tsx`, `src/components/store/responsive/store-search.tsx`, `src/components/store/storefront-parity.tsx`, `tests/premium-white-contracts.cjs`; los archivos de página importados parcialmente también requerirán los helpers funcionales en 2B.
+
+Los siete archivos clasificados como **excluir** en la sección B siguen excluidos.
+
+**Bloqueo importante:** el SVG verde ahora está listo, pero el runtime vigente de `main` aún no asigna esa imagen a tarjetas sin foto; **no declarar completa esa función hasta integrar y probar su wiring en 2B**. Asimismo, la portada pública Premium White es parte de 2C, NO de 2A.
+
+**Control de cambios:** no se alteraron POS, inventario, datos Supabase ni `main`. `vercel.json` con bloqueo temporal permanece en la rama candidata. Para SHA de commits, resultados y límites de pruebas consultar `INTEGRACION-ESTADO.md`.
