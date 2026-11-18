@@ -16,6 +16,7 @@
   let products=[];
   let orders=[];
   let productGalleryState=[];
+  let productGalleryInitialSignature="";
   let currentProductSpecifications={};
 
   const slugify=v=>String(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
@@ -1433,6 +1434,9 @@
     return gallery.slice(0,10);
   }
   function activeGalleryItems(){return productGalleryState.filter(item=>!item.removed)}
+  function gallerySignature(){
+    return JSON.stringify(activeGalleryItems().map(item=>[item.source,item.id,item.url,Boolean(item.is_primary)]));
+  }
   function ensureGalleryPrimary(){
     const active=activeGalleryItems();
     if(!active.length)return;
@@ -1811,6 +1815,7 @@
     el("udImage").value="";
     productGalleryState=normalizedProductGallery(p);
     renderGalleryEditor();
+    productGalleryInitialSignature=gallerySignature();
 
     el("udFormTitle").textContent="Editar producto";
     el("udSave").textContent="Actualizar producto";
@@ -1849,6 +1854,7 @@
     currentProductSpecifications={};
     fillGolfSpecifications({});
     productGalleryState=[];
+    productGalleryInitialSignature="";
     renderGalleryEditor();
     el("udPreview").removeAttribute("src");
     el("udPreview").classList.remove("u-show");
@@ -1901,6 +1907,9 @@
 
     try{
       const activeGallery=activeGalleryItems();
+      // A metadata-only edit must never delete/reinsert historical images or
+      // overwrite a photo appended concurrently through UPC capture.
+      const galleryChanged=gallerySignature()!==productGalleryInitialSignature;
       for(const item of activeGallery){
         if(item.source==="new"&&item.file){
           item.uploaded_url=await uploadImage(item.file,slug);
@@ -1963,7 +1972,7 @@
       // No photograph is required to save or edit a product.
       // If editing without any active images, preserve existing gallery records.
       // Do not insert an empty row set into Supabase.
-      if(galleryForSave.length){
+      if(galleryChanged&&galleryForSave.length){
         const {error:deleteError}=await db.from("product_images").delete().eq("product_id",saved.id);
         if(deleteError) throw deleteError;
         const galleryRows=galleryForSave.slice(0,10).map((item,index)=>({

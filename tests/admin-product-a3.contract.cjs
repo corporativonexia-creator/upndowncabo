@@ -72,3 +72,18 @@ test("A3.3 UPC photo attachment updates gallery only, with explicit retries and 
   assert.match(quick, /upsert: false/);
   assert.doesNotMatch(quick, /upsert: true/);
 });
+
+test("A3.8 metadata-only edits cannot silently rewrite existing galleries", () => {
+  const legacy = read("public/updown-admin-legacy-runtime.js");
+  assert.match(legacy, /function gallerySignature\(\)/);
+  assert.match(legacy, /productGalleryInitialSignature=gallerySignature\(\)/);
+  assert.match(legacy, /const galleryChanged=gallerySignature\(\)!==productGalleryInitialSignature/);
+  assert.match(legacy, /if\(galleryChanged&&galleryForSave\.length\)/);
+  // The new proposal remains dormant until installation and RLS QA are approved.
+  const quick = read("src/components/admin/quick-product-entry.tsx");
+  assert.doesNotMatch(quick, /admin_append_upc_photos_atomic/);
+  const proposal = read("tests/sql/admin-gallery-upc-append-proposal.sql");
+  assert.match(proposal, /security invoker/);
+  assert.match(proposal, /pg_advisory_xact_lock/);
+  assert.match(proposal, /revoke all on function public\.admin_append_upc_photos_atomic/);
+});

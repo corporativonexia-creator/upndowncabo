@@ -96,6 +96,41 @@ test('product edit preserves barcode, price, channel and stock in its save paylo
   expect(events.some((e:{path:string})=>e.path.endsWith('admin_inventory_adjust'))).toBe(false);
 });
 
+test('A3.8 metadata-only edits preserve gallery IDs and UPC photos added by another operator',async({page,request})=>{
+  await configure(request,{existingPhoto:true});await login(page);await ready(page);
+  await card(page,'p1').locator('.ud-edit').click();
+  await expect(page.locator('#udGalleryCount')).toHaveText('1 / 10');
+  // Another operator adds a photo after this editor opened. No real database:
+  // both the admin and its concurrent operator use the isolated fixture.
+  await request.post(`${fixture}/rest/v1/product_images`,{data:{
+    product_id:'p1',image_url:'https://fixture.test/concurrent-upc-photo.jpg',
+    alt_text:'Foto de otro operador',sort_order:2,is_primary:false,
+  }});
+  await page.locator('#udName').fill('Polo con descripción QA');
+  await page.locator('#udSave').click();
+  await expect(page.locator('#udToast')).toContainText('Producto actualizado');
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(2);
+  expect(images.map((row:{id:string})=>row.id)).toEqual(['img-old','img-2']);
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>e.path==='/rest/v1/product_images'&&e.method==='DELETE')).toHaveLength(0);
+  expect(events.filter((e:{method:string,path:string})=>e.path==='/rest/v1/product_images'&&e.method==='POST')).toHaveLength(1);
+});
+
+test('A3.8 explicitly adding an image still uses the existing gallery editor',async({page,request})=>{
+  await configure(request,{existingPhoto:true});await login(page);await ready(page);
+  await card(page,'p1').locator('.ud-edit').click();
+  await page.locator('#udImage').setInputFiles(photoFixture);
+  await expect(page.locator('#udGalleryCount')).toHaveText('2 / 10');
+  await page.locator('#udSave').click();
+  await expect(page.locator('#udToast')).toContainText('Producto actualizado');
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(2);
+  expect(images[0]).toMatchObject({is_primary:true,sort_order:1});
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>e.path==='/rest/v1/product_images'&&e.method==='DELETE')).toHaveLength(1);
+});
+
 test('existing variant edits preserve barcode; new variants receive automatic EAN-13',async({page,request})=>{
   await login(page);await ready(page);await card(page,'p1').locator('.ud-variants').click();
   const form=card(page,'p1').locator('form').first();

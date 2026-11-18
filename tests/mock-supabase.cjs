@@ -49,6 +49,14 @@ http.createServer(async(req,res)=>{
     return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
   }
   if(url.pathname==='/rest/v1/product_images'){
+    if(req.method==='DELETE'){
+      const productId=url.searchParams.get('product_id')?.slice(3);
+      const removed=gallery.filter(image=>image.product_id===productId);
+      gallery=gallery.filter(image=>image.product_id!==productId);
+      const parent=products.find(p=>p.id===productId);
+      if(parent)parent.product_images=[];
+      return send(removed);
+    }
     if(req.method==='POST'){
       if(options.galleryError)return send({message:'Fixture image insert failure',code:'FIXTURE'},503);
       const rows=Array.isArray(body)?body:[body];
