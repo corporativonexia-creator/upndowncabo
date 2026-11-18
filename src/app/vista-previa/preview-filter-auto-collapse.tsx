@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * Private preview only: collapse the EXISTING catalog filter after its
+ * Premium White storefront: collapse the EXISTING catalog filter after its
  * Apply / Clear button handlers complete. Never override filter logic,
  * replace buttons, or change the catalog's data and selection state.
  */
@@ -16,7 +16,7 @@ export default function PreviewFilterAutoCollapse() {
       const action = event.target.closest<HTMLButtonElement>(
         "#udsCatalogApply, #udsCatalogClear",
       );
-      const root = document.querySelector<HTMLElement>("#updown-store.uds-preview");
+      const root = document.querySelector<HTMLElement>("#updown-store.uds-premium-white");
       if (!action || !root?.contains(action)) return;
 
       const panel = root.querySelector<HTMLElement>("#udsCatalogFilterBox");
