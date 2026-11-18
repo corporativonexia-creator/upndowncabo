@@ -24,7 +24,7 @@ Prohibido modificar valores, precios, SKUs, UPCs, existencias, variantes, ventas
 
 ## A3 · Primera consolidación reversible (18 noviembre 2026)
 
-Estado: **A3.1 en preparación/QA local, NO completa la retirada de Alta rápida**.
+Estado: **A3.1 validada técnicamente en CI; NO completa la retirada de Alta rápida ni constituye autorización para producción**.
 
 - Se incorpora `Nueva ficha` en Productos mediante un portal React dentro de `udProductsView`. Se reutiliza `QuickProductEntry` sin copiar su motor de escritura, escáner ZXing, conversión HEIC, capturas de cámara, reconocimiento por código, imágenes por variante y RPCs existentes.
 - La ficha se monta **sólo al abrirla**, por lo que no agrega consultas ni dependencias al arranque normal. Una vez montada, se conserva al alternar Catálogo/Editor completo para no perder datos locales sin guardar.
@@ -60,6 +60,8 @@ Estado: **A3.1 en preparación/QA local, NO completa la retirada de Alta rápida
 **Nota de entorno:** la verificación estática y el build local fueron correctos; Chromium del ejecutor local no arrancó (`socket() failed: Operation not permitted`), por lo que la matriz de navegador debe confirmarse en GitHub Actions (runner Ubuntu aislado con Chromium instalado). Este bloqueo no constituye un fallo funcional de la aplicación ni un resultado PASS de navegador.
 
 **QA de CI del commit inicial `cb15071`:** navegador NO GO (14/17) por dos causas localizadas. Un enlace con atributo `data-*` sin valor explícito no era igual a su serialización `innerHTML` y realimentaba el observador del formulario de ropa; se normalizó a `data-product-capture-link=""`. El contrato nuevo también confundía `HEAD` de conteo con mutaciones; se corrigió para prohibir específicamente `POST`, `PUT`, `PATCH` y `DELETE`. Ambas correcciones requieren nueva validación de Chromium antes de declarar GO.
+
+**Cierre de QA A3.1:** commit funcional `1cd192dad9a85c3f730948de3629a9fdc414f8ae`, [GitHub Actions #44351055124](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44351055124) **SUCCESS**: 17/17 Chromium, 8/8 contratos A0–A3, 10 scripts con sintaxis válida, TypeScript PASS, build PASS, lint sin errores (9 advertencias heredadas). POS local: 20 PASS / 1 SKIP. Vercel candidata: cero despliegues. **GO para A3.1 únicamente**. No habilitar borrado de Alta rápida ni fusionar hasta completar paridad y A3 integral.
 
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
