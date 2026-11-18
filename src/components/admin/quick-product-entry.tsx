@@ -249,15 +249,21 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     if (!match || !existingPhotos.length || busyRef.current || processingRef.current) return;
     busyRef.current = true; setBusy(true); setError(""); setSuccess("");
     try {
+      const productId = photoRequestRef.current?.productId || match.product_id;
+      const { data: gallery, error: galleryError } = await db.from("product_images")
+        .select("id,image_url,sort_order,is_primary")
+        .eq("product_id", productId).order("sort_order");
+      if (galleryError) throw galleryError;
+      // Validate the available slots before freezing a retry snapshot. If the
+      // gallery is full, the operator can still remove local photos and retry.
+      if (!photoRequestRef.current && (gallery?.length || 0) + existingPhotos.length > 10) {
+        throw new Error("La galería admite diez fotografías en total. Reduce tu selección o retira imágenes antiguas desde el editor.");
+      }
       if (!photoRequestRef.current) {
         photoRequestRef.current = { request: crypto.randomUUID(), productId: match.product_id, photos: existingPhotos.map(p => ({ ...p })) };
         setPending(true);
       }
       const request = photoRequestRef.current;
-      const { data: gallery, error: galleryError } = await db.from("product_images")
-        .select("id,image_url,sort_order,is_primary")
-        .eq("product_id", request.productId).order("sort_order");
-      if (galleryError) throw galleryError;
       const recorded = new Set((gallery || []).map(row => row.image_url));
       const missing = request.photos.filter(photo => !photo.uploaded || !recorded.has(photo.uploaded));
       if ((gallery?.length || 0) + missing.length > 10) throw new Error("La galería admite diez fotografías en total. Retira imágenes antiguas desde el editor antes de agregar más.");

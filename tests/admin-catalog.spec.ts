@@ -1,5 +1,6 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
 const fixture='http://127.0.0.1:4319';
+const photoFixture={name:'foto-qa.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64')};
 async function configure(request:APIRequestContext,options:Record<string,unknown>){await request.post(`${fixture}/__options`,{data:options});}
 async function login(page:Page){
   await page.goto('/admin');
@@ -219,10 +220,7 @@ test('A3.3 adds photos to a scanned UPC gallery without replacing historical ima
   await host.getByRole('button',{name:'Buscar',exact:true}).click();
   const photos=host.getByRole('region',{name:'Fotografías por UPC'});
   await expect(photos).toBeVisible();
-  await photos.locator('input[type=file][capture=environment]').setInputFiles({
-    name:'foto-qa.png',mimeType:'image/png',
-    buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64')
-  });
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
   await expect(photos.locator('img[alt="Nueva foto 1"]')).toBeVisible();
   await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
   await expect(host.getByRole('alert')).toContainText('Fixture image insert failure');
@@ -237,6 +235,48 @@ test('A3.3 adds photos to a scanned UPC gallery without replacing historical ima
   expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(1);
   expect(events.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(0);
   expect(events.some((e:{path:string})=>/admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
+});
+
+test('A3.3 one-save retry reuses the same product ID when advanced metadata fails',async({page,request})=>{
+  await configure(request,{metadataError:true});
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Nombre del producto').fill('Polo simulado con reintento');
+  await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption('c1');
+  await host.locator('input[placeholder="0.00"]').fill('350');
+  await host.locator('#quick-barcode').fill('2001234000123');
+  await host.getByLabel('Marca',{exact:true}).fill('Reintento QA');
+  await host.getByRole('button',{name:'Guardar ficha completa'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture metadata save failure');
+  await configure(request,{metadataError:false});
+  await host.getByRole('button',{name:'Reintentar guardado'}).click();
+  await expect(host.getByText(/Ficha completa guardada como borrador/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  const creates=events.filter((e:{path:string})=>e.path.endsWith('/admin_quick_product_create'));
+  expect(creates).toHaveLength(2);
+  expect(creates[0].body.p_request_id).toBe(creates[1].body.p_request_id);
+  const catalog=await (await request.get(`${fixture}/rest/v1/products`)).json();
+  expect(catalog.filter((p:{name:string})=>p.name==='Polo simulado con reintento')).toHaveLength(1);
+  expect(events.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products').at(-1).body).not.toHaveProperty('stock');
+});
+
+test('A3.3 full galleries can reject new photos without locking the local selection',async({page,request})=>{
+  await configure(request,{fullGallery:true});
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
+  await expect(host.getByRole('alert')).toContainText('La galería admite diez fotografías');
+  await expect(photos.getByRole('button',{name:'Quitar nueva foto 1'})).toBeEnabled();
+  await photos.getByRole('button',{name:'Quitar nueva foto 1'}).click();
+  await expect(photos.locator('img[alt="Nueva foto 1"]')).toHaveCount(0);
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(0);
 });
 
 test('A3.2 opening a scanned existing product is read-only until the original editor saves',async({page,request})=>{

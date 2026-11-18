@@ -24,7 +24,7 @@ http.createServer(async(req,res)=>{
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization});
   if(url.pathname==='/auth/v1/token'){
     if(body.password!=='fixture-password')return send({message:'Invalid login credentials',error_code:'invalid_credentials'},400);
@@ -45,7 +45,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/rest/v1/products'){
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
-    if(req.method==='PATCH'){const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
+    if(req.method==='PATCH'){if(options.metadataError&&body.brand)return send({message:'Fixture metadata save failure',code:'FIXTURE'},503);const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
     return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
   }
   if(url.pathname==='/rest/v1/product_images'){
