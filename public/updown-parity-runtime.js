@@ -6,6 +6,15 @@
   if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("UP AND DOWN: faltan variables públicas de Supabase.");
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   const el=id=>document.getElementById(id);
+  // One runtime lifetime per responsive mount. A prior async catalog response
+  // must not render into the new storefront or bind the new view controls.
+  const parityRoot=el("updown-store");
+  const parityLifetime={};
+  window.__UPDOWN_PARITY_LIFETIME__=parityLifetime;
+  let parityDisposed=false;
+  const parityIsCurrent=()=>!parityDisposed&&Boolean(parityRoot?.isConnected)
+    &&window.__UPDOWN_PARITY_LIFETIME__===parityLifetime;
+  window.addEventListener("updown:storefront-dispose",()=>{parityDisposed=true},{once:true});
   window.__UPDOWN_SEARCH_STATUS__="loading";
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
   let storefrontPromotions=[];
@@ -20,15 +29,21 @@
   const AFFILIATE_STORAGE_KEY="upDownAffiliateReferral",AFFILIATE_DURATION_DAYS=30;
   const PREVIEW_CATEGORY_GROUPS=Array.isArray(window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__)?window.__UPDOWN_PREVIEW_CATEGORY_GROUPS__:null;
   const CATALOG_CACHE_KEY=PREVIEW_CATEGORY_GROUPS?.length?"upDownCatalogCacheV3VariantsPreviewWeb2NewArrivalsV1":"upDownCatalogCacheV3Variants";
-  const PREVIEW_CATALOG=PREVIEW_CATEGORY_GROUPS?.length
-    ? {view:"grid",limit:20,page:1,signature:null,initialized:false,advancedRestored:false,searchCommitted:false,viewportMode:null}:null;
+  const PREVIEW_CATALOG=Boolean(PREVIEW_CATEGORY_GROUPS?.length);
+  const SHARED_CATALOG=document.getElementById("updown-store")?.classList.contains("uds-premium-white");
+  const CATALOG_VIEW_KEY=PREVIEW_CATALOG?"upDownPreviewCatalogView":"upDownPublicCatalogView";
+  const catalogPresentation=PREVIEW_CATALOG||SHARED_CATALOG
+    ? {view:"grid",limit:20,page:1,signature:null,initialized:false,advancedRestored:false,viewportMode:null}:null;
+  let previewSearchCommitted=false;
   // Distinct desktop/mobile size presets. Never paginate a page again internally.
   function previewCatalogMode(){return window.matchMedia("(max-width:760px)").matches?"mobile":"desktop"}
   function previewPageSizes(){
     return previewCatalogMode()==="mobile"?[4,8,16,32,64]:[12,24,48,96];
   }
   function previewPageSizeKey(mode){
-    return mode==="mobile"?"upDownPreviewCatalogSizeMobileV2":"upDownPreviewCatalogSizeDesktopV3";
+    return PREVIEW_CATALOG
+      ? (mode==="mobile"?"upDownPreviewCatalogSizeMobileV2":"upDownPreviewCatalogSizeDesktopV3")
+      : (mode==="mobile"?"upDownPublicCatalogSizeMobile":"upDownPublicCatalogSizeDesktop");
   }
   function previewPageSizeDefault(mode){return mode==="mobile"?8:24}
   function savedPreviewPageSize(mode){
@@ -38,12 +53,12 @@
     return n;
   }
   function syncPreviewPageSizeMode(){
-    if(!PREVIEW_CATALOG)return false;
+    if(!catalogPresentation)return false;
     const mode=previewCatalogMode();
-    if(mode===PREVIEW_CATALOG.viewportMode)return false;
-    PREVIEW_CATALOG.viewportMode=mode;
-    PREVIEW_CATALOG.limit=savedPreviewPageSize(mode);
-    PREVIEW_CATALOG.page=1;
+    if(mode===catalogPresentation.viewportMode)return false;
+    catalogPresentation.viewportMode=mode;
+    catalogPresentation.limit=savedPreviewPageSize(mode);
+    catalogPresentation.page=1;
     return true;
   }
   const QUERY_TIMEOUT_MS=8000;
@@ -164,11 +179,11 @@
     localizeStaticDom(currentLanguage);
     localizeWhatsAppLinks(currentLanguage);
     // From independent product pages, keep smart search and the shared cart navigable.
-    if(PREVIEW_CATALOG && !window.__UPDOWN_PREVIEW_ENTRY_ACTION_DONE__){
+    if(catalogPresentation && !window.__UPDOWN_PREVIEW_ENTRY_ACTION_DONE__){
       const params=new URLSearchParams(window.location.search);
       const openCartRequested=params.get("cart")==="1";
       const searchRequested=Boolean(params.get("q")?.trim());
-      const hashId=decodeURIComponent(window.location.hash.slice(1));
+      const hashId=window.location.hash.slice(1);
       const allowedHashes=new Set(["udsCatalog","udsCategories","udsNew","udsServices","udsGolfClasses","udsCourses","udsJournal"]);
       const anchor=allowedHashes.has(hashId)?el(hashId):null;
       if(openCartRequested||searchRequested||anchor){
@@ -523,14 +538,13 @@
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
       const fallback="/assets/updown-product-placeholder.svg";
-      const imageSrc=PREVIEW_CATALOG&&(!item.image||typeof item.image!=="string"||!/^https?:\/\//i.test(item.image))?fallback:item.image||"";
+      const validImage=typeof item.image==="string"&&(/^https?:\/\//i.test(item.image)||item.image.startsWith("/"));
+      const imageSrc=validImage?item.image:fallback;
       row.innerHTML=`<img src="${escapeHtml(imageSrc)}" alt="${PREVIEW_CATALOG?"":escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
-      if(PREVIEW_CATALOG){
-        const image=row.querySelector("img");
-        image?.addEventListener("error",()=>{
-          if(image.getAttribute("src")!==fallback)image.src=fallback;
-        });
-      }
+      const image=row.querySelector("img");
+      image?.addEventListener("error",()=>{
+        if(image.getAttribute("src")!==fallback)image.src=fallback;
+      });
       row.querySelector(".uds-minus").onclick=()=>changeQty(item.id,-1);row.querySelector(".uds-plus").onclick=()=>changeQty(item.id,1);row.querySelector(".uds-remove").onclick=()=>removeFromCart(item.id);el("udsCartList").appendChild(row)
     })
   }
@@ -540,7 +554,7 @@
     if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
     const ex=cart.find(i=>i.id===product.id);
     if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:productGallery(product)[0]||"",price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -843,7 +857,12 @@
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
+    const fallback="/assets/updown-product-placeholder.svg";
+    // Respect gallery photos even when the product lacks a designated cover.
+    const cover=productGallery(product)[0]||"";
+    const imageSrc=cover&&(/^https?:\/\//i.test(cover)||cover.startsWith("/"))?cover:fallback;
+    const placeholder=imageSrc===fallback;
+    return `<div class="uds-card-media${placeholder?" is-product-placeholder":""}"><img src="${escapeHtml(imageSrc)}" alt="${placeholder?"":escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
@@ -857,9 +876,18 @@
   function markImageFallback(img,host){
     if(!img||!host)return;
     img.addEventListener("error",()=>{
-      img.style.display="none";
-      host.classList.add("is-media-fallback");
-    },{once:true});
+      const fallback="/assets/updown-product-placeholder.svg";
+      if(img.getAttribute("src")!==fallback){
+        // Broken uploaded photo: use the approved velvet placeholder instead.
+        img.src=fallback;
+        img.alt="";
+        host.classList.add("is-product-placeholder");
+      }else{
+        // Last-resort fallback if the static asset itself cannot load.
+        img.style.display="none";
+        host.classList.add("is-media-fallback");
+      }
+    });
   }
   function bindCard(card,product){
     const media=card.querySelector(".uds-card-media");
@@ -885,7 +913,7 @@
     card.classList.add("is-openable");
     card.setAttribute("role","button");
     card.setAttribute("tabindex","0");
-    if(PREVIEW_CATALOG){card.setAttribute("role","link");card.removeAttribute("aria-haspopup");}
+    if(catalogPresentation){card.setAttribute("role","link");card.removeAttribute("aria-haspopup");}
     else card.setAttribute("aria-haspopup","dialog");
     card.setAttribute("aria-label",currentLanguage==="en"?`View details of ${product.name}`:`Ver detalles de ${product.name}`);
     card.addEventListener("keydown",event=>{
@@ -900,18 +928,19 @@
     });
   }
   function restorePreviewCatalogState(){
-  if(!PREVIEW_CATALOG||PREVIEW_CATALOG.initialized)return;
-  PREVIEW_CATALOG.initialized=true;
+  if(!catalogPresentation||catalogPresentation.initialized)return;
+  catalogPresentation.initialized=true;
   const params=new URLSearchParams(window.location.search);
-  const preferredView=params.get("vista")||localStorage.getItem("upDownPreviewCatalogView");
-  PREVIEW_CATALOG.view=preferredView==="lista"?"list":"grid";
+  let preferredView=params.get("vista");
+  try{preferredView||=localStorage.getItem(CATALOG_VIEW_KEY)}catch(e){}
+  catalogPresentation.view=preferredView==="lista"?"list":"grid";
   const mode=previewCatalogMode();
-  PREVIEW_CATALOG.viewportMode=mode;
+  catalogPresentation.viewportMode=mode;
   const allowed=previewPageSizes();
   const requestedLimit=Number(params.get("limit")||0);
-  PREVIEW_CATALOG.limit=allowed.includes(requestedLimit)?requestedLimit:savedPreviewPageSize(mode);
+  catalogPresentation.limit=allowed.includes(requestedLimit)?requestedLimit:savedPreviewPageSize(mode);
   const requestedPage=Number(params.get("page")||1);
-  PREVIEW_CATALOG.page=Number.isSafeInteger(requestedPage)&&requestedPage>0?Math.min(requestedPage,10000):1;
+  catalogPresentation.page=Number.isSafeInteger(requestedPage)&&requestedPage>0?Math.min(requestedPage,10000):1;
   const category=params.get("categoria");
   if(category&&categories.some(item=>item.slug===category)){
     activeCategory=category;
@@ -920,7 +949,7 @@
   }
   const search=params.get("q");
   if(search!==null&&el("udsSearch"))el("udsSearch").value=search.slice(0,140);
-  PREVIEW_CATALOG.searchCommitted=Boolean(search?.trim());
+  previewSearchCommitted=Boolean(search?.trim());
   const condition=params.get("condicion");
   if(condition&&["all","new","preowned","demo"].includes(condition)){
     if(el("udsConditionFilter"))el("udsConditionFilter").value=condition;
@@ -935,7 +964,7 @@
 
   function confirmPreviewSearch(){
     if(!PREVIEW_CATALOG)return;
-    PREVIEW_CATALOG.searchCommitted=Boolean(el("udsSearch")?.value.trim());
+    previewSearchCommitted=Boolean(el("udsSearch")?.value.trim());
     applyFilters();
     const target=document.querySelector("#updown-store .uds-discovery");
     if(target){
@@ -979,8 +1008,8 @@
     });
   }
   function restorePreviewAdvancedFilters(){
-    if(!PREVIEW_CATALOG||PREVIEW_CATALOG.advancedRestored)return;
-    PREVIEW_CATALOG.advancedRestored=true;
+    if(!catalogPresentation||catalogPresentation.advancedRestored)return;
+    catalogPresentation.advancedRestored=true;
     const params=new URLSearchParams(window.location.search);
     const fields={marca:"udsBrandFilter",mano:"udsHandFilter",flex:"udsFlexFilter",loft:"udsLoftFilter"};
     for(const [param,id] of Object.entries(fields)){
@@ -1000,16 +1029,16 @@
 }
 
   function writePreviewCatalogUrl(){
-  if(!PREVIEW_CATALOG)return;
+  if(!catalogPresentation)return;
   try{
     const url=new URL(window.location.href);
     const set=(key,value,defaultValue)=>{
       if(!value||value===defaultValue)url.searchParams.delete(key);
       else url.searchParams.set(key,String(value));
     };
-    set("vista",PREVIEW_CATALOG.view==="list"?"lista":"galeria","galeria");
-    set("limit",PREVIEW_CATALOG.limit,24);
-    set("page",PREVIEW_CATALOG.page,1);
+    set("vista",catalogPresentation.view==="list"?"lista":"galeria","galeria");
+    set("limit",catalogPresentation.limit,previewPageSizeDefault(catalogPresentation.viewportMode));
+    set("page",catalogPresentation.page,1);
     set("categoria",activeCategory,"all");
     set("q",el("udsSearch")?.value.trim()||"","");
     set("orden",el("udsSortFilter")?.value||"featured","featured");
@@ -1023,7 +1052,7 @@
 }
 
   function previewPageButtons(totalPages){
-  const current=PREVIEW_CATALOG.page;
+  const current=catalogPresentation.page;
   const pages=new Set([1,totalPages]);
   for(let n=Math.max(1,current-2);n<=Math.min(totalPages,current+2);n++)pages.add(n);
   const ordered=[...pages].sort((a,b)=>a-b);
@@ -1039,23 +1068,32 @@
 }
 
   function movePreviewCatalogPage(nextPage){
-  if(!PREVIEW_CATALOG)return;
-  const totalPages=Math.max(1,Math.ceil(filteredProducts.length/PREVIEW_CATALOG.limit));
+  if(!catalogPresentation)return;
+  const totalPages=Math.max(1,Math.ceil(filteredProducts.length/catalogPresentation.limit));
   const valid=Math.min(totalPages,Math.max(1,Math.trunc(Number(nextPage)||1)));
-  if(valid===PREVIEW_CATALOG.page)return;
-  PREVIEW_CATALOG.page=valid;
+  if(valid===catalogPresentation.page)return;
+  catalogPresentation.page=valid;
   renderProducts();
   const target=el("udsCatalog")||el("udsPreviewCatalogBar")||el("udsResultsCount");
   target?.scrollIntoView({behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
 }
 
   function installPreviewCatalogControls(){
-  if(!PREVIEW_CATALOG||el("udsPreviewCatalogTools"))return;
+  if(!catalogPresentation||!parityIsCurrent())return;
   const grid=el("udsGrid"),bar=document.querySelector("#updown-store #udsCatalog .uds-catalog-bar");
   if(!grid||!bar)return;
+  const existing=el("udsPreviewCatalogTools");
+  if(existing){
+    if(existing.__updownParityOwner===parityLifetime)return;
+    // An old mount may have installed controls on the new DOM before its
+    // pending request finished. Never keep its obsolete click callbacks.
+    existing.remove();
+    el("udsPreviewCatalogPager")?.remove();
+  }
   bar.id="udsPreviewCatalogBar";
   const tools=document.createElement("div");
   tools.id="udsPreviewCatalogTools";
+  tools.__updownParityOwner=parityLifetime;
   tools.className="uds-preview-catalog-tools";
   tools.innerHTML=`
     <label class="uds-preview-sort"><span>Ordenar:</span>
@@ -1093,16 +1131,16 @@
   });
   for(const [id,view] of [["udsPreviewViewGrid","grid"],["udsPreviewViewList","list"]]){
     el(id)?.addEventListener("click",()=>{
-      PREVIEW_CATALOG.view=view;
-      try{localStorage.setItem("upDownPreviewCatalogView",view==="list"?"lista":"galeria")}catch(e){}
+      catalogPresentation.view=view;
+      try{localStorage.setItem(CATALOG_VIEW_KEY,view==="list"?"lista":"galeria")}catch(e){}
       renderProducts();
     });
   }
   el("udsPreviewPageSize")?.addEventListener("change",event=>{
     const selected=Number(event.target.value);
     if(!previewPageSizes().includes(selected))return;
-    PREVIEW_CATALOG.limit=selected;
-    PREVIEW_CATALOG.page=1;
+    catalogPresentation.limit=selected;
+    catalogPresentation.page=1;
     try{localStorage.setItem(previewPageSizeKey(previewCatalogMode()),String(selected))}catch(e){}
     renderProducts();
   });
@@ -1118,28 +1156,32 @@
   };
   if(previewViewport.addEventListener)previewViewport.addEventListener("change",onViewportChange);
   else previewViewport.addListener(onViewportChange);
+  window.addEventListener("updown:storefront-dispose",()=>{
+    if(previewViewport.removeEventListener)previewViewport.removeEventListener("change",onViewportChange);
+    else previewViewport.removeListener(onViewportChange);
+  },{once:true});
 }
 
   function drawPreviewCatalogPager(){
-  if(!PREVIEW_CATALOG)return;
+  if(!catalogPresentation)return;
   const count=filteredProducts.length;
-  const pages=Math.max(1,Math.ceil(count/PREVIEW_CATALOG.limit));
-  const first=count?(PREVIEW_CATALOG.page-1)*PREVIEW_CATALOG.limit+1:0;
-  const last=Math.min(count,PREVIEW_CATALOG.page*PREVIEW_CATALOG.limit);
+  const pages=Math.max(1,Math.ceil(count/catalogPresentation.limit));
+  const first=count?(catalogPresentation.page-1)*catalogPresentation.limit+1:0;
+  const last=Math.min(count,catalogPresentation.page*catalogPresentation.limit);
   const span=el("udsPreviewCatalogPager");
   if(span){
     span.innerHTML=count?`
       <span class="uds-preview-page-summary">${currentLanguage==="en"?"Showing":"Mostrando"} ${first}–${last}
         ${currentLanguage==="en"?"of":"de"} ${count} ${currentLanguage==="en"?"results":"resultados"}</span>
       <div class="uds-preview-page-controls">
-        <button type="button" data-preview-page="${PREVIEW_CATALOG.page-1}" ${PREVIEW_CATALOG.page<=1?"disabled":""}
+        <button type="button" data-preview-page="${catalogPresentation.page-1}" ${catalogPresentation.page<=1?"disabled":""}
         aria-label="${currentLanguage==="en"?"Previous page":"Página anterior"}">‹ <span>${currentLanguage==="en"?"Previous":"Anterior"}</span></button>
         ${previewCatalogMode()==="mobile"
           ? '<span class="uds-preview-page-status" aria-live="polite">'+
-            (currentLanguage==="en"?"Page ":"Página ")+PREVIEW_CATALOG.page+
+            (currentLanguage==="en"?"Page ":"Página ")+catalogPresentation.page+
             (currentLanguage==="en"?" of ":" de ")+pages+'</span>'
           : previewPageButtons(pages)}
-        <button type="button" data-preview-page="${PREVIEW_CATALOG.page+1}" ${PREVIEW_CATALOG.page>=pages?"disabled":""}
+        <button type="button" data-preview-page="${catalogPresentation.page+1}" ${catalogPresentation.page>=pages?"disabled":""}
         aria-label="${currentLanguage==="en"?"Next page":"Página siguiente"}"><span>${currentLanguage==="en"?"Next":"Siguiente"}</span> ›</button>
       </div>`:"";
   }
@@ -1166,7 +1208,7 @@
       }
       pageSizeSelect.dataset.mode=mode;
     }
-    pageSizeSelect.value=String(PREVIEW_CATALOG.limit);
+    pageSizeSelect.value=String(catalogPresentation.limit);
   }
   if(el("udsPreviewSearchButton")){
     el("udsPreviewSearchButton").textContent=currentLanguage==="en"?"Search":"Buscar";
@@ -1176,27 +1218,28 @@
   if(sortLabel)sortLabel.textContent=currentLanguage==="en"?"Sort:":"Ordenar:";
   const sizeLabel=document.querySelector("#udsPreviewCatalogTools .uds-preview-page-size span");
   if(sizeLabel)sizeLabel.textContent=currentLanguage==="en"?"Per page:":"Por página:";
-  if(el("udsPreviewViewGrid"))el("udsPreviewViewGrid").setAttribute("aria-pressed",String(PREVIEW_CATALOG.view==="grid"));
-  if(el("udsPreviewViewList"))el("udsPreviewViewList").setAttribute("aria-pressed",String(PREVIEW_CATALOG.view==="list"));
+  if(el("udsPreviewViewGrid"))el("udsPreviewViewGrid").setAttribute("aria-pressed",String(catalogPresentation.view==="grid"));
+  if(el("udsPreviewViewList"))el("udsPreviewViewList").setAttribute("aria-pressed",String(catalogPresentation.view==="list"));
 }
 
   function renderProducts(){
+  if(!parityIsCurrent())return;
   const grid=el("udsGrid");
   if(!grid)return;
   grid.replaceChildren();
   const count=filteredProducts.length;
-  if(PREVIEW_CATALOG){
+  if(catalogPresentation){
     syncPreviewPageSizeMode();
     installPreviewCatalogControls();
     const signature=previewCatalogSignature();
-    if(PREVIEW_CATALOG.signature!==null&&PREVIEW_CATALOG.signature!==signature)PREVIEW_CATALOG.page=1;
-    PREVIEW_CATALOG.signature=signature;
-    PREVIEW_CATALOG.page=Math.min(PREVIEW_CATALOG.page,Math.max(1,Math.ceil(count/PREVIEW_CATALOG.limit)));
-    grid.classList.toggle("uds-preview-list",PREVIEW_CATALOG.view==="list");
-    grid.classList.toggle("uds-preview-gallery",PREVIEW_CATALOG.view==="grid");
-    const start=(PREVIEW_CATALOG.page-1)*PREVIEW_CATALOG.limit;
-    const visible=filteredProducts.slice(start,start+PREVIEW_CATALOG.limit);
-    el("udsResultsCount").textContent=currentLanguage==="en"?count+" results":count+" resultados";
+    if(catalogPresentation.signature!==null&&catalogPresentation.signature!==signature)catalogPresentation.page=1;
+    catalogPresentation.signature=signature;
+    catalogPresentation.page=Math.min(catalogPresentation.page,Math.max(1,Math.ceil(count/catalogPresentation.limit)));
+    grid.classList.toggle("uds-preview-list",catalogPresentation.view==="list");
+    grid.classList.toggle("uds-preview-gallery",catalogPresentation.view==="grid");
+    const start=(catalogPresentation.page-1)*catalogPresentation.limit;
+    const visible=filteredProducts.slice(start,start+catalogPresentation.limit);
+    el("udsResultsCount").textContent=currentLanguage==="en"?count+(count===1?" result":" results"):count+(count===1?" resultado":" resultados");
     if(!visible.length)grid.innerHTML='<div class="uds-no-results">'+
       (currentLanguage==="en"?"No products match these filters.":"No encontramos productos con esos filtros.")+'</div>';
     else for(const product of visible){
@@ -1545,7 +1588,7 @@
     );
   }
   function updateFocusedSearchMode(){
-    const focused=PREVIEW_CATALOG?PREVIEW_CATALOG.searchCommitted:isFocusedSearch();
+    const focused=PREVIEW_CATALOG?previewSearchCommitted:isFocusedSearch();
     const root=document.getElementById("updown-store");
     root?.classList.toggle("uds-search-focus",focused);
 
@@ -1732,12 +1775,14 @@
   }
   // Stage 4: only the admin preview receives share actions.
   // Stable UUIDs ensure links keep working when a product's title changes.
-  function previewShareUrl(product){
-    if(!PREVIEW_CATEGORY_GROUPS?.length)return "";
+  function previewShareUrl(product,forPublicShare=false){
     const id=String(product.variant_id||product.id||"").replace(/^variant:/,"").toLowerCase();
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))return "";
     const slug=(String(product.name||"producto").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,64).replace(/-+$/g,""))||"producto";
-    const url=new URL("/vista-previa/producto/"+slug+"--"+(product.variant_id?"v":"p")+"-"+id,"https://upndowncabo.com");
+    // Public share links use the launch-ready canonical product route.
+    // Preview clicks/prefetch continue using the admin-only preview route.
+    const productRoute=(forPublicShare?"/producto/":"/vista-previa/producto/")+slug+"--"+(product.variant_id?"v":"p")+"-"+id;
+    const url=new URL(productRoute,"https://upndowncabo.com");
     const code=getStoredAffiliate()?.code;
     if(code)url.searchParams.set("ref",code);
     return url.toString();
@@ -1757,7 +1802,7 @@
       area.before(tools);
     }
     tools.replaceChildren();
-    const url=previewShareUrl(product);
+    const url=previewShareUrl(product,true);
     if(!url)return;
     const label=currentLanguage==="en"?"Share product":"Compartir producto";
     const b=(title,handler)=>{
@@ -1782,12 +1827,21 @@
       catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
     });
     const direct=document.createElement("a");
-    direct.href=url;direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
+    direct.href=previewShareUrl(product);direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
     direct.className="uds-preview-product-link";
     tools.appendChild(direct);
   }
 
   function openProduct(product,preserveView=false){
+    if(SHARED_CATALOG&&!PREVIEW_CATALOG&&!preserveView){
+      const destination=previewShareUrl(product,true);
+      if(destination){
+        try{sessionStorage.setItem("upDownPublicCatalogReturnUrl",location.pathname+location.search+location.hash)}catch(e){}
+        const url=new URL(destination);
+        location.assign(url.pathname+url.search);
+        return;
+      }
+    }
     if(PREVIEW_CATALOG){
       // Canonical Web 2.0: navigation goes to the stable, independent product page.
       const destination=previewShareUrl(product);
@@ -2164,6 +2218,8 @@
 
   async function refreshCampaignsForCheckout(){
     const {data,error}=await db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal());
+    // A response from a disposed responsive mount must not change a newer cart.
+    if(!parityIsCurrent())return;
     const missing=error&&["PGRST202","42883"].includes(String(error.code||""));
     if(error&&!missing)throw error;
     storefrontPromotions=Array.isArray(data)?data:[];
@@ -2172,6 +2228,7 @@
   }
 
   async function loadStore(){
+    if(!parityIsCurrent())return;
     const restoredFromCache=restoreCatalogCache();
     if(el("udsStatus")&&!restoredFromCache){el("udsStatus").className="uds-status";el("udsStatus").textContent=currentLanguage==="en"?"Checking catalog…":"Consultando catálogo…";}
     const [{data:cats,error:ce},{data:prods,error:pe},{data:activeCampaigns,error:campaignError}]=await Promise.all([
@@ -2179,6 +2236,7 @@
       PREVIEW_CATALOG?fetchPreviewAllProducts():db.from("products").select(`id,category_id,sku,barcode,name,slug,brand,model,item_condition,short_description,description,short_description_en,description_en,specifications,currency,price,sale_price,stock,cover_image_url,featured,status,created_at,categories(name,slug),product_images(id,image_url,alt_text,sort_order,is_primary)`).eq("status","active").eq("online_visible",true).order("featured",{ascending:false}).order("created_at",{ascending:false}).abortSignal(timeoutSignal()),
       db.rpc("pos22_public_active_promotions").abortSignal(timeoutSignal())
     ]);
+    if(!parityIsCurrent())return;
     let variantRows=[],variantError=null;
     if(!pe&&prods?.length){
       if(PREVIEW_CATALOG){
@@ -2198,6 +2256,9 @@
         }
       }
     }
+    // Variant queries can also finish after a responsive remount.
+    // Do not publish results, save cache or reconcile a stale cart.
+    if(!parityIsCurrent())return;
     // Preview may still target the POS 2.1 database until the additive SQL deploy.
     // An absent new RPC means no campaign prices, not a broken product catalog.
     const missingCampaignRpc=campaignError&&["PGRST202","42883"].includes(String(campaignError.code||""));
@@ -2269,7 +2330,7 @@
 
   function clearCommerceFilters(){
     activeCategory="all";activeCollection="";
-    if(PREVIEW_CATALOG)PREVIEW_CATALOG.searchCommitted=false;
+    if(PREVIEW_CATALOG)previewSearchCommitted=false;
     ["udsCategorySelect","udsCategoryMobileFilter","udsConditionFilter","udsConditionMobileFilter","udsBrandFilter","udsHandFilter","udsFlexFilter","udsLoftFilter"].forEach(id=>{if(el(id))el(id).value="all"});
     if(el("udsSortFilter"))el("udsSortFilter").value="featured";
     el("udsSearch").value="";
@@ -2298,7 +2359,7 @@
 
   el("udsSearch")?.addEventListener("input",()=>{
     activeCollection="";
-    if(PREVIEW_CATALOG&&!el("udsSearch").value.trim())PREVIEW_CATALOG.searchCommitted=false;
+    if(PREVIEW_CATALOG&&!el("udsSearch").value.trim())previewSearchCommitted=false;
     applyFilters();
   });
   el("udsCategorySelect")?.addEventListener("change",e=>setCategory(e.target.value));
@@ -2337,8 +2398,8 @@
         const section=sectionId?document.getElementById(sectionId):null;
         if(!section)return;
         event.preventDefault();
-        if(PREVIEW_CATALOG.searchCommitted){
-          PREVIEW_CATALOG.searchCommitted=false;
+        if(previewSearchCommitted){
+          previewSearchCommitted=false;
           updateFocusedSearchMode();
         }
         closePanels();
@@ -2620,8 +2681,13 @@
   }
   window.__UPDOWN_SET_LANGUAGE__=applyLanguage;
   if(window.__UPDOWN_LANGUAGE_LISTENER__)window.removeEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
-  window.__UPDOWN_LANGUAGE_LISTENER__=()=>applyLanguage(currentLanguage);
-  window.addEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
+  const onCopyReady=()=>{if(parityIsCurrent())applyLanguage(currentLanguage)};
+  window.__UPDOWN_LANGUAGE_LISTENER__=onCopyReady;
+  window.addEventListener("updown:copy-ready",onCopyReady);
+  window.addEventListener("updown:storefront-dispose",()=>{
+    window.removeEventListener("updown:copy-ready",onCopyReady);
+    if(window.__UPDOWN_LANGUAGE_LISTENER__===onCopyReady)window.__UPDOWN_LANGUAGE_LISTENER__=null;
+  },{once:true});
   if(el("udsLangEs"))if(el("udsLangEs"))el("udsLangEs").onclick=()=>applyLanguage("es");if(el("udsLangEn"))if(el("udsLangEn"))el("udsLangEn").onclick=()=>applyLanguage("en");
 
   // Navegación inmersiva y fija.
@@ -3022,15 +3088,21 @@
     }
   }catch{}
 
-  document.querySelectorAll("#updown-store .uds-teacher-whatsapp").forEach(link=>{
-    link.addEventListener("click",()=>{
-      if(!udsGolfLessonLeadId||!udsGolfLessonLeadToken)return;
-      db.rpc("record_golf_instructor_interest",{
-        p_lead_id:udsGolfLessonLeadId,
-        p_lead_token:udsGolfLessonLeadToken,
-        p_instructor_slug:link.getAttribute("data-instructor-slug")
-      }).then(({error})=>{if(error)console.warn("Instructor analytics event failed",error)});
-    });
+  // Delegation is bound once to the ORIGINAL teachers container: managed
+  // instructor links are rendered asynchronously and may be replaced later.
+  // Resolve the CURRENT successful registration on click, not at render time.
+  // This also credits a second student's registration in the same session
+  // without overwriting the first student's persistent device access.
+  el("udsTeachers")?.addEventListener("click",event=>{
+    const link=event.target?.closest?.(".uds-teacher-whatsapp");
+    const slug=link?.getAttribute("data-instructor-slug");
+    if(!slug||!udsGolfLessonLeadId||!udsGolfLessonLeadToken)return;
+    db.rpc("record_golf_instructor_interest",{
+      p_lead_id:udsGolfLessonLeadId,
+      p_lead_token:udsGolfLessonLeadToken,
+      p_instructor_slug:slug
+    }).then(({error})=>{if(error)console.warn("Instructor analytics event failed",error)})
+      .catch(error=>console.warn("Instructor analytics event failed",error));
   });
 
   // H80: service content is managed separately from the protected golf lesson workflow.
@@ -3100,7 +3172,17 @@
       }
       grid.appendChild(card);
     });
-    serviceCards.forEach((card,key)=>{if(!visible.has(key)&&key!=='classes')card.remove()});
+    // Active flags apply to all six services, including Clases. Detaching
+    // the Classes card preserves its original form node and attached lead /
+    // instructor listeners; never replace that protected subtree.
+    serviceCards.forEach((card,key)=>{if(!visible.has(key))card.remove()});
+    // Hide the desktop Classes shortcut when the DB has disabled its card.
+    // The native mobile shortcuts already filter __UPDOWN_SERVICES__.
+    const lessonsNav=document.querySelector('#updown-store .uds-desktop-nav [data-nav-key="classes"]');
+    if(lessonsNav){
+      if(visible.has('classes'))lessonsNav.style.removeProperty('display');
+      else lessonsNav.style.setProperty('display','none','important');
+    }
     publishServiceShortcuts();
   }
   function publishServiceShortcuts(){
@@ -3446,21 +3528,14 @@
   }
 
   function mcUpdateInstructorLinks(){
-    const access=mcLessonAccess();
+    // This renderer controls ONLY the WhatsApp URL. Attribution is handled by
+    // the single delegated click listener on #udsTeachers using the currently
+    // registered student's active lead/token (including new same-session leads).
     document.querySelectorAll("#updown-store .uds-managed-teacher-whatsapp").forEach(link=>{
       const instructor=mcState.instructors.find(x=>x.slug===link.dataset.instructorSlug);
       if(!instructor)return;
       const phone=mcInstructorPhone(instructor);
       link.href=`https://wa.me/${phone}?text=${encodeURIComponent(mcInstructorMessage(instructor))}`;
-
-      link.onclick=()=>{
-        if(!access?.id||!access?.token)return;
-        mcRpc("record_golf_instructor_interest",{
-          p_lead_id:access.id,
-          p_lead_token:access.token,
-          p_instructor_slug:instructor.slug
-        }).catch(error=>console.warn("Instructor analytics event failed",error));
-      };
     });
   }
 
@@ -4226,12 +4301,28 @@
       {label:txt("Ver categorías","View categories"),onClick:()=>scrollToId("udsCategories")}
     ]));
 
-    menu.appendChild(makeGroup(txt("Servicios","Services"),[
-      {label:txt("Reparación","Repair"),onClick:()=>openService(/reparaci|repair/i)},
-      {label:txt("Intercambios","Trade-ins"),onClick:()=>openService(/intercambio|trade/i)},
-      {label:txt("Mantenimiento","Maintenance"),onClick:()=>openService(/mantenimiento|maintenance/i)},
-      {label:txt("Restauración de Putters","Putter Restoration"),onClick:()=>openService(/putter/i)},
-    ]));
+    // Service shortcuts are driven by the same ordered, active database rows
+    // used by the storefront cards. Never hardcode old service names or keys.
+    const managedServiceLinks=Array.isArray(window.__UPDOWN_SERVICES__)
+      ?window.__UPDOWN_SERVICES__.filter(row=>row&&typeof row.key==="string")
+      :[];
+    const serviceActions=managedServiceLinks.map(row=>({
+      label:(isEnglish()?row.title_en:row.title_es)||row.title_es||row.key,
+      onClick:()=>{
+        closeMenu();
+        setTimeout(()=>{
+          if(!window.__UPDOWN_OPEN_SERVICE__?.(row.key)){
+            el("udsServices")?.scrollIntoView({behavior:"smooth",block:"start"});
+          }
+        },70);
+      },
+    }));
+    menu.appendChild(makeGroup(txt("Servicios","Services"),
+      serviceActions.length?serviceActions:[{
+        label:txt("Ver servicios","View services"),
+        onClick:()=>scrollToId("udsServices")
+      }]
+    ));
 
     menu.appendChild(makeGroup(txt("Golf en Los Cabos","Golf in Los Cabos"),[
       {label:txt("Campos de golf","Golf courses"),onClick:()=>scrollToId("udsCourses")},
@@ -4353,9 +4444,8 @@
 (()=>{
   const root=document.getElementById("updown-store");
   if(!root)return;
-  // Only the public legacy storefront retains its old four-card inner pager.
-  // The preview has one canonical page selector; no hidden sub-pages.
-  if(root.classList.contains("uds-preview")){
+  // Premium White uses one shared pager in both channels.
+  if(root.matches(".uds-preview,.uds-premium-white")){
     document.getElementById("udsMobileCatalogPager58")?.remove();
     return;
   }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { productPageUrl } from "@/lib/storefront/product-share";
+import { useStorefrontLanguage } from "./use-storefront-language";
 import type { RelatedProduct } from "@/lib/storefront/get-related-products";
 
 function affiliateCode(): string | null {
@@ -19,17 +20,33 @@ function price(amount: number, currency: string) {
   try { return new Intl.NumberFormat("es-MX", { style: "currency", currency }).format(amount); }
   catch { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount); }
 }
+const relatedLabels: Record<string, string> = {
+  "Otra configuración": "Another configuration",
+  "Mismo modelo": "Same model",
+  "Misma marca": "Same brand",
+  "Misma categoría": "Same category",
+};
+
+export function RelatedProductsLoading() {
+  const language = useStorefrontLanguage();
+  return <div className="ud-related-loading" role="status" lang={language}>
+    {language === "en" ? "Finding related products…" : "Explorando artículos similares…"}
+  </div>;
+}
+
 export default function RelatedProductsRail({ products, preview }: { products: RelatedProduct[]; preview: boolean }) {
+  const language = useStorefrontLanguage();
+  const t = (es: string, en: string) => language === "en" ? en : es;
   const [code, setCode] = useState<string | null>(null);
   useEffect(() => { void Promise.resolve().then(() => setCode(affiliateCode())); }, []);
   if (!products.length) return null;
-  return <section className="ud-related" aria-label="Artículos relacionados">
+  return <section className="ud-related" lang={language} aria-label={t("Artículos relacionados", "Related products")}>
     <div className="ud-related-heading">
-      <div><span>DESCUBRE MÁS EQUIPO</span><h2>Productos que también podrían interesarte</h2></div>
+      <div><span>{t("DESCUBRE MÁS EQUIPO", "EXPLORE MORE EQUIPMENT")}</span><h2>{t("Productos que también podrían interesarte", "Products you might also like")}</h2></div>
       <div className="ud-related-controls">
-        <button type="button" aria-label="Ver productos anteriores" onClick={() =>
+        <button type="button" aria-label={t("Ver productos anteriores", "Previous products")} onClick={() =>
           document.getElementById("ud-related-strip")?.scrollBy({ left: -390, behavior: "smooth" })}>‹</button>
-        <button type="button" aria-label="Ver más productos" onClick={() =>
+        <button type="button" aria-label={t("Ver más productos", "More products")} onClick={() =>
           document.getElementById("ud-related-strip")?.scrollBy({ left: 390, behavior: "smooth" })}>›</button>
       </div>
     </div>
@@ -48,11 +65,11 @@ export default function RelatedProductsRail({ products, preview }: { products: R
                   img.alt = "";
                 }
               }} />
-            {item.stock <= 0 && <span className="ud-related-sold">Agotado</span>}
+            {item.stock <= 0 && <span className="ud-related-sold">{t("Agotado", "Sold out")}</span>}
             {Boolean(item.campaignPercent) && <span className="ud-related-campaign">-{item.campaignPercent}%</span>}
           </div>
           <div className="ud-related-caption">
-            <small>{item.relation}</small><strong>{item.name}</strong>
+            <small>{language === "en" ? relatedLabels[item.relation] ?? item.relation : item.relation}</small><strong>{item.name}</strong>
             <span>{price(item.price, item.currency)}{item.comparePrice != null && <del className="ud-related-before">{price(item.comparePrice,item.currency)}</del>}</span>
           </div>
         </Link>)}

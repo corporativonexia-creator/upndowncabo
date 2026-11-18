@@ -68,7 +68,10 @@ test('online: storefront campaign priority also applies to parent SKU and varian
 const cardStart=runtime.indexOf('  function stockCopy(');
 const cardEnd=runtime.indexOf('  function markImageFallback(',cardStart);
 assert.ok(cardStart>=0&&cardEnd>cardStart,'Store card price renderer must exist');
+// The pricing slice is evaluated without the image helpers from the full runtime.
+// Mock its gallery dependency without altering the business pricing assertions.
 const cardCtx=vm.createContext({
+ productGallery:p=>p.cover_image_url?[p.cover_image_url]:[],
  currentLanguage:'es',conditionLabels:{new:'Nuevo'},conditionLabelsEn:{new:'New'},
  normalizeSpecKey:x=>String(x).toLowerCase(),golfSpecChips:()=>[],
  escapeHtml:x=>String(x),categoryLabel:()=> 'Wedges',
@@ -95,6 +98,7 @@ const addStart=runtime.indexOf('  function addToCart(');
 const addEnd=runtime.indexOf('  function changeQty(',addStart);
 assert.ok(addStart>=0&&addEnd>addStart,'Cart item pricing must exist');
 const cartCtx=vm.createContext({
+ productGallery:p=>p.cover_image_url?[p.cover_image_url]:[],
  cart:[],currentLanguage:'es',PREVIEW_CATEGORY_GROUPS:[{id:'qa'}],
  showToast:()=>{},saveCart:()=>{},golfSummary:()=>'',storefrontPricing:ctx.storefrontPricing
 });
