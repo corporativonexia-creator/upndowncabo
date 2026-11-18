@@ -3131,7 +3131,17 @@
       }
       grid.appendChild(card);
     });
-    serviceCards.forEach((card,key)=>{if(!visible.has(key)&&key!=='classes')card.remove()});
+    // Active flags apply to all six services, including Clases. Detaching
+    // the Classes card preserves its original form node and attached lead /
+    // instructor listeners; never replace that protected subtree.
+    serviceCards.forEach((card,key)=>{if(!visible.has(key))card.remove()});
+    // Hide the desktop Classes shortcut when the DB has disabled its card.
+    // The native mobile shortcuts already filter __UPDOWN_SERVICES__.
+    const lessonsNav=document.querySelector('#updown-store .uds-desktop-nav [data-nav-key="classes"]');
+    if(lessonsNav){
+      if(visible.has('classes'))lessonsNav.style.removeProperty('display');
+      else lessonsNav.style.setProperty('display','none','important');
+    }
     publishServiceShortcuts();
   }
   function publishServiceShortcuts(){
