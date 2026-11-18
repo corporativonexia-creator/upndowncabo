@@ -1,0 +1,43 @@
+name: Admin Premium White A0-A2 candidate QA
+
+on:
+  push:
+    branches: [integracion/admin-premium-white-a0a2-20261118]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-ux-a0a2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  admin-ux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4319
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-publishable-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: A0-A2 guard contracts
+        run: node --test tests/admin-shell-a1.contract.cjs
+      - name: Legacy runtime syntax contract
+        run: npm run check:admin-scripts
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Build with mock Supabase only
+        run: npm run build
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Admin UI regression against mock Supabase
+        run: npm run test:admin
