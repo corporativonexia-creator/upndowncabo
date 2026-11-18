@@ -29,6 +29,8 @@ jobs:
         run: npm ci
       - name: A0-A3 guard contracts
         run: node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs
+      - name: A3.4 SKU allocation against isolated PostgreSQL
+        run: node --test tests/admin-sku-a34.pg.cjs
       - name: Legacy runtime syntax contract
         run: npm run check:admin-scripts
       - name: Lint
