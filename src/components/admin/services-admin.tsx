@@ -137,7 +137,7 @@ export default function ServicesAdmin() {
     <header className={styles.heading}><div><h2 id="services-admin-heading">Servicios</h2><p>Fotos, textos en ambos idiomas, enlaces y orden de aparición.</p></div><button type="button" disabled={loading || Boolean(error) || adding} onClick={() => setAdding(true)}>+ Agregar servicio</button></header>
     {loading ? <p role="status">Cargando servicios…</p> : error ? <div role="alert"><p>{error}</p><button onClick={() => setReload(value => value + 1)}>Volver a intentar</button></div> : <>
       {adding ? <ServiceEditor service={emptyService(Math.max(0, ...rows.map(row => row.sort_order)) + 1)} onSaved={row => { onSaved(row); setAdding(false); }} onCancel={() => setAdding(false)} /> : null}
-      {sorted.map(row => <details className={styles.card} key={row.key}><summary><strong>{row.title_es}</strong><span>`${row.is_active ? "Visible" : "Oculto"} · Índice ${row.sort_order}${row.key === "classes" ? " · Registro protegido" : ""}`</span></summary><ServiceEditor service={row} onSaved={onSaved} /></details>)}
+      {sorted.map(row => <details className={styles.card} key={row.key}><summary><strong>{row.title_es}</strong><span>{`${row.is_active ? "Visible" : "Oculto"} · Índice ${row.sort_order}${row.key === "classes" ? " · Registro protegido" : ""}`}</span></summary><ServiceEditor service={row} onSaved={onSaved} /></details>)}
       {!rows.length ? <p>No hay servicios registrados.</p> : null}
     </>}
   </section>;
