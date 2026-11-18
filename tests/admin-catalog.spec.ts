@@ -126,7 +126,18 @@ test('variant summary failure leaves parent search usable and offers retry',asyn
   await configure(request,{summaryError:true});
   await page.evaluate(()=>window.dispatchEvent(new Event('updown:admin-products-refresh')));
   await ready(page);
-  await expect(page.getByRole('button',{name:'Reintentar variantes'})).toBeVisible();
+  try {
+    await expect(page.getByRole('button',{name:'Reintentar variantes'})).toBeVisible({timeout:7000});
+  } catch(error) {
+    const events=await (await request.get(`${fixture}/__events`)).json();
+    const variantReads=events.filter((e:{path:string,method:string})=>e.path==='/rest/v1/product_variants'&&e.method==='GET');
+    console.log('A3.5_VARIANT_RETRY_DIAGNOSTIC',JSON.stringify({
+      variantReads:variantReads.map((e:{query:string})=>e.query),
+      notices:await page.locator('#udList [role=status]').allInnerTexts(),
+      listPreview:(await page.locator('#udList').innerText()).slice(0,350)
+    }));
+    throw error;
+  }
   await page.locator('#udCatalogSearch').fill('Marca aguila');await expect(card(page,'p1')).toBeVisible();
   await configure(request,{summaryError:false});await page.getByRole('button',{name:'Reintentar variantes'}).click();
   await page.locator('#udCatalogSearch').fill('2000000000046');await expect(card(page,'p1')).toBeVisible();
