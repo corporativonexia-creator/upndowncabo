@@ -1,0 +1,1088 @@
+/*
+ * UP AND DOWN · Premium White — visual-only skin, 2026-11-14
+ *
+ * Applies only when /vista-previa renders #updown-store.uds-preview.
+ * No DOM, navigation, event, filter, inventory, checkout or responsive logic changes.
+ * The current full-bleed category photos, dark course section, and dark footer remain.
+ * Design-only exception: the user-approved List and mobile News layouts
+ * override display/grid sizes at the bottom of this file. Never change
+ * pointer-events, stacking, state, navigation, filters or data bindings.
+ */
+
+/* Brand tokens: white canvas, deep golf green, muted neutrals, discreet lime. */
+#updown-store.uds-preview {
+  --ivory: #ffffff;
+  --warm: #f6f8f6;
+  --green: #123d32;
+  --green-2: #2f7058;
+  --gold: #b7de45;
+  --ink: #22372e;
+  --muted: #64746b;
+  --white: #ffffff;
+  --line: rgba(18, 61, 50, .12);
+  --shadow: 0 14px 36px rgba(18, 61, 50, .09);
+  --shadow-soft: 0 5px 18px rgba(18, 61, 50, .045);
+  background: #ffffff !important;
+  color: #22372e;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+/* Uniform white sections, preserving existing order, layout and all content. */
+#updown-store.uds-preview #udsCategories,
+#updown-store.uds-preview .uds-brands-section,
+#updown-store.uds-preview #udsNew,
+#updown-store.uds-preview #udsCatalog,
+#updown-store.uds-preview #udsServices,
+#updown-store.uds-preview #udsJournal,
+#updown-store.uds-preview #udsAbout,
+#updown-store.uds-preview #udsVisit {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+/* The golf-course experience and footer intentionally retain brand contrast. */
+#updown-store.uds-preview #udsCourses {
+  background: #123d32 !important;
+}
+#updown-store.uds-preview .uds-footer {
+  background: #0c3027 !important;
+}
+
+/* Editorial headings, restrained labels and consistent reading text. */
+#updown-store.uds-preview .uds-section-head h2,
+#updown-store.uds-preview .uds-about h2,
+#updown-store.uds-preview .uds-visit-heading h2 {
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-weight: 400 !important;
+  letter-spacing: -.028em !important;
+}
+#updown-store.uds-preview .uds-section-head .uds-section-intro,
+#updown-store.uds-preview .uds-section-intro,
+#updown-store.uds-preview .uds-about-copy p {
+  color: #63736a !important;
+}
+#updown-store.uds-preview .uds-section-head .uds-eyebrow,
+#updown-store.uds-preview .uds-eyebrow {
+  color: #45725c;
+  letter-spacing: .105em;
+}
+#updown-store.uds-preview #udsCourses .uds-section-head h2 {
+  color: #ffffff !important;
+}
+#updown-store.uds-preview #udsCourses .uds-section-intro,
+#updown-store.uds-preview #udsCourses .uds-eyebrow {
+  color: #d3e5d9 !important;
+}
+
+/* Navigation: replace the warm glass tint with a crisp, quiet white. */
+@media (min-width: 1024px) {
+  #updown-store.uds-preview .uds-header {
+    background: rgba(255, 255, 255, .98) !important;
+    border-bottom-color: #e7ece8 !important;
+    box-shadow: 0 2px 12px rgba(18, 61, 50, .045) !important;
+    color: #123d32 !important;
+  }
+  #updown-store.uds-preview .uds-header .uds-logo,
+  #updown-store.uds-preview .uds-header .uds-top-actions,
+  #updown-store.uds-preview .uds-header .uds-nav-link {
+    color: #123d32 !important;
+  }
+}
+.uds-native-mobile-header.uds-preview-mobile-header {
+  background: rgba(255, 255, 255, .97) !important;
+  border-bottom-color: #e7ece8 !important;
+  box-shadow: 0 2px 13px rgba(18, 61, 50, .05) !important;
+  color: #123d32 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-actions button {
+  background: #ffffff !important;
+  border-color: #e2e9e4 !important;
+  color: #123d32 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language {
+  background: #f5f8f5 !important;
+  border-color: #dae5dc !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language button {
+  background: transparent !important;
+  border: 0 !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-language button[aria-pressed="true"] {
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+.uds-native-mobile-header.uds-preview-mobile-header .uds-native-service-logo.is-vs-golf {
+  background: #101815 !important;
+}
+
+/* Smart search: change surfaces only. Never touch its open states or JS selectors. */
+#updown-store.uds-preview .uds-discovery,
+#updown-store.uds-preview .uds-discovery-card {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #22372e !important;
+}
+#updown-store.uds-preview .uds-discovery-card,
+#updown-store.uds-preview .uds-catalog-filter-box {
+  border: 1px solid #e3eae5 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 5px 19px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview #udsAdvancedFilters,
+#updown-store.uds-preview .uds-advanced-filters-inner,
+#updown-store.uds-preview #udsCatalogFilterBody {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+#updown-store.uds-preview .uds-discovery input[type="text"],
+#updown-store.uds-preview .uds-discovery input[type="search"],
+#updown-store.uds-preview .uds-discovery select,
+#updown-store.uds-preview .uds-catalog-filter-box input[type="text"],
+#updown-store.uds-preview .uds-catalog-filter-box input[type="search"],
+#updown-store.uds-preview .uds-catalog-filter-box select,
+#updown-store.uds-preview #udsPreviewCatalogTools select {
+  background: #f8faf8 !important;
+  background-image: none !important;
+  border-color: #dae5dc !important;
+  color: #203d30 !important;
+}
+#updown-store.uds-preview .uds-discovery :is(input, select):focus-visible,
+#updown-store.uds-preview .uds-catalog-filter-box :is(input, select):focus-visible,
+#updown-store.uds-preview #udsPreviewCatalogTools :is(input, select):focus-visible {
+  outline: 2px solid #89b796 !important;
+  outline-offset: 2px !important;
+}
+#updown-store.uds-preview .uds-filter-toggle,
+#updown-store.uds-preview .uds-catalog-filter-toggle,
+#updown-store.uds-preview #udsClearFilters {
+  border-color: #dce7df !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview .uds-catalog-bar,
+#updown-store.uds-preview #udsPreviewCatalogTools,
+#updown-store.uds-preview #udsPreviewCatalogPager {
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+/* Categories: retain original imagery, crop, overlays, click targets and ordering. */
+#updown-store.uds-preview #udsCategoryGrid > .uds-category-tile {
+  border: 1px solid #e3e9e4 !important;
+  box-shadow: 0 5px 18px rgba(18, 61, 50, .06) !important;
+}
+#updown-store.uds-preview #udsCategoryGrid > .uds-category-tile:hover {
+  border-color: #cbd9cf !important;
+  box-shadow: 0 10px 24px rgba(18, 61, 50, .1) !important;
+}
+#updown-store.uds-preview #udsCategories .uds-category-more {
+  background: #ffffff !important;
+  border-color: #d6e4da !important;
+  color: #123d32 !important;
+}
+
+/* Product results: neutral photography backgrounds and subtle outlines. */
+#updown-store.uds-preview .uds-card,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card {
+  background: #ffffff !important;
+  border-color: #e3eae5 !important;
+  box-shadow: 0 4px 16px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview .uds-card:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card:hover {
+  box-shadow: 0 10px 26px rgba(18, 61, 50, .09) !important;
+}
+#updown-store.uds-preview .uds-card-media,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-gallery .uds-card-media,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid.uds-preview-list .uds-card-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview .uds-card h3,
+#updown-store.uds-preview .uds-card .uds-price,
+#updown-store.uds-preview .uds-price-row {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview .uds-card .uds-category {
+  color: #68796e !important;
+}
+#updown-store.uds-preview #udsPreviewCatalogPager button {
+  border-color: #dbe5dd !important;
+}
+
+/* Services, news and benefits: clean white cards without changing expansion UX. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card,
+#updown-store.uds-preview .uds-journal-card,
+#updown-store.uds-preview .uds-benefit {
+  background: #ffffff !important;
+  border-color: #e4eae5 !important;
+  box-shadow: 0 5px 18px rgba(18, 61, 50, .045) !important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card:hover,
+#updown-store.uds-preview .uds-journal-card:hover {
+  box-shadow: 0 11px 26px rgba(18, 61, 50, .095) !important;
+}
+#updown-store.uds-preview .uds-journal-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview .uds-service-head h3,
+#updown-store.uds-preview .uds-journal-card h3,
+#updown-store.uds-preview .uds-benefit strong {
+  color: #123d32;
+}
+/* Preserve white text on deliberately dark green featured-service headers. */
+#updown-store.uds-preview #udsServices .uds-service-card.is-featured .uds-service-title h3 {
+  color: #ffffff !important;
+}
+#updown-store.uds-preview #udsServices .uds-service-card.is-featured .uds-service-title small {
+  color: #e4eecb !important;
+}
+
+/* About + in-store visit: matte surfaces, keep the green contact panel. */
+#updown-store.uds-preview .uds-benefits {
+  background: #e7eee9 !important;
+  border-color: #e7eee9 !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview #udsVisit {
+  border-top: 1px solid #e8eee8 !important;
+}
+#updown-store.uds-preview #udsVisit .uds-visit-directions {
+  background: #123d32 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(18, 61, 50, .08) !important;
+}
+#updown-store.uds-preview #udsVisit .uds-visit-contact {
+  background: #ffffff !important;
+  border-color: #e3eae4 !important;
+  box-shadow: 0 4px 16px rgba(18, 61, 50, .04) !important;
+}
+
+/* Preserve the layered modal and cart logic. Update only surface colors. */
+#updown-store.uds-preview #udsModal,
+#updown-store.uds-preview #udsCart,
+#updown-store.uds-preview #udsSuccessModal {
+  background: #ffffff !important;
+}
+#updown-store.uds-preview .uds-modal-media {
+  background: #f5f7f5 !important;
+}
+#updown-store.uds-preview #udsCart .uds-cart-head {
+  border-bottom-color: #e2eae3 !important;
+}
+#updown-store.uds-preview .uds-shipping-note {
+  color: #586e60 !important;
+}
+
+/* Keyboard focus: visible and consistent, with no hit-area change. */
+#updown-store.uds-preview :focus-visible {
+  outline-color: #7aaf6c !important;
+}
+
+
+/* PREMIUM WHITE / LOCAL UX FIX V2
+   Presentation only — no changes to HTML, events, products or services.
+   Catalog "list" remains driven by its existing class and click handler. */
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list {
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-flow:row!important;
+  gap:0!important;
+  align-items:stretch!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card {
+  display:grid!important;
+  grid-template-columns:minmax(120px,28%) minmax(0,1fr)!important;
+  grid-template-rows:auto!important;
+  gap:16px!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:14px 0!important;
+  border:0!important;
+  border-bottom:1px solid #e3ebe5!important;
+  border-radius:0!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-card-media {
+  width:100%!important;
+  height:100%!important;
+  min-height:130px!important;
+  max-height:220px!important;
+  aspect-ratio:auto!important;
+  border-radius:12px!important;
+  background:#f4f7f4!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-card-media img {
+  width:100%!important;height:100%!important;
+  object-fit:contain!important;
+  padding:4px!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-card-body {
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  padding:2px 6px 2px 0!important;
+  min-width:0!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card h3 {
+  min-height:0!important;
+  max-height:none!important;
+  font-size:clamp(15px,1.5vw,21px)!important;
+  line-height:1.3!important;
+  -webkit-line-clamp:3!important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-price {
+  font-size:clamp(17px,1.9vw,23px)!important;
+}
+@media(max-width:760px) {
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card {
+    grid-template-columns:minmax(92px,35%) minmax(0,1fr)!important;
+    gap:12px!important;
+    padding:12px 0!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-card-media {
+    min-height:130px!important;
+    max-height:200px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card h3 {
+    font-size:14px!important;
+    line-height:1.3!important;
+    margin:5px 0 8px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-price {
+    font-size:18px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalog #udsGrid.uds-preview-list > .uds-card .uds-description {
+    font-size:10px!important;
+    line-height:1.4!important;
+  }
+
+  /* News: mobile list rows; original open/close event and article body intact. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid {
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) {
+    display:grid!important;
+    grid-template-columns:minmax(100px,34%) minmax(0,1fr)!important;
+    grid-template-rows:auto!important;
+    gap:0!important;
+    width:100%!important;
+    height:auto!important;
+    border-radius:15px!important;
+    background:#fff!important;
+    box-shadow:none!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-media {
+    width:100%!important;
+    height:136px!important;
+    min-height:136px!important;
+    max-height:136px!important;
+    overflow:hidden!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-body {
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    min-width:0!important;
+    padding:10px 13px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) h3 {
+    font-size:15px!important;
+    line-height:1.25!important;
+    margin:5px 0!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) p {
+    font-size:11px!important;
+    line-height:1.4!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) :is(button,a) {
+    font-size:11px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) {
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    border-radius:15px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) .uds-journal-media {
+    width:100%!important;
+    height:215px!important;
+    min-height:215px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) .uds-journal-body {
+    padding:17px!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) h3 {
+    font-size:21px!important;
+    line-height:1.25!important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:is(.is-open,.is-expanded) p {
+    font-size:13px!important;
+    line-height:1.6!important;
+  }
+}
+
+/* Photos are loaded remotely by the existing runtime; green is a contrast
+   fallback if a photo is pending/unavailable. Sources are never changed. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo:not(.is-open) .uds-service-head {
+  background:linear-gradient(145deg,#406b57,#0d3b2d)!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo:not(.is-open) .uds-service-title h3 {
+  color:#fff!important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.has-service-photo:not(.is-open) .uds-service-title small {
+  color:#e7eecf!important;
+}
+
+
+/* PREMIUM WHITE / LIST AND READER POLISH V3
+   Reader behavior in production: managed stories use #udsEditorialReader,
+   legacy stories use .is-expanded; no JS or links are modified. */
+@media (max-width: 760px) {
+  /* Compact news list: readable eyebrow and predictable two-line summaries. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-summary small {
+    display: block !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    color: #557966 !important;
+    letter-spacing: .055em !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-summary h3 {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-lead {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    color: #65756b !important;
+    margin: 5px 0 8px !important;
+    min-height: 0 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card:not(.is-open):not(.is-expanded) .uds-journal-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    min-height: 36px !important;
+    font-size: 11px !important;
+    color: #123d32 !important;
+  }
+  /* The existing article-opening button remains keyboard and touch usable. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card .uds-journal-toggle:focus-visible {
+    outline: 2px solid #7aaf6c !important;
+    outline-offset: 3px !important;
+  }
+  /* Expanded legacy articles: title and body return to normal text flow. */
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-expanded .uds-journal-summary h3 {
+    display: block !important;
+    overflow: visible !important;
+    font-size: 21px !important;
+    -webkit-line-clamp: unset !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsJournal #udsJournalGrid.uds-journal-grid > .uds-journal-card.is-expanded .uds-journal-lead {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: unset !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Service cards: a not-yet-loaded remote image never leaves invisible copy. */
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.uds-preview-service-coming .uds-service-title h3 {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-preview-services-stage7 #udsServices .uds-service-card.uds-preview-service-coming .uds-service-title small {
+  color: #8b693d !important;
+}
+
+
+/* PW-UX-01 — prevent hidden off-canvas drawer shadow from washing out
+   the right edge of the page.
+   Source: globals.css defines #udsMobileMenu53 with box-shadow:
+   -28px 0 70px rgba(20,62,53,.18), even when translated 104% offscreen.
+   The menu is appended to body, outside #updown-store; use :has to scope
+   changes to /vista-previa. The shadow is removed even while open. */
+html:has(#updown-store.uds-preview),
+body:has(#updown-store.uds-preview) {
+  background-color: #ffffff !important;
+}
+body:has(#updown-store.uds-preview) #udsMobileMenu53 {
+  box-shadow: none !important;
+}
+/* Keep content's neutral canvas white; never affect hero, photos,
+   photo readability overlays, dark golf courses or the dark footer. */
+#updown-store.uds-preview {
+  background-color: #ffffff !important;
+}
+
+
+/* PW-UX-01 / V4 OFFCANVAS SHADOWS — 15 Nov 2026
+   Additional confirmed shadow source: the cart drawer exists offscreen
+   on every page, and globals.css sets a -30px 0 90px shadow on it.
+   The legacy mobile drawer has its own -24px 0 70px !important shadow.
+   Both cast a right-edge tint even when translated out of the viewport.
+   Remove shadows in ALL states only on /vista-previa.
+   Do not alter transforms, pointer-events, opacity, z-index or overlay. */
+#updown-store.uds-preview .uds-cart,
+#updown-store.uds-preview #udsCart,
+#updown-store.uds-preview.uds-ux-v3 .uds-mobile-menu,
+#updown-store.uds-preview.uds-ux-v3 #udsMobileMenu {
+  box-shadow: none !important;
+}
+/* The current H53 drawer is mounted directly under <body>. */
+body:has(#updown-store.uds-preview) #udsMobileMenu53 {
+  box-shadow: none !important;
+}
+
+
+/* PW-UX-02 / LIVE SEARCH PRESENTATION — visual only, preview branch.
+   The live search dialog is a sibling of #updown-store, so scope through
+   html:has(...). Never change React, input/change handlers, dynamic result
+   generation, product click, record counts, keyboard focus or scroll lock.
+   Keep the full-height dialog to remain compatible with mobile keyboards. */
+html:has(#updown-store.uds-preview) dialog.uds-search-panel {
+  background: #ffffff !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-shell,
+html:has(#updown-store.uds-preview) .uds-search-content {
+  background: #ffffff !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-signature {
+  color: #4f7660 !important;
+  letter-spacing: .12em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-handle {
+  background: #dae5dc !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-heading h2 {
+  color: #123d32 !important;
+  font-weight: 500 !important;
+  letter-spacing: -.022em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-dismiss {
+  background: #ffffff !important;
+  color: #123d32 !important;
+  border-color: #e1e9e3 !important;
+  box-shadow: none !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form {
+  border: 1px solid #cadccd !important;
+  background: #ffffff !important;
+  box-shadow: 0 3px 12px rgba(18,61,50,.045) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form:focus-within {
+  border-color: #548568 !important;
+  box-shadow: 0 0 0 2px rgba(73,131,92,.12) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form input {
+  color: #123d32 !important;
+  background: transparent !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-form input::placeholder {
+  color: #728177 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-content h3 {
+  color: #557162 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips button {
+  background: #f4f7f4 !important;
+  border-color: #dbe6dc !important;
+  color: #123d32 !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips.is-brands button {
+  background: #ffffff !important;
+  border-color: #dce5dd !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-chips button:hover,
+html:has(#updown-store.uds-preview) .uds-search-chips button:focus-visible {
+  background: #eaf2eb !important;
+  border-color: #9fbea7 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-recents button {
+  color: #123d32 !important;
+  border-bottom-color: #e6ece7 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-count {
+  color: #607568 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #ecf0ec !important;
+  padding-bottom: 11px !important;
+  margin-bottom: 13px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-results {
+  gap: 9px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result {
+  min-height: 102px !important;
+  padding: 10px !important;
+  gap: 12px !important;
+  background: #ffffff !important;
+  border: 1px solid #e3eae5 !important;
+  border-radius: 15px !important;
+  color: #123d32 !important;
+  box-shadow: 0 3px 12px rgba(18,61,50,.035) !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result:hover,
+html:has(#updown-store.uds-preview) .uds-search-result:focus-visible {
+  background: #f9fbf9 !important;
+  border-color: #afc7b4 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-thumb {
+  background: #f5f7f5 !important;
+  border-radius: 11px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy {
+  gap: 4px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy small {
+  font-size: 10px !important;
+  color: #6a7e70 !important;
+  font-weight: 700 !important;
+  letter-spacing: .025em !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy strong {
+  font: 650 14px/1.34 Inter, "Segoe UI", Arial, sans-serif !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-result-copy > span {
+  font: 800 15px/1.3 Inter, "Segoe UI", Arial, sans-serif !important;
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-arrow {
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 27px !important;
+  width: 27px !important;
+  height: 27px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: #eef4ef !important;
+  color: #23533b !important;
+  font-size: 20px !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-empty strong {
+  color: #123d32 !important;
+}
+html:has(#updown-store.uds-preview) .uds-search-more,
+html:has(#updown-store.uds-preview) .uds-search-empty button {
+  border-color: #123d32 !important;
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+@media (max-width: 390px) {
+  html:has(#updown-store.uds-preview) .uds-search-shell {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  html:has(#updown-store.uds-preview) .uds-search-result {
+    gap: 10px !important;
+  }
+  html:has(#updown-store.uds-preview) .uds-search-result-copy strong {
+    font-size: 13px !important;
+  }
+}
+
+
+/* PW-UX-03 / SMART COLLECTION FILTERS — presentation only.
+   The existing filter controls, IDs, events, option values, open/closed
+   classes and native select behavior are unchanged.
+   Restore legible select chevrons that the earlier white skin suppressed. */
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox {
+  background: #ffffff !important;
+  border: 1px solid #e0e8e1 !important;
+  border-radius: 17px !important;
+  box-shadow: 0 3px 15px rgba(18,61,50,.035) !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head strong {
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle {
+  background: #f4f8f4 !important;
+  color: #123d32 !important;
+  border: 1px solid #d9e6dc !important;
+  border-radius: 12px !important;
+  min-height: 46px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: .035em !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:hover,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:focus-visible {
+  background: #eaf2ec !important;
+  border-color: #a7c7b0 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle[aria-expanded="true"] {
+  background: #eaf2eb !important;
+  border-color: #b4ceb9 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters .uds-control {
+  min-height: 46px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d5e2d9 !important;
+  border-radius: 11px !important;
+  color: #143e35 !important;
+  font: 600 12px/1.35 Inter, "Segoe UI", Arial, sans-serif !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox input.uds-control::placeholder {
+  color: #75867b !important;
+  opacity: 1 !important;
+}
+/* Always show the downward arrow, including on iOS and Chrome mobile.
+   It is a CSS image on the EXISTING native selector, not a new control. */
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox select.uds-control,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters select.uds-control {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #446c55 50%),
+    linear-gradient(135deg, #446c55 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 19px) center,
+    calc(100% - 14px) center !important;
+  background-size: 5px 5px, 5px 5px !important;
+  background-repeat: no-repeat !important;
+  padding-left: 12px !important;
+  padding-right: 33px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control:focus,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control:focus-visible,
+#updown-store.uds-preview.uds-ux-v3 #udsAdvancedFilters .uds-control:focus-visible {
+  border-color: #78a787 !important;
+  outline: 2px solid rgba(120,167,135,.32) !important;
+  outline-offset: 1px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox select.uds-control:has(option:checked:not([value="all"]):not([value="featured"])) {
+  background-color: #f0f7f1 !important;
+  border-color: #a9cbb0 !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-actions {
+  gap: 9px !important;
+  margin-top: 13px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action {
+  min-height: 44px !important;
+  border-radius: 11px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .02em !important;
+  box-shadow: none !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action.is-secondary {
+  background: #ffffff !important;
+  border: 1px solid #d3e1d7 !important;
+  color: #123d32 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action.is-primary {
+  background: #123d32 !important;
+  border: 1px solid #123d32 !important;
+  color: #ffffff !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action:focus-visible,
+#updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle:focus-visible {
+  outline: 2px solid #78a787 !important;
+  outline-offset: 2px !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsClearFilters {
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  letter-spacing: .035em !important;
+  color: #446957 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools .uds-preview-view-switch {
+  background: #f5f8f5 !important;
+  border-color: #d9e5db !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools .uds-preview-view-switch button[aria-pressed="true"] {
+  background: #123d32 !important;
+  color: #ffffff !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsPreviewCatalogTools select {
+  border-color: #d4e1d8 !important;
+  background-color: #ffffff !important;
+  color: #123d32 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 760px) {
+  /* Keep the original collapsed/expanded filtering mechanism intact. */
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox {
+    padding: 9px !important;
+    margin-bottom: 17px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterToggle {
+    min-height: 47px !important;
+    font-size: 12px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-control {
+    font-size: 13px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox.is-open .uds-catalog-filter-grid {
+    row-gap: 10px !important;
+    column-gap: 10px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 #udsCatalogFilterBox .uds-filter-action {
+    font-size: 10px !important;
+    padding: 10px 9px !important;
+  }
+}
+
+
+/* PW-UX-03B / MOBILE FILTER ACCESS — corrective visual-only override.
+   Root cause: globals.css hides #udsCatalogFilterBox via an older
+   .uds-ux-v1 rule (display:none!important). Both ux-v1 and ux-v3
+   classes coexist. The mobile storefront also hides .uds-discovery,
+   unintentionally leaving phones without any smart-filter entrance.
+   Only expose the EXISTING catalog filter on preview mobile/tablet.
+   All IDs, select options, applied-filter logic and JS remain untouched. */
+@media (max-width: 1023px) {
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox {
+    display: block !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    border: 1px solid #e0e8e1 !important;
+    border-radius: 15px !important;
+    box-shadow: none !important;
+    padding: 9px !important;
+    margin: 12px 0 14px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterToggle {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 47px !important;
+    border-radius: 11px !important;
+    background: #f4f8f4 !important;
+    border: 1px solid #d9e6dc !important;
+    color: #123d32 !important;
+    font: 800 12px/1.2 Inter, "Segoe UI", Arial, sans-serif !important;
+    cursor: pointer !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox .uds-catalog-filter-head > div {
+    display: none !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody {
+    display: grid !important;
+    grid-template-rows: 0fr !important;
+    opacity: 0 !important;
+    transition: grid-template-rows .25s ease,opacity .2s ease !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody > div {
+    overflow: hidden !important;
+    min-height: 0 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox.is-open #udsCatalogFilterBody {
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBox.is-open #udsCatalogFilterToggle {
+    background: #eaf2eb !important;
+    border-color: #aac8b2 !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid {
+    gap: 9px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-actions {
+    gap: 10px !important;
+  }
+}
+@media (max-width: 480px) {
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid,
+  #updown-store.uds-preview.uds-ux-v1.uds-ux-v3 #udsCatalogFilterBody .uds-catalog-filter-grid + .uds-catalog-filter-grid {
+    grid-template-columns: minmax(0,1fr) !important;
+  }
+}
+
+
+/* PW-UX-05 / DESKTOP FOCUSED SEARCH FLOW
+   Desktop visual behavior in the private preview only.
+   The existing uds-search-focus class is controlled by the catalog runtime.
+   No product/filter/event/navigation logic is replaced. */
+@media (min-width: 1024px) {
+  /* In the normal landing view, the search floats over the actual hero
+     instead of painting a white rectangular strip on its sides. */
+  #updown-store.uds-preview .uds-discovery {
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  #updown-store.uds-preview:not(.uds-search-focus) .uds-discovery-card {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  /* Stage 7 moves Services after Novedades and BEFORE the catalog.
+     It must also disappear during focused search, otherwise the browser
+     scrolls into Services instead of immediately showing product results. */
+  #updown-store.uds-preview.uds-search-focus .uds-hero,
+  #updown-store.uds-preview.uds-search-focus #udsCategories,
+  #updown-store.uds-preview.uds-search-focus .uds-brands-section,
+  #updown-store.uds-preview.uds-search-focus #udsNew,
+  #updown-store.uds-preview.uds-search-focus #udsServices,
+  #updown-store.uds-preview.uds-search-focus .uds-advisor-meta {
+    display: none !important;
+  }
+
+  /* The original header stays on top. The search is the second sticky
+     tier; its top offset is measured from the existing header element. */
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus .uds-discovery {
+    position: sticky !important;
+    top: var(--pw-preview-header-height, 80px) !important;
+    z-index: 390 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    scroll-margin-top: var(--pw-preview-header-height, 80px) !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus .uds-discovery-card {
+    max-width: 1120px !important;
+    border: 1px solid #dce7df !important;
+    border-radius: 16px !important;
+    box-shadow: 0 5px 18px rgba(18,61,50,.05) !important;
+    background: #ffffff !important;
+  }
+  /* Keep the top of the collection adjacent to the sticky search. */
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog {
+    margin-top: 0 !important;
+    padding-top: 42px !important;
+    scroll-margin-top: calc(var(--pw-preview-header-height, 80px) + var(--pw-preview-search-height, 145px) + 20px) !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3.uds-search-focus #udsCatalog .uds-section-head {
+    margin-top: 0 !important;
+    /* Reserve breathing room below the fixed search tier for BOTH the
+       collection title and its right-hand description, not just the section. */
+    padding-top: 34px !important;
+  }
+  /* Avoid browser scroll anchoring when hero and editorial bands collapse. */
+  #updown-store.uds-preview.uds-search-focus main {
+    overflow-anchor: none !important;
+  }
+}
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  #updown-store.uds-preview.uds-search-focus .uds-discovery {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* PW-UX-07 · Approved green-velvet artwork on photo-less PRODUCT cards only.
+ * The real image remains untouched; this class is assigned only when an image
+ * is absent or its URL fails. No effect on category tiles or service photos.
+ */
+#updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder {
+  /* Match the original green canvas around this 3:2 canonical artwork. */
+  background: #032d10 !important;
+}
+#updown-store.uds-preview.uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder img,
+#updown-store.uds-preview.uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  /* Never crop the canonical flag, lettering or embossed marks. */
+  object-fit: contain !important;
+  object-position: center !important;
+  padding: 0 !important;
+}
+
+/* PW-UX-08 · More brand presence, unchanged header height.
+ * Scoped to Premium White only. Desktop and native mobile use the
+ * original SVG geometry; only its display dimensions and wordmark grow.
+ * Header, menu, search, cart, language and service hit targets are intact.
+ */
+@media (min-width: 1211px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(246px, 266px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo { gap: 9px !important; }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 82px !important; max-width: 82px !important;
+    height: 43px !important; flex: 0 0 82px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: clamp(17.5px, 1.48vw, 20px) !important;
+    line-height: 1.05 !important; letter-spacing: .032em !important;
+  }
+}
+@media (min-width: 1380px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(280px, 298px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 92px !important; max-width: 92px !important;
+    height: 46px !important; flex: 0 0 92px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: 22px !important;
+  }
+}
+@media (min-width: 1024px) and (max-width: 1210px) {
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-topbar {
+    grid-template-columns: minmax(172px, 198px) minmax(0, 1fr) auto !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo { gap: 6px !important; }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo .uds-original-vector-logo {
+    width: 58px !important; max-width: 58px !important;
+    height: 38px !important; flex: 0 0 58px !important;
+  }
+  #updown-store.uds-preview.uds-ux-v3 .uds-header .uds-logo-copy strong {
+    font-size: 13.5px !important; line-height: 1.05 !important;
+    letter-spacing: .015em !important;
+  }
+}
+@media (min-width: 390px) and (max-width: 1023px) {
+  .uds-native-mobile-header.uds-preview-mobile-header {
+    padding-inline: 9px !important; gap: 4px !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo {
+    min-width: 0 !important; gap: 4px !important; flex: 0 1 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo > svg {
+    width: clamp(32px, 8.5vw, 44px) !important;
+    height: 30px !important; flex: 0 0 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-wordmark {
+    font-size: clamp(12px, 3.18vw, 16px) !important;
+    line-height: 1 !important; letter-spacing: .015em !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-actions {
+    gap: 3px !important; flex: 0 0 auto !important;
+  }
+}
+@media (max-width: 389px) {
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo {
+    gap: 6px !important; justify-content: center !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-logo > svg {
+    width: 42px !important; height: 28px !important;
+    flex: 0 0 auto !important;
+  }
+  .uds-native-mobile-header.uds-preview-mobile-header .uds-native-mobile-wordmark {
+    font-size: 17px !important; line-height: 1 !important;
+    letter-spacing: .025em !important;
+  }
+}
