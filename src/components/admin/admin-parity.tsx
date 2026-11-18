@@ -15,6 +15,8 @@ declare global {
 }
 
 type BootState = "loading" | "ready" | "error";
+// Preserve the DOM mutated by the ten legacy runtimes across React state updates.
+const ADMIN_MARKUP = { __html: adminLegacyMarkup };
 
 
 /**
@@ -117,7 +119,7 @@ export default function AdminParity() {
         className="ud-admin-legacy"
         data-admin-ready={bootState === "ready" ? "true" : "false"}
         aria-hidden={bootState !== "ready"}
-        dangerouslySetInnerHTML={{ __html: adminLegacyMarkup }}
+        dangerouslySetInnerHTML={ADMIN_MARKUP}
       />
     </div>
   );

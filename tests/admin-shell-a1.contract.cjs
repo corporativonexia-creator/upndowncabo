@@ -19,6 +19,8 @@ test("A1 waits for legacy admin and all mounted tabs before revealing it", () =>
   }
   assert.match(file, /data-admin-ready=\{bootState === "ready" \? "true" : "false"\}/);
   assert.match(file, /installAdminSidebar\(\)/);
+  assert.match(file, /const ADMIN_MARKUP = \{ __html: adminLegacyMarkup \}/);
+  assert.match(file, /dangerouslySetInnerHTML=\{ADMIN_MARKUP\}/);
 });
 
 test("A1 does not display legacy DOM during initialization", () => {
