@@ -33,5 +33,5 @@ test("A3 preserves isolation and does not introduce data-layer or deployment edi
   assert.equal(JSON.parse(read("vercel.json")).git.deploymentEnabled, false);
   const tabs = read("public/updown-product-tabs-v1.js");
   assert.doesNotMatch(tabs, /supabase|\.rpc\(|\.from\(|fetch\(/);
-  assert.match(read("public/updown-product-smart-entry-v1.js"), /data-product-capture-link/);
+  assert.match(read("public/updown-product-smart-entry-v1.js"), /data-product-capture-link=""/);
 });

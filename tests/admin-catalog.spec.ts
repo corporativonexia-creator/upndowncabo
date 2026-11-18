@@ -154,7 +154,7 @@ test('A3 capture lives inside Productos, mounts lazily and preserves unsaved inp
   await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
   await expect(host.locator('input[placeholder="Ej. Polo Nike Dri-FIT"]')).toHaveValue('Borrador local sin guardar');
   const events=await (await request.get(`${fixture}/__events`)).json();
-  expect(events.filter((e:{method:string,path:string})=>e.method!=='GET'&&
+  expect(events.filter((e:{method:string,path:string})=>['POST','PUT','PATCH','DELETE'].includes(e.method)&&
     (/\/rest\/v1\/(products|product_variants|inventory_movements)/.test(e.path)||
       /\/rpc\/admin_quick_/.test(e.path)||/\/storage\/v1\/object\//.test(e.path)))).toHaveLength(0);
 });

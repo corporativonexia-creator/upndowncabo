@@ -59,5 +59,7 @@ Estado: **A3.1 en preparación/QA local, NO completa la retirada de Alta rápida
 
 **Nota de entorno:** la verificación estática y el build local fueron correctos; Chromium del ejecutor local no arrancó (`socket() failed: Operation not permitted`), por lo que la matriz de navegador debe confirmarse en GitHub Actions (runner Ubuntu aislado con Chromium instalado). Este bloqueo no constituye un fallo funcional de la aplicación ni un resultado PASS de navegador.
 
+**QA de CI del commit inicial `cb15071`:** navegador NO GO (14/17) por dos causas localizadas. Un enlace con atributo `data-*` sin valor explícito no era igual a su serialización `innerHTML` y realimentaba el observador del formulario de ropa; se normalizó a `data-product-capture-link=""`. El contrato nuevo también confundía `HEAD` de conteo con mutaciones; se corrigió para prohibir específicamente `POST`, `PUT`, `PATCH` y `DELETE`. Ambas correcciones requieren nueva validación de Chromium antes de declarar GO.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

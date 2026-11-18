@@ -28,7 +28,9 @@ function installSizeGuidance(){
   const display=visible?"block":"none";
   if(helper.style.display!==display)helper.style.display=display;
   if(visible){
-    const message=(shoes?"Calzado: tallas numéricas MX (22 a 32).":"Ropa: tallas XS, S, M, L, XL, XXL y Unitalla.")+' Para registrar existencias independientes por talla, abre <a href="#udUnifiedProductHost" data-product-capture-link style="color:#143e35;text-decoration:underline">Nueva ficha</a> y el botón Agregar variante. Elige una talla por variante.';
+    // Keep the empty attribute explicit: innerHTML serializes bare data-* attrs as ="".
+    // A mismatch would cause the global childList observer to loop forever.
+    const message=(shoes?"Calzado: tallas numéricas MX (22 a 32).":"Ropa: tallas XS, S, M, L, XL, XXL y Unitalla.")+' Para registrar existencias independientes por talla, abre <a href="#udUnifiedProductHost" data-product-capture-link="" style="color:#143e35;text-decoration:underline">Nueva ficha</a> y el botón Agregar variante. Elige una talla por variante.';
     // Updating innerHTML unconditionally retriggers the global MutationObserver,
     // causing an infinite synchronous microtask loop that freezes the admin page.
     if(helper.innerHTML!==message)helper.innerHTML=message;
