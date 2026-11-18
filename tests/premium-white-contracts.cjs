@@ -366,5 +366,69 @@ test("catalog view controls and copy-ready callbacks are owned by the current ru
   assert.match(files.runtime, /const onCopyReady=\(\)=>\{if\(parityIsCurrent\(\)\)applyLanguage\(currentLanguage\)\}/);
 });
 
+
+test("late catalog and campaign responses cannot mutate a newer storefront", async () => {
+  const campaignStart = files.runtime.indexOf("  async function refreshCampaignsForCheckout(){");
+  const loadStart = files.runtime.indexOf("  async function loadStore(){");
+  const nextStart = files.runtime.indexOf("  function syncCatalogFiltersToMaster(){", loadStart);
+  assert.ok(campaignStart > 0 && campaignStart < loadStart && nextStart > loadStart);
+  const create = new Function("deps", [
+    "const {parityIsCurrent,db,restoreCatalogCache,el,currentLanguage,PREVIEW_CATALOG,timeoutSignal}=deps;",
+    "let categories=[],products=[],storefrontPromotions=[];",
+    "const state=deps.state;",
+    "const renderCatalogState=()=>state.renders++;",
+    "const saveCatalogCache=()=>state.caches++;",
+    "const revealCatalog=()=>state.reveals++;",
+    "const reconcileCart=()=>{state.carts++;return Promise.resolve()};",
+    "const expandPublicVariants=p=>p;",
+    "const applyStorefrontPromotions=p=>p;",
+    files.runtime.slice(campaignStart, nextStart),
+    "return {loadStore,refreshCampaignsForCheckout};"
+  ].join("\n"));
+  let active = true;
+  let resolveCategories;
+  const pendingCategories = new Promise(resolve => { resolveCategories = resolve; });
+  const query = name => ({
+    select() { return this; }, eq() { return this; },
+    order() { return this; }, range() { return this; },
+    abortSignal() {
+      return name === "categories" ? pendingCategories : Promise.resolve({data:[],error:null});
+    }
+  });
+  const state = { renders:0, caches:0, reveals:0, carts:0 };
+  const deps = {
+    parityIsCurrent: () => active,
+    db: { from:query, rpc:() => ({abortSignal:() => Promise.resolve({data:[],error:null})}) },
+    restoreCatalogCache: () => true, el: () => null,
+    currentLanguage: "es", PREVIEW_CATALOG: false,
+    timeoutSignal: () => undefined, state
+  };
+  const subject = create(deps);
+  const oldCatalog = subject.loadStore();
+  active = false;
+  resolveCategories({data:[],error:null});
+  await oldCatalog;
+  assert.deepEqual(state, {renders:0,caches:0,reveals:0,carts:0},
+    "A stale catalog request must not change a new catalog/cache/cart");
+
+  let resolvePromotion;
+  const pendingPromotion = new Promise(resolve => { resolvePromotion = resolve; });
+  active = true;
+  deps.db.rpc = () => ({abortSignal:() => pendingPromotion});
+  const oldPromotion = subject.refreshCampaignsForCheckout();
+  active = false;
+  resolvePromotion({data:[],error:null});
+  await oldPromotion;
+  assert.equal(state.renders, 0, "A stale promotion request must not render");
+
+  active = true;
+  deps.db.rpc = () => ({abortSignal:() => Promise.resolve({data:[],error:null})});
+  await subject.loadStore();
+  assert.deepEqual(state, {renders:1,caches:1,reveals:1,carts:1},
+    "The current runtime must still render, cache and reconcile normally");
+  await subject.refreshCampaignsForCheckout();
+  assert.equal(state.renders, 2, "A current promotion request must still refresh");
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
