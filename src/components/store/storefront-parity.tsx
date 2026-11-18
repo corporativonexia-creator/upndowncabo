@@ -121,15 +121,15 @@ function installCoursePagination() {
 
 const storefrontMarkupWithoutAnnouncement = legacyHomeMarkup.replace(/\s*<div class="uds-announcement">[\s\S]*?<\/div>\s*/, "\n");
 
-// Only the admin-only /vista-previa route receives this navigation item.
+// Premium White presents the same VS Golf shortcut in both storefront and protected preview.
 const previewVsGolfLink = `<a class="uds-nav-vs-icon" href="${VS_GOLF_INSTAGRAM}" target="_blank" rel="noopener noreferrer" aria-label="VS GOLF en Instagram" title="VS GOLF · Instagram"><img src="${VS_GOLF_LOGO}" alt="VS GOLF" loading="eager" /></a>`;
-const previewStorefrontMarkup = storefrontMarkupWithoutAnnouncement.replace(
+const premiumStorefrontMarkup = storefrontMarkupWithoutAnnouncement.replace(
   '<a class="uds-nav-link" data-nav-key="classes"',
   `${previewVsGolfLink}<a class="uds-nav-link" data-nav-key="classes"`,
 );
 
 function SharedLegacyStorefront({ previewMode }: { previewMode: boolean }) {
-  return <div id="updown-store" className={`updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3${previewMode ? " uds-preview" : ""}`} data-migration-phase="2B-UX3" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: previewMode ? previewStorefrontMarkup : storefrontMarkupWithoutAnnouncement }} />;
+  return <div id="updown-store" className={`updown-next-parity uds-ux-v1 uds-ux-v2 uds-ux-v3 uds-premium-white${previewMode ? " uds-preview" : ""}`} data-migration-phase="2B-UX3" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: premiumStorefrontMarkup }} />;
 }
 
 export default function StorefrontParity({ previewMode = false }: { previewMode?: boolean }) {
@@ -218,14 +218,17 @@ export default function StorefrontParity({ previewMode = false }: { previewMode?
       window.__UPDOWN_PARITY_BOOTED__ = true;
       if (root) { repairStoreText(root); if (deviceMode === "desktop") restoreDesktopCart(root); }
       stopCoursePagination = installCoursePagination();
-      // Stage 7 runs only in the protected preview and never alters managed DB rows.
-      if (previewMode) {
+      // DB-led services layout is visual-only and shared across storefronts.
+      // Location Stage 8 is still private and remains preview-only.
+      {
         previewServicesScript = document.createElement("script");
-        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116";
+        previewServicesScript.src = "/updown-preview-services-stage7.js?v=services-premium-shared-v5-20261117";
         previewServicesScript.dataset.updownPreviewServices = "stage7";
         previewServicesScript.async = false;
         previewServicesScript.onerror = () => console.error("UP AND DOWN: no se pudo cargar Servicios · Etapa 7.");
         document.body.appendChild(previewServicesScript);
+      }
+      if (previewMode) {
         previewLocationScript = document.createElement("script");
         previewLocationScript.src = "/updown-preview-location-stage8.js?v=location-stage8-v3-directions-20261108";
         previewLocationScript.dataset.updownPreviewLocation = "stage8";
