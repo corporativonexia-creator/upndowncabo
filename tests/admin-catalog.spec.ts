@@ -138,6 +138,37 @@ test('mobile catalog can filter and open the product editor',async({page})=>{
   await expect(page.locator('#udName')).toHaveValue('Driver');await expect(page.locator('#udOnlineVisible')).toHaveValue('online');
 });
 
+test('A3 capture lives inside Productos, mounts lazily and preserves unsaved inputs across tabs',async({page,request})=>{
+  await login(page);await ready(page);
+  const host=page.locator('#udUnifiedProductHost');
+  await expect(host).toBeHidden();
+  await expect(page.locator('#quick-barcode')).toHaveCount(0);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Nueva ficha de producto'})).toBeVisible();
+  await expect(page.locator('#quick-barcode')).toBeVisible();
+  await expect(page.getByRole('button',{name:'▣ Escanear con cámara'})).toBeVisible();
+  await expect(host.locator('input[type=file][capture=environment]').first()).toHaveAttribute('accept',/heic/);
+  await host.locator('input[placeholder="Ej. Polo Nike Dri-FIT"]').fill('Borrador local sin guardar');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();
+  await expect(host).toBeHidden();
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  await expect(host.locator('input[placeholder="Ej. Polo Nike Dri-FIT"]')).toHaveValue('Borrador local sin guardar');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>e.method!=='GET'&&
+    (/\/rest\/v1\/(products|product_variants|inventory_movements)/.test(e.path)||
+      /\/rpc\/admin_quick_/.test(e.path)||/\/storage\/v1\/object\//.test(e.path)))).toHaveLength(0);
+});
+
+test('A3 catalog edit still uses original full editor',async({page})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();
+  await card(page,'p1').locator('.ud-edit').click();
+  await expect(page.locator('#udName')).toHaveValue('Polo clásico');
+  await expect(page.locator('#udProductWorkspaceTabs button[data-view="form"]')).toHaveClass(/is-active/);
+  await expect(page.locator('#udUnifiedProductHost')).toBeHidden();
+});
+
 
 test('variant deletion confirms, preserves cancellation and removes only empty unlinked variant',async({page,request})=>{
   await configure(request,{zeroStock:true});await login(page);await ready(page);

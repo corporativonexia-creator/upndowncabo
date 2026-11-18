@@ -89,7 +89,7 @@ function BarcodeCamera({ onCode, onClose }: { onCode: (code: string) => void; on
   return <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="scanner-title"><section className={styles.camera}><header><h2 id="scanner-title">Escanear código</h2><button type="button" autoFocus onClick={onClose} aria-label="Cerrar cámara">✕</button></header><video ref={video} muted playsInline autoPlay /><p role={error ? "alert" : undefined}>{error || "Centra el código en la cámara. Se capturará automáticamente."}</p><button type="button" onClick={onClose}>Escribir código manualmente</button></section></div>;
 }
 
-export default function QuickProductEntry() {
+export default function QuickProductEntry({ embedded = false }: { embedded?: boolean }) {
   const db = useMemo(() => createClient(), []);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ready, setReady] = useState(false);
@@ -263,6 +263,7 @@ export default function QuickProductEntry() {
         .select("id").single();
       if (visibilityError) throw visibilityError;
       setSuccess(`✓ ${data.name} registrado como borrador · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
+      window.dispatchEvent(new Event("updown:admin-products-refresh"));
       setCount(n => n + 1); clearProduct(); void refreshCounts();
     } catch (e) { setError(friendly(e)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -277,6 +278,7 @@ export default function QuickProductEntry() {
       const { data, error } = await db.rpc("admin_quick_inventory_receive", { p_request_id: request.request, p_variant_id: request.variant, p_quantity: request.quantity, p_reason: request.reason });
       if (error) { if (error.code && !error.code.startsWith("PGRST")) { receiveRef.current = null; setPending(false); } throw error; }
       setSuccess(`✓ Entrada registrada: ${match.product_name} · ${match.variant_title} · ${data.stock_before} → ${data.stock_after} piezas.`);
+      window.dispatchEvent(new Event("updown:admin-products-refresh"));
       receiveRef.current = null; setPending(false); changeCode(""); setReceiving("1"); requestAnimationFrame(() => codeInput.current?.focus());
     } catch (e) { setError(friendly(e)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -288,9 +290,9 @@ export default function QuickProductEntry() {
     setVariants(previous => previous.length ? previous : [freshVariant()]);
   }
 
-  return <main className={styles.page}><div className={styles.wrap}>
-    <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>
-    <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / CAPTURA MÓVIL</div><h1>Alta rápida</h1><p>Captura mercancía y continúa con el siguiente artículo.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
+  return <main className={`${styles.page}${embedded ? ` ${styles.embedded}` : ""}`}><div className={styles.wrap}>
+    {!embedded && <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>}
+    <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / CAPTURA</div><h1>{embedded ? "Nueva ficha de producto" : "Alta rápida"}</h1><p>Escanea, registra fotografías, prepara variantes y continúa con el siguiente artículo.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
     <div className={styles.notice}><b>Borrador por default</b><span>Disponible en Productos e Inventario. Completa la ficha desde el catálogo para publicarlo.</span></div>
     {success && <div className={styles.success} role="status">{success}</div>}
     {error && <div className={styles.error} role="alert">{error}</div>}
@@ -331,7 +333,7 @@ export default function QuickProductEntry() {
       </fieldset>
       <div className={styles.saveBar}><span>Estado al guardar: <b>BORRADOR</b></span><button className={styles.primary} type="submit" disabled={busy || processing || checking || !ready}>{busy ? "Guardando…" : pending ? "Reintentar guardado" : "Guardar + siguiente producto"}</button><small>Conservamos categoría y precio para la siguiente captura.</small></div>
     </form>}
-    <footer className={styles.footer}><Link href="/admin">← Volver al catálogo / Alta completa</Link></footer>
+    {!embedded && <footer className={styles.footer}><Link href="/admin">← Volver al catálogo / Alta completa</Link></footer>}
     {scanner && <BarcodeCamera onClose={() => setScanner(null)} onCode={code => { if (scanner === "main") { changeCode(code); void lookup(code).catch(() => {}); } else updateVariant(scanner, { barcode: code }); setScanner(null); }} />}
   </div></main>;
 }

@@ -1986,6 +1986,8 @@
   }
 
   el("udProductsTab").onclick=()=>switchAdminView("products");
+  // A3: refresh the legacy catalog only after the shared capture confirms a save.
+  window.addEventListener("updown:admin-products-refresh",loadProducts);
   el("udOrdersTab").onclick=()=>switchAdminView("orders");
   el("udRefreshOrders").onclick=loadOrders;
   el("udOrderSearch").addEventListener("input",renderOrders);

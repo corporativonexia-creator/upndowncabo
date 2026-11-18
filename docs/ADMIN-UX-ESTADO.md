@@ -22,5 +22,42 @@ Prohibido modificar valores, precios, SKUs, UPCs, existencias, variantes, ventas
 - Conservar todas las herramientas heredadas hasta que cada función tenga sustituto y pruebas.
 - Antes de PR: lint, typecheck, Next build, contratos de ADMIN/POS y matriz Playwright aislada. Sin despliegues automáticos de candidata.
 
+## A3 · Primera consolidación reversible (18 noviembre 2026)
+
+Estado: **A3.1 en preparación/QA local, NO completa la retirada de Alta rápida**.
+
+- Se incorpora `Nueva ficha` en Productos mediante un portal React dentro de `udProductsView`. Se reutiliza `QuickProductEntry` sin copiar su motor de escritura, escáner ZXing, conversión HEIC, capturas de cámara, reconocimiento por código, imágenes por variante y RPCs existentes.
+- La ficha se monta **sólo al abrirla**, por lo que no agrega consultas ni dependencias al arranque normal. Una vez montada, se conserva al alternar Catálogo/Editor completo para no perder datos locales sin guardar.
+- `Editor completo` conserva intacto el formulario histórico y su edición avanzada. Los enlaces de orientación de talla en dicho formulario ahora abren la captura integrada.
+- El catálogo se refresca por un evento local únicamente tras un guardado o entrada confirmados, sin alterar el RPC, el payload, los precios ni la política de inventario.
+- La ruta `/admin/productos/alta-rapida` se conserva temporalmente como respaldo, y `AdminSectionNav` también. No se eliminó ni sustituyó funcionalidad comercial.
+
+### Brecha de paridad antes de retirar Alta rápida y el formulario de creación anterior
+
+| Capacidad | Captura integrada | Editor completo heredado | Próxima decisión técnica |
+| --- | --- | --- | --- |
+| UPC manual, cámara, búsqueda de coincidencias | Sí | Parcial (entrada manual) | Unificar búsqueda en ficha |
+| Foto móvil, galería, HEIC | Sí | Sí, otro adaptador | Consolidar canal de fotografías en A4 |
+| Variantes con fotografía y existencia inicial | Sí (creación) | Sí (edición posterior) | Diseñar edición completa sin duplicar escritura |
+| Marca, modelo, condición, especificaciones golf | Todavía no | Sí | Migrar campos sin cambiar el contrato de guardado |
+| Descripciones ES/EN, oferta, destacado, novedades | Todavía no | Sí | Conservar paridad completa antes de retirada |
+| Crear borrador con RPC idempotente | Sí | No (inserción directa) | Definir flujo único con rollback real de UI |
+| Editar producto y galería histórica | No | Sí | Conservar editor hasta migración verificada |
+
+### Riesgos y límites descubiertos
+
+1. `updown-product-heic-inventory-hotfix.js` incluye `syncMissingInventoryVariants()` y lo ejecuta al inicio; puede crear variantes y movimientos mediante RPCs aun sin interacción explícita. **Comportamiento preexistente**, no alterado en A3. No ejecutar QA contra el Supabase real. Auditar y obtener autorización específica antes de cambiar el mecanismo de sincronización.
+2. `next_internal_barcode` consume un identificador; no ejecutarlo en tests contra backend compartido.
+3. La captura rápida y el formulario completo realizan escrituras distintas; combinar payloads sin migrar y probar el contrato puede cambiar precio, stock, código o visibilidad. Mantener ambos motores intactos en A3.1.
+4. La creación rápida conserva estado `draft` y requiere completar su ficha desde el catálogo. No prometer publicación automática.
+
+### QA exigido para A3.1
+
+`node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs`;
+`npm run check:admin-scripts`; `npm run lint`; `npx tsc --noEmit`;
+`npm run build`; `npm run test:admin` con fixture local y sin red a producción.
+
+**Nota de entorno:** la verificación estática y el build local fueron correctos; Chromium del ejecutor local no arrancó (`socket() failed: Operation not permitted`), por lo que la matriz de navegador debe confirmarse en GitHub Actions (runner Ubuntu aislado con Chromium instalado). Este bloqueo no constituye un fallo funcional de la aplicación ni un resultado PASS de navegador.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

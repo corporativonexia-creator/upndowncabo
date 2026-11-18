@@ -1,4 +1,4 @@
-name: Admin Premium White A0-A2 candidate QA
+name: Admin Premium White A0-A3 candidate QA
 
 on:
   push:
@@ -27,8 +27,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: A0-A2 guard contracts
-        run: node --test tests/admin-shell-a1.contract.cjs
+      - name: A0-A3 guard contracts
+        run: node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs
       - name: Legacy runtime syntax contract
         run: npm run check:admin-scripts
       - name: Lint

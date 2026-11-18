@@ -25,6 +25,7 @@
   .ud-admin-splash .ud-admin-splash-icon { animation: none; }
 }
 /* These selectors intentionally outrank the inline legacy style tag. */
+#udUnifiedProductHost[hidden] { display: none !important; }
 #updown-admin.ud-premium-white {
   --ivory: #fff; --green: #123d32; --green2: #2f7058;
   --gold: #b7de45; --ink: #22372e; --muted: #64746b;

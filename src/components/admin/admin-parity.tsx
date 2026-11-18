@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { adminLegacyMarkup } from "./admin-legacy-markup";
 import { installAdminSidebar } from "./install-admin-sidebar";
+import QuickProductEntry from "./quick-product-entry";
 
 declare global {
   interface Window {
@@ -27,6 +29,8 @@ export default function AdminParity() {
   const startup = useRef<Promise<void> | null>(null);
   const [bootState, setBootState] = useState<BootState>("loading");
   const [bootError, setBootError] = useState("");
+  const [productHost, setProductHost] = useState<HTMLElement | null>(null);
+  const [captureVisited, setCaptureVisited] = useState(false);
 
   useEffect(() => {
     let attached = true;
@@ -103,6 +107,23 @@ export default function AdminParity() {
     return () => { attached = false; };
   }, []);
 
+  useEffect(() => {
+    if (bootState !== "ready") return;
+    const host = document.getElementById("udUnifiedProductHost");
+    if (!host) return;
+    // The existing admin DOM is owned by the legacy runtime. A portal inserts
+    // the reusable React capture without replacing handlers or form nodes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Host is created by the legacy script before bootState becomes ready.
+    setProductHost(host);
+    const onView = (event: Event) => {
+      if ((event as CustomEvent<{ view: string }>).detail?.view === "capture") {
+        setCaptureVisited(true);
+      }
+    };
+    window.addEventListener("updown:admin-product-view", onView);
+    return () => window.removeEventListener("updown:admin-product-view", onView);
+  }, [bootState]);
+
   return (
     <div className="ud-admin-boot">
       {bootState !== "ready" && (
@@ -121,6 +142,7 @@ export default function AdminParity() {
         aria-hidden={bootState !== "ready"}
         dangerouslySetInnerHTML={ADMIN_MARKUP}
       />
+      {productHost && captureVisited && createPortal(<QuickProductEntry embedded />, productHost)}
     </div>
   );
 }
