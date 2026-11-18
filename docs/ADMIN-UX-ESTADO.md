@@ -184,5 +184,15 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **QA A3.9:** código probado en commit `d02642489d2e7e82896cecb4581bac4605f0edf8`, [GitHub Actions #44414185756](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44414185756) **SUCCESS**: Chromium **31/31** (cuatro casos A3.9 nuevos), contratos **11/11**, generador SKU PGlite **7/7**, SKU PostgreSQL con sesiones independientes **2/2**, propuesta galería PostgreSQL aislado **5/5**, diez scripts heredados con sintaxis válida, TypeScript y build PASS, ESLint 0 errores / 9 advertencias preexistentes. Simulación positiva de comportamiento y fallos: **no representa una comprobación de permisos reales ni de conversión HEIC en iOS.** Vercel: cero despliegues de la candidata.
 
+### A4.1 · Captura de fotos por UPC o nombre, dentro de la ficha única
+
+- La ficha ya localizaba un UPC mediante cámara, lector o captura manual y reutilizaba la misma carga de fotos. **A4.1 agrega una búsqueda de solo lectura por nombre o UPC**, con espera breve al escribir y un máximo de diez resultados. No se añade otra alta ni otro cargador de imágenes.
+- **Ajuste expreso del administrador:** el SKU **no se utiliza para buscar**. Sigue visible únicamente como referencia interna de cada resultado, si existe, para ayudar a distinguir productos con nombres parecidos. La máscara SKU, los códigos registrados y el algoritmo de generación no se tocan.
+- El operador debe **seleccionar expresamente** el producto encontrado antes de tomar/elegir fotos. El panel muestra su nombre y UPC, oculta temporalmente el formulario de nueva alta y ofrece «Cambiar producto»; los errores de búsqueda no crean ni modifican productos.
+- La selección por nombre/UPC pasa al **mismo `attachExistingPhotos()` de A3.3/A3.9**: ruta UUID exclusiva de la solicitud, comprobación de diez imágenes, galería aditiva, reintentos sin sobrescritura y asociación al ID del producto. Para UPC de variante se mantiene la asociación al padre.
+- El filtro está restringido a letras, números, espacios y guiones, con longitud acotada; consulta directamente `products` bajo la sesión actual, sin claves privilegiadas, cambios a RLS ni escrituras. **Validar permisos SELECT y tiempos de búsqueda en staging no productivo antes de release.**
+
+**Puertas A4.1 que continúan abiertas:** comprobación en iPhone de cámara y HEIC auténtico, permisos efectivos de catálogo/galería/Storage en staging aislado y auditoría de la galería heredada ante edición explícita. No tocar datos comerciales reales, Supabase alojado ni `main`.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

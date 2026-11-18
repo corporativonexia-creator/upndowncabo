@@ -87,3 +87,20 @@ test("A3.8 metadata-only edits cannot silently rewrite existing galleries", () =
   assert.match(proposal, /pg_advisory_xact_lock/);
   assert.match(proposal, /revoke all on function public\.admin_append_upc_photos_atomic/);
 });
+
+test("A4 catalog photo lookup is read-only and reuses UPC photo attachment", () => {
+  const quick = read("src/components/admin/quick-product-entry.tsx");
+  const lookup = quick.split("function searchPhotoProducts(")[1]?.split("function selectPhotoProduct(")[0];
+  assert.ok(lookup, "Missing shared product search");
+  assert.match(lookup, /db\.from\("products"\)\.select\("id,name,sku,barcode,status"\)/);
+  assert.match(lookup, /name\.ilike/);
+  assert.match(lookup, /barcode\.ilike/);
+  assert.doesNotMatch(lookup, /sku\.ilike/);
+  assert.match(lookup, /\.limit\(10\)/);
+  assert.doesNotMatch(lookup, /\.insert\(|\.update\(|\.delete\(|db\.rpc\(/);
+  assert.match(quick, /const photoTarget = match \?/);
+  assert.match(quick, /const photoUploadSection = embedded && photoTarget/);
+  assert.match(quick, /productId: photoTarget\.productId/);
+  assert.match(quick, /Guardar ficha completa/);
+  assert.equal((quick.match(/async function attachExistingPhotos\(\)/g)||[]).length,1);
+});

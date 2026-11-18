@@ -47,6 +47,14 @@ http.createServer(async(req,res)=>{
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
     if(req.method==='PATCH'){if(options.metadataError&&body.brand)return send({message:'Fixture metadata save failure',code:'FIXTURE'},503);const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
+    const photoFilter=url.searchParams.get('or');
+    if(photoFilter){
+      if(options.photoSearchDelay)await new Promise(r=>setTimeout(r,options.photoSearchDelay));
+      if(options.photoSearchError)return send({message:'Fixture catalog SELECT denied by RLS',code:'42501'},403);
+      const clauses=photoFilter.replace(/^\(|\)$/g,'').split(',').map(part=>part.match(/^(name|barcode)\.ilike\.%(.+)%$/));
+      const matching=products.filter(p=>clauses.some(clause=>clause&&String(p[clause[1]]||'').toLocaleLowerCase('es').includes(clause[2].toLocaleLowerCase('es'))));
+      return send(matching.slice(0,Math.min(10,Number(url.searchParams.get('limit'))||10)));
+    }
     return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
   }
   if(url.pathname==='/rest/v1/product_images'){

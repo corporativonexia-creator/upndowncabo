@@ -8,6 +8,7 @@ import styles from "./quick-product-entry.module.css";
 
 type Category = { id: string; name: string; variant_schema: string[] };
 type Match = { product_id: string; product_name: string; variant_id: string | null; variant_title: string; sku: string; barcode: string; stock: number; price: number; status: string };
+type PhotoCandidate = { id: string; name: string; sku: string | null; barcode: string | null; status: string | null };
 type Photo = { id: string; file: File; url: string; uploaded?: string };
 type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string>; photo?: Photo | null };
 type AdvancedDraft = Partial<{
@@ -20,6 +21,9 @@ type AdvancedDraft = Partial<{
 type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[]; advanced: AdvancedDraft };
 const labels: Record<string, string> = { talla: "Talla", color: "Color", genero: "Género", mano: "Mano", loft: "Loft", flex: "Flex", longitud: "Longitud" };
 const money = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+// PostgREST .or() accepts filter expressions, not a parameterized query AST.
+// Restrict the free-text fragment to ordinary letters/numbers before building it.
+const photoSearchTerm = (value: string) => value.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 70);
 const freshVariant = (): Variant => ({ id: crypto.randomUUID(), title: "", barcode: "", quantity: "0", attributes: {} });
 const apparelSizes = ["XS", "S", "M", "L", "XL", "XXL", "Unitalla", ...Array.from({ length: 51 }, (_, index) => String(index))];
 const genderOptions = ["Niño", "Niña", "Hombre", "Mujer", "Unisex"] as const;
@@ -142,6 +146,13 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const photoRequestRef = useRef<{ request: string; productId: string; photos: Photo[] } | null>(null);
   const variantsRef = useRef<Variant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]); const [match, setMatch] = useState<Match | null>(null);
+  const [photoQuery, setPhotoQuery] = useState("");
+  const [photoCandidates, setPhotoCandidates] = useState<PhotoCandidate[]>([]);
+  const [selectedPhotoProduct, setSelectedPhotoProduct] = useState<PhotoCandidate | null>(null);
+  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  const [photoSearchError, setPhotoSearchError] = useState("");
+  const photoSearchVersion = useRef(0);
+  const photoSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [receiving, setReceiving] = useState("1"); const [reason, setReason] = useState("Entrada desde alta rápida móvil");
   const [busy, setBusy] = useState(false); const [processing, setProcessing] = useState(false); const [checking, setChecking] = useState(false);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [count, setCount] = useState(0);
@@ -156,6 +167,8 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const sizeType = categorySizeType(selectedCategory?.name || "");
   const variantFields = sizeType && !fields.includes("talla") ? ["talla", ...fields] : fields;
   const locked = busy || processing || pending;
+  const photoTarget = match ? { productId: match.product_id, productName: match.product_name, label: `UPC ${barcode}` } :
+    selectedPhotoProduct ? { productId: selectedPhotoProduct.id, productName: selectedPhotoProduct.name, label: `SKU ${selectedPhotoProduct.sku || "sin SKU"}` } : null;
   const updateAdvanced = <K extends keyof AdvancedDraft>(field: K, value: AdvancedDraft[K]) => setAdvanced(current => ({ ...current, [field]: value }));
   const advancedCount = Object.values(advanced).filter(value => value !== "" && value !== undefined).length;
 
@@ -184,6 +197,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   useEffect(() => { variantsRef.current = variants; }, [variants]);
   useEffect(() => { existingPhotosRef.current = existingPhotos; }, [existingPhotos]);
   useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
+  useEffect(() => () => { ++photoSearchVersion.current; if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current); }, []);
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || existingPhotosRef.current.length || captureRef.current || photoRequestRef.current || receiveRef.current) { e.preventDefault(); e.returnValue = ""; } };
     window.addEventListener("beforeunload", handler);
@@ -204,7 +218,41 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     } catch (e) { if (version === lookupVersion.current) setError(friendly(e)); throw e; }
     finally { if (version === lookupVersion.current) setChecking(false); }
   }
-  function changeCode(value: string) { ++lookupVersion.current; setBarcode(value); setMatch(null); setMatches([]); setChecking(false); photoRequestRef.current = null; existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url)); existingPhotosRef.current = []; setExistingPhotos([]); }
+  function changeCode(value: string) {
+    ++lookupVersion.current;
+    ++photoSearchVersion.current;
+    if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current);
+    setPhotoQuery(""); setPhotoCandidates([]); setPhotoSearchBusy(false); setPhotoSearchError("");
+    setSelectedPhotoProduct(null);
+    setBarcode(value); setMatch(null); setMatches([]); setChecking(false);
+    photoRequestRef.current = null;
+    existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url));
+    existingPhotosRef.current = []; setExistingPhotos([]);
+  }
+  function searchPhotoProducts(value: string) {
+    setPhotoQuery(value); setPhotoCandidates([]); setPhotoSearchError("");
+    const version = ++photoSearchVersion.current;
+    if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current);
+    const term = photoSearchTerm(value);
+    if (term.length < 2) { setPhotoSearchBusy(false); return; }
+    setPhotoSearchBusy(true);
+    photoSearchTimer.current = setTimeout(async () => {
+      try {
+        const { data, error } = await db.from("products").select("id,name,sku,barcode,status")
+          .or(`name.ilike.%${term}%,barcode.ilike.%${term}%`)
+          .order("name").limit(10);
+        if (error) throw error;
+        if (version === photoSearchVersion.current) setPhotoCandidates(data || []);
+      } catch (e) {
+        if (version === photoSearchVersion.current) setPhotoSearchError(friendly(e));
+      } finally { if (version === photoSearchVersion.current) setPhotoSearchBusy(false); }
+    }, 280);
+  }
+  function selectPhotoProduct(candidate: PhotoCandidate) {
+    if (locked) return;
+    changeCode("");
+    setSelectedPhotoProduct(candidate);
+  }
   async function uploadOwnedPhoto(path: string, file: File) {
     const storage = db.storage.from("product-media");
     // Only request-owned UUID paths. Never ask Storage to replace an object;
@@ -245,7 +293,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   }
   async function addExistingPhotos(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files || [])]; event.target.value = "";
-    if (!files.length || !match || busyRef.current || processingRef.current || pending) return;
+    if (!files.length || !photoTarget || busyRef.current || processingRef.current || pending) return;
     processingRef.current = true; setProcessing(true); setError("");
     const added: Photo[] = [];
     try {
@@ -259,10 +307,10 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     } finally { processingRef.current = false; setProcessing(false); }
   }
   async function attachExistingPhotos() {
-    if (!match || !existingPhotos.length || busyRef.current || processingRef.current) return;
+    if (!photoTarget || !existingPhotos.length || busyRef.current || processingRef.current) return;
     busyRef.current = true; setBusy(true); setError(""); setSuccess("");
     try {
-      const productId = photoRequestRef.current?.productId || match.product_id;
+      const productId = photoRequestRef.current?.productId || photoTarget.productId;
       const { data: gallery, error: galleryError } = await db.from("product_images")
         .select("id,image_url,sort_order,is_primary")
         .eq("product_id", productId).order("sort_order");
@@ -273,7 +321,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         throw new Error("La galería admite diez fotografías en total. Reduce tu selección o retira imágenes antiguas desde el editor.");
       }
       if (!photoRequestRef.current) {
-        photoRequestRef.current = { request: crypto.randomUUID(), productId: match.product_id, photos: existingPhotos.map(p => ({ ...p })) };
+        photoRequestRef.current = { request: crypto.randomUUID(), productId: photoTarget.productId, photos: existingPhotos.map(p => ({ ...p })) };
         setPending(true);
       }
       const request = photoRequestRef.current;
@@ -286,7 +334,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         photo.uploaded = await uploadOwnedPhoto(path, photo.file);
       }
       const inserts = missing.filter(photo => !recorded.has(photo.uploaded)).map((photo, index) => ({
-        product_id: request.productId, image_url: photo.uploaded!, alt_text: `${match.product_name} · fotografía por UPC`,
+        product_id: request.productId, image_url: photo.uploaded!, alt_text: `${photoTarget.productName} · fotografía de catálogo`,
         sort_order: Math.max(0, ...(gallery || []).map(row => Number(row.sort_order) || 0)) + index + 1,
         is_primary: (gallery?.length || 0) === 0 && index === 0,
       }));
@@ -296,7 +344,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       }
       existingPhotosRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
       existingPhotosRef.current = []; setExistingPhotos([]); photoRequestRef.current = null; setPending(false);
-      setSuccess(`✓ ${request.photos.length} fotografía(s) asociadas a ${match.product_name} · UPC ${barcode}. Sin cambios en precio ni existencias.`);
+      setSuccess(`✓ ${request.photos.length} fotografía(s) asociadas a ${photoTarget.productName} · ${photoTarget.label}. Sin cambios en precio ni existencias.`);
       window.dispatchEvent(new Event("updown:admin-products-refresh"));
     } catch (e) { setError(friendly(e)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -418,6 +466,19 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     setVariants(previous => previous.length ? previous : [freshVariant()]);
   }
 
+  // UPC and catalog selection share exactly one photo uploader and one retry state.
+  const photoUploadSection = embedded && photoTarget && <section className={styles.upcPhotos} aria-label="Fotografías por UPC">
+    <h3>Agregar fotos a este producto</h3>
+    <p>Las imágenes se asociarán a <b>{photoTarget.productName}</b> ({photoTarget.label}), sin modificar precio, SKU ni inventario. Si se escaneó una variante, se guardarán en la galería del producto padre.</p>
+    <div className={styles.tools}>
+      <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={addExistingPhotos} /></label>
+      <label className={styles.fileButton}>＋ Elegir fotos<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked} onChange={addExistingPhotos} /></label>
+    </div>
+    {!!existingPhotos.length && <div className={styles.photos}>{existingPhotos.map((photo, index) => <div key={photo.id}><Image src={photo.url} width={110} height={110} unoptimized alt={`Nueva foto ${index + 1}`} /><button type="button" disabled={locked} aria-label={`Quitar nueva foto ${index + 1}`} onClick={() => { URL.revokeObjectURL(photo.url); setExistingPhotos(previous => previous.filter(p => p.id !== photo.id)); }}>✕</button></div>)}</div>}
+    <button type="button" className={styles.primary} disabled={busy || processing || !existingPhotos.length} onClick={() => void attachExistingPhotos()}>{busy ? "Guardando fotografías…" : pending ? "Reintentar fotos" : `Guardar ${existingPhotos.length} fotografía(s) en este ${match ? "UPC" : "producto"}`}</button>
+    {pending && !busy && <small>Si hubo un error, reintenta para confirmar sin duplicar archivos en la galería.</small>}
+  </section>;
+
   return <main className={`${styles.page}${embedded ? ` ${styles.embedded}` : ""}`}><div className={styles.wrap}>
     {!embedded && <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>}
     <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / FICHA ÚNICA</div><h1>{embedded ? "Nueva ficha de producto" : "Alta rápida"}</h1><p>Un solo formulario para código de barras, fotografías, variantes, datos comerciales y descripciones.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
@@ -430,24 +491,32 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       <div className={styles.codeRow}><input id="quick-barcode" ref={codeInput} value={barcode} maxLength={80} disabled={locked} placeholder="Escanea, escribe o genera un código" autoComplete="off" onChange={e => changeCode(e.target.value)} onBlur={() => { if (!locked) void lookup(barcode).catch(() => {}); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void lookup(barcode).catch(() => {}); } }} /><button type="button" disabled={locked} onClick={() => void lookup(barcode).catch(() => {})}>Buscar</button></div>
       <div className={styles.tools}><button type="button" disabled={locked} onClick={() => setScanner("main")}>▣ Escanear con cámara</button><button type="button" disabled={locked} onClick={() => void generateCode()}>＋ Generar código</button></div><small>Si lo dejas vacío, generaremos un EAN-13 interno al guardar. También puedes usar un lector USB o Bluetooth.</small>
       {checking && <p role="status">Buscando código…</p>}
+      {embedded && <div className={styles.photoLookup}>
+        <label className={styles.label} htmlFor="photo-product-search">Buscar producto existente para fotografías</label>
+        <input id="photo-product-search" type="search" disabled={locked} value={photoQuery} onChange={e => searchPhotoProducts(e.target.value)} autoComplete="off" placeholder="Nombre del producto o UPC" />
+        <small>Escribe al menos dos caracteres y selecciona el artículo correcto. Esta búsqueda no crea ni modifica productos.</small>
+        {photoSearchBusy && <p role="status">Buscando productos…</p>}
+        {photoSearchError && <p role="alert">{photoSearchError}</p>}
+        {!photoSearchBusy && photoSearchTerm(photoQuery).length >= 2 && !photoSearchError && <div className={styles.photoResults}>
+          {photoCandidates.length ? <ul aria-label="Resultados de productos">{photoCandidates.map(candidate => <li key={candidate.id}>
+            <button type="button" disabled={locked} onClick={() => selectPhotoProduct(candidate)} aria-label={`Seleccionar ${candidate.name} · ${candidate.sku || "Sin SKU"}`}>
+              <span>{candidate.name}</span><small>SKU {candidate.sku || "sin SKU"} · UPC {candidate.barcode || "sin UPC"} · {candidate.status || "sin estado"}</small>
+            </button>
+          </li>)}</ul> : <p>No se encontraron productos. Puedes escanear el UPC o crear una ficha nueva.</p>}
+        </div>}
+      </div>}
       {matches.length > 1 && <label className={styles.label}>Selecciona la variante<select disabled={locked} value={match?.variant_id || ""} onChange={e => setMatch(matches.find(m => m.variant_id === e.target.value) || null)}><option value="">Elegir variante…</option>{matches.map((m, i) => <option key={m.variant_id || i} value={m.variant_id || ""}>{m.product_name} · {m.variant_title} · {m.sku}</option>)}</select></label>}
       {match && <div className={styles.found}><div className={styles.eyebrow}>CÓDIGO YA REGISTRADO</div><h2>{match.product_name}</h2><p>{match.variant_title} · {match.sku} · {money(match.price)}</p><strong>Existencia actual: {match.stock}</strong>
         {embedded && <button type="button" disabled={locked} onClick={() => openEditor(match.product_id)}>Abrir ficha completa de este producto</button>}
-        {embedded && <section className={styles.upcPhotos} aria-label="Fotografías por UPC">
-          <h3>Agregar fotos a este producto</h3>
-          <p>Se guardarán en la galería del producto identificado por este UPC, sin modificar precio, SKU ni inventario. Si el código pertenece a una variante, las fotografías se asociarán a su producto padre.</p>
-          <div className={styles.tools}>
-            <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={addExistingPhotos} /></label>
-            <label className={styles.fileButton}>＋ Elegir fotos<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked} onChange={addExistingPhotos} /></label>
-          </div>
-          {!!existingPhotos.length && <div className={styles.photos}>{existingPhotos.map((photo, index) => <div key={photo.id}><Image src={photo.url} width={110} height={110} unoptimized alt={`Nueva foto ${index + 1}`} /><button type="button" disabled={locked} aria-label={`Quitar nueva foto ${index + 1}`} onClick={() => { URL.revokeObjectURL(photo.url); setExistingPhotos(previous => previous.filter(p => p.id !== photo.id)); }}>✕</button></div>)}</div>}
-          <button type="button" className={styles.primary} disabled={busy || processing || !existingPhotos.length} onClick={() => void attachExistingPhotos()}>{busy ? "Guardando fotografías…" : pending ? "Reintentar fotos" : `Guardar ${existingPhotos.length} fotografía(s) en este UPC`}</button>
-          {pending && !busy && <small>Si hubo un error, reintenta para confirmar sin duplicar archivos en la galería.</small>}
-        </section>}
+        {photoUploadSection}
         {match.variant_id ? <form onSubmit={receive}><fieldset disabled={locked}><label>Cantidad recibida<input type="number" min="1" step="1" required value={receiving} onChange={e => setReceiving(e.target.value)} /></label><label>Referencia<input required minLength={3} value={reason} onChange={e => setReason(e.target.value)} /></label><p>Nueva existencia estimada: <b>{Number(match.stock) + Number(receiving || 0)}</b></p></fieldset><button className={styles.primary} disabled={busy || processing} type="submit">{busy ? "Registrando…" : pending ? "Reintentar entrada" : "Registrar entrada de inventario"}</button></form> : <p>Este producto necesita una variante de inventario. Complétala desde <Link href="/admin">Productos</Link>.</p>}
       </div>}
+      {selectedPhotoProduct && !match && <div className={styles.found}><div className={styles.eyebrow}>PRODUCTO ELEGIDO PARA FOTOGRAFÍAS</div><h2>{selectedPhotoProduct.name}</h2><p>SKU {selectedPhotoProduct.sku || "sin SKU"} · UPC {selectedPhotoProduct.barcode || "sin UPC"}</p>
+        <div className={styles.tools}><button type="button" disabled={locked} onClick={() => changeCode("")}>Cambiar producto</button><button type="button" disabled={locked} onClick={() => openEditor(selectedPhotoProduct.id)}>Abrir ficha completa de este producto</button></div>
+        {photoUploadSection}
+      </div>}
     </section>
-    {!matches.length && <form onSubmit={saveProduct} className={styles.card}>
+    {!matches.length && !selectedPhotoProduct && <form onSubmit={saveProduct} className={styles.card}>
       <fieldset disabled={locked}>
         <label>Nombre del producto<input ref={nameInput} value={name} onChange={e => setName(e.target.value)} required minLength={2} maxLength={180} placeholder="Ej. Polo Nike Dri-FIT" /></label>
         <div className={styles.grid}><label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} required><option value="">Seleccionar…</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Precio de venta · {currency}<input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} min="0.01" max="99999999" step="0.01" required placeholder="0.00" /></label></div>

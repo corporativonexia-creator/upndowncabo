@@ -27,4 +27,17 @@
 .embedded .upcPhotos h3 { font-size: 16px; color: #123d32; margin: 6px 0; }
 .embedded .upcPhotos p { font-size: 12px; line-height: 1.5; color: #345b48; }
 .embedded .upcPhotos .primary { display: block; width: 100%; }
+.embedded .photoLookup { margin-top: 20px; padding: 16px; border: 1px solid #dce8e0; border-radius: 14px; background: #f6f8f6; }
+.embedded .photoLookup .label { margin-bottom: 8px !important; }
+.embedded .photoLookup input { margin-top: 0 !important; }
+.embedded .photoLookup > small { margin: 8px 0; }
+.embedded .photoLookup [role="status"],.embedded .photoLookup [role="alert"] { font-size: 12px; margin: 10px 0 0; }
+.embedded .photoLookup [role="alert"] { color: #993e2d; }
+.embedded .photoResults ul { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 7px; }
+.embedded .photoResults li { margin: 0; padding: 0; }
+.embedded .photoResults button { display: block; text-align: left; width: 100%; background: #fff; border-color: #dce8e0; }
+.embedded .photoResults button:hover,.embedded .photoResults button:focus-visible { border-color: #2f7058; outline: 2px solid #b7de45; outline-offset: 1px; }
+.embedded .photoResults button span { display: block; font-size: 13px; }
+.embedded .photoResults button small { margin-top: 3px; }
+.embedded .photoResults p { font-size: 12px; color: #49645a; margin-top: 12px; }
 @media (max-width: 620px) { .embedded .advanced .grid { grid-template-columns: 1fr; gap: 0; } .embedded .advanced > summary span { display: block; margin-left: 0; margin-top: 4px; } }

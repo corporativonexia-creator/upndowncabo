@@ -375,6 +375,67 @@ test('A3.9 an invalid HEIC capture is rejected before any image or inventory wri
     /admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
 });
 
+test('A4 name search requires an explicit product choice and sends photos only to that product',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByRole('searchbox',{name:'Buscar producto existente para fotografías'}).fill('Polo');
+  await expect(host.getByRole('button',{name:'Seleccionar Polo clásico · ROP-001'})).toBeVisible();
+  await expect(host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'})).toBeVisible();
+  await expect(host.getByRole('region',{name:'Fotografías por UPC'})).toHaveCount(0);
+  await host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'}).click();
+  await expect(host.getByText('PRODUCTO ELEGIDO PARA FOTOGRAFÍAS')).toBeVisible();
+  await expect(host.getByRole('button',{name:'Guardar ficha completa'})).toHaveCount(0);
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este producto'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico azul/)).toBeVisible();
+  const imagesP1=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  const imagesP2=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p2`)).json();
+  expect(imagesP1).toHaveLength(0);expect(imagesP2).toHaveLength(1);
+  expect(imagesP2[0]).toMatchObject({product_id:'p2',sort_order:1,is_primary:true});
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string,method:string})=>e.path==='/rest/v1/products'&&e.method!=='GET')).toHaveLength(0);
+  expect(events.some((e:{path:string})=>/admin_quick_product_create|admin_quick_inventory_receive|admin_inventory_adjust/.test(e.path))).toBe(false);
+});
+
+test('A4 accepts UPC or name but does not search by SKU, and retries gallery metadata',async({page,request})=>{
+  await configure(request,{galleryInsertForbidden:true});await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  const search=host.getByRole('searchbox',{name:'Buscar producto existente para fotografías'});
+  await search.fill('ROP-0010');
+  await expect(host.getByText('No se encontraron productos. Puedes escanear el UPC o crear una ficha nueva.')).toBeVisible();
+  await search.fill('2000000000022');
+  await expect(host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'})).toBeVisible();
+  await expect(host.getByRole('button',{name:'Seleccionar Polo clásico · ROP-001'})).toHaveCount(0);
+  await host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este producto'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture product_images INSERT denied by RLS');
+  await configure(request,{galleryInsertForbidden:false});
+  await photos.getByRole('button',{name:'Reintentar fotos'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico azul/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(1);
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p2`)).json();
+  expect(images).toHaveLength(1);
+});
+
+test('A4 a blocked catalog search never creates or changes a product',async({page,request})=>{
+  await login(page);await ready(page);
+  await configure(request,{photoSearchError:true});
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByRole('searchbox',{name:'Buscar producto existente para fotografías'}).fill('Driver');
+  await expect(host.getByRole('alert')).toContainText('Fixture catalog SELECT denied by RLS');
+  await expect(host.getByRole('region',{name:'Fotografías por UPC'})).toHaveCount(0);
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.some((e:{path:string,method:string})=>e.method!=='GET'&&e.method!=='HEAD'&&
+    (/\/rest\/v1\/(products|product_images|product_variants)/.test(e.path)||/\/storage\/v1\/object\//.test(e.path)||/\/rpc\/admin_quick_/.test(e.path)))).toBe(false);
+});
+
 test('A3.3 one-save retry reuses the same product ID when advanced metadata fails',async({page,request})=>{
   await configure(request,{metadataError:true});
   await login(page);await ready(page);
