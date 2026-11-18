@@ -144,7 +144,9 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 3. La interfaz acepta `.heic/.heif`, transforma a JPEG en cliente mediante `heic-to/next`, comprime y sube como `image/jpeg`; la cámara usa `capture="environment"`. **La compatibilidad en Safari/iPhone físico sigue sin prueba**, por falta de dispositivo real en el laboratorio. No confundir una prueba de Chromium con esa validación.
 4. La alta completa mantiene su frontera transaccional conocida: RPC idempotente para identificadores/variantes/stock y PATCH acotado a metadatos. Reintentos tienen prueba simulada; la atomicidad total no está garantizada.
 
-**Puertas para solicitar integración:** recibir QA verde del nuevo PostgreSQL multi-sesión; después ejecutar una prueba de Storage y RLS en staging no productivo expresamente aprobado, validación manual de iPhone y solución transaccional del límite de galería. Ninguno de esos puntos justifica tocar datos comerciales reales o fusionar ahora.
+**QA A3.6:** commit `6eebb7f8574f0b34a57667c01a9bf98e80f8dc21`, [GitHub Actions #44405725515](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44405725515) **SUCCESS**: PostgreSQL 16 con sesiones independientes **2/2** (esperas de bloqueo observadas), PGlite **7/7**, contratos **10/10**, Chromium **25/25**, sintaxis, TypeScript y Next build PASS, ESLint 0 errores / 9 advertencias anteriores. **GO limitado al algoritmo SKU probado bajo estas transacciones de fixture**; no implica que todos los escritores externos de `products` y `product_variants` usen el asignador ni crea una restricción de unicidad entre tablas.
+
+**Puertas para solicitar integración:** ejecutar una prueba de Storage y RLS en staging no productivo expresamente aprobado, validación manual de iPhone y solución transaccional del límite de galería. Ninguno de esos puntos justifica tocar datos comerciales reales o fusionar ahora.
 
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
