@@ -320,5 +320,11 @@ test("managed instructor renderer never captures a lead token or adds duplicate 
   assert.ok(!implementation.includes('record_golf_instructor_interest'));
 });
 
+test("admin service status summary renders evaluated visibility/order without literal template delimiters", () => {
+  has(files.adminServices, '<span>{`${row.is_active', '${row.sort_order}', 'Registro protegido');
+  assert.ok(!files.adminServices.includes('<span>`${row.is_active'),
+    "Service summary must render an evaluated JSX template, not literal delimiters");
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
