@@ -220,5 +220,45 @@ test("premium logo prominence preserves both native and desktop header heights",
     "Menu and cart controls must not change");
 });
 
+// Post-3B · Clases has a protected registration contract, not a generic CTA.
+test("Clases editor exposes photo/order/visibility, never unlocks its CTA or texts", () => {
+  const admin=files.adminServices;
+  has(admin,
+    'const protectedLesson = service.key === "classes"',
+    'fields.sort_order = order',
+    'fields.is_active = form.get("is_active") === "on"',
+    'if (!protectedLesson) {',
+    'fields.use_referral = form.get("use_referral") === "on"',
+    'El título, los textos, el botón de registro, el formulario y los instructores siguen protegidos');
+  assert.ok(admin.indexOf("fields.sort_order = order") < admin.indexOf("if (!protectedLesson) {"),
+    "Order and visibility must work for Clases without entering the generic editor");
+  assert.ok(!admin.includes('else if (!file) { setFailed(true); setMessage("Selecciona una foto para Clases de golf.")'),
+    "Admin must be able to update order/visibility without uploading a new image");
+});
+
+test("Clases active flag is honored without rebuilding its lead form", () => {
+  has(files.runtime,
+    "if(row.key!=='classes'){",
+    "serviceCards.forEach((card,key)=>{if(!visible.has(key))card.remove()});",
+    "if(visible.has('classes'))lessonsNav.style.removeProperty('display');",
+    "else lessonsNav.style.setProperty('display','none','important');",
+    "db.from('storefront_services').select('*').eq('is_active',true)");
+  const html=read("src/components/store/legacy-home-markup.ts");
+  has(html,'udsGolfClasses','udsClassLeadForm','udsClassLeadSubmit','udsTeachers');
+  assert.ok(!files.runtime.includes("if(!visible.has(key)&&key!=='classes')card.remove()"),
+    "Do not leave a disabled Clases card visible");
+});
+
+test("Protected lesson registration retains consent and instructor tracking", () => {
+  has(files.runtime,
+    'db.rpc("record_golf_instructor_interest"',
+    'function renderManagedServices()',
+    "window.__UPDOWN_OPEN_SERVICE__=key=>");
+  const html=read("src/components/store/legacy-home-markup.ts");
+  has(html,'udsClassConsent','udsClassPhone','udsClassGoal');
+  assert.ok(!files.services.includes("replaceChildren()"),
+    "Stage7 must not rebuild the lesson DOM or delete registered forms");
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
