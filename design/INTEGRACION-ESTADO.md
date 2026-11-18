@@ -191,3 +191,11 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 - Antes de eventual PR a `main`, retirar o excluir explícitamente `vercel.json` **sin desproteger prematuramente la candidata**; esa operación requiere autorización de release separada.
 
 **Siguiente puerta:** autorizar Lote 3 para pruebas de compilación y regresión offline, sin deploy ni operaciones sobre la base.
+
+## 12. Lote 3 · Preauditoría y traspaso a Work (17-nov-2026)
+
+**Fase previa COMPLETADA; QA ejecutable en Work PENDIENTE.** Se verificó que la candidata conserva `UNDER_CONSTRUCTION=true`, `git.deploymentEnabled=false`, y no registra despliegues. El entorno local disponible aquí no tiene resolución DNS a GitHub, ni Next/React instalados: **no fue posible ejecutar `npm ci`, TypeScript, ESLint, `next build` ni navegador E2E**. No declarar éxito de compilación.
+
+Se ejecutaron **las 6 aserciones del contrato Lote 2A** en un harness JS V8 con archivos extraídos de GitHub: **6 PASS/0 FAIL** (no el proceso de Node), y se conservaron los **7 PASS de controles de Lote 2C**. En Lote 2B se contaba con **28 verificaciones estáticas**; la suite formal de **18 contratos + 1 TODO** continúa por ejecutar en Node con Work.
+
+**Handoff exacto:** [LOTE3-QA-WORK-20261117.md](./LOTE3-QA-WORK-20261117.md). Este runbook incluye comandos y matriz de QA con fixtures/mocks sin datos de producción, guardas, P1 pendiente de Galería/Lista en público, criterios de GO/NO GO y actualización del registro maestro. Work es ahora la siguiente etapa; el usuario debe iniciar Work con el enlace/documento y rama exacta. Ni main ni Vercel ni Supabase se tocaron en esta preauditoría.
