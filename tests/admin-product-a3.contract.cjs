@@ -104,3 +104,13 @@ test("A4 catalog photo lookup is read-only and reuses UPC photo attachment", () 
   assert.match(quick, /Guardar ficha completa/);
   assert.equal((quick.match(/async function attachExistingPhotos\(\)/g)||[]).length,1);
 });
+
+test("A5.1 product retirement review cannot execute a client-side product DELETE", () => {
+  const legacy = read("public/updown-admin-legacy-runtime.js");
+  assert.match(legacy, /inspectProductRetirement\(product,item\)/);
+  assert.match(legacy, /Ninguna baja se ejecutó/);
+  assert.match(legacy, /No verificable \(acceso o consulta restringidos\)/);
+  assert.match(legacy, /Sin referencias visibles \(no concluyente\)/);
+  assert.doesNotMatch(legacy, /db\.from\("products"\)\.delete\(\)/);
+  assert.match(read("src\/app\/admin\/admin-premium-white.css"), /\.ud-a5-inspector/);
+});

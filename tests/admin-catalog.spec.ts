@@ -96,6 +96,35 @@ test('product edit preserves barcode, price, channel and stock in its save paylo
   expect(events.some((e:{path:string})=>e.path.endsWith('admin_inventory_adjust'))).toBe(false);
 });
 
+test('A5.1 review of retirement highlights inventory and historical references without deleting',async({page,request})=>{
+  await configure(request,{retirementHasHistory:true});await login(page);await ready(page);
+  await card(page,'p1').locator('.ud-delete').click();
+  const inspector=card(page,'p1').getByRole('region',{name:'Auditoría de baja de Polo clásico'});
+  await expect(inspector).toBeVisible();
+  await expect(inspector).toContainText('Existencia registrada: 5');
+  await expect(inspector).toContainText('Variantes: Referencia detectada');
+  await expect(inspector).toContainText('Movimientos de inventario: Referencia detectada');
+  await expect(inspector).toContainText('Ventas POS: Referencia detectada');
+  await expect(inspector).toContainText('Ninguna baja se ejecutó');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>['POST','PUT','PATCH','DELETE'].includes(e.method)&&
+    /\/rest\/v1\/(products|product_variants|inventory_movements|pos_sale_items|order_items|checkout_v2_items|pos_service_receptions)/.test(e.path))).toHaveLength(0);
+  await inspector.getByRole('button',{name:'Cerrar revisión'}).click();
+  await expect(inspector).toHaveCount(0);
+});
+
+test('A5.1 restricted historical reads never imply a product can be deleted',async({page,request})=>{
+  await configure(request,{retirementAuditDenied:true});await login(page);await ready(page);
+  await card(page,'p2').locator('.ud-delete').click();
+  const inspector=card(page,'p2').getByRole('region',{name:'Auditoría de baja de Polo clásico azul'});
+  await expect(inspector).toContainText('No verificable (acceso o consulta restringidos)');
+  await expect(inspector).toContainText('Sin referencias visibles (no concluyente)');
+  await expect(inspector).toContainText('Eliminar definitivamente');
+  await expect(inspector).toContainText('No disponible desde el navegador');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.some((e:{method:string,path:string})=>e.method==='DELETE'&&e.path==='/rest/v1/products')).toBe(false);
+});
+
 test('A3.8 metadata-only edits preserve gallery IDs and UPC photos added by another operator',async({page,request})=>{
   await configure(request,{existingPhoto:true});await login(page);await ready(page);
   await card(page,'p1').locator('.ud-edit').click();

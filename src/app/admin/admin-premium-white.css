@@ -94,6 +94,19 @@
 #updown-admin.ud-premium-white .u-metric {
   background: #fff; border-color: #e1e9e3; box-shadow: 0 4px 15px rgba(18,61,50,.035);
 }
+#updown-admin.ud-premium-white .ud-a5-inspector {
+  grid-column: 1 / -1; width: 100%; box-sizing: border-box; margin-top: 12px;
+  padding: 18px; border: 1px solid #d9e4de; border-radius: 14px;
+  background: #f6f8f6; color: #123d32; font-size: 13px; line-height: 1.55;
+}
+#updown-admin.ud-premium-white .ud-a5-inspector h4 { margin: 0 0 10px; font-size: 16px; }
+#updown-admin.ud-premium-white .ud-a5-inspector p { margin: 8px 0; }
+#updown-admin.ud-premium-white .ud-a5-inspector ul { padding-left: 20px; margin: 10px 0; }
+#updown-admin.ud-premium-white .ud-a5-inspector li { margin: 3px 0; }
+#updown-admin.ud-premium-white .ud-a5-inspector .ud-a5-warning {
+  display: block; margin: 14px 0; padding: 10px 12px; border-radius: 8px;
+  background: #fff3df; color: #6d4c16;
+}
 #updown-admin.ud-premium-white :where(button, a, input, select, textarea):focus-visible {
   outline: 2px solid #2f7058; outline-offset: 2px;
 }

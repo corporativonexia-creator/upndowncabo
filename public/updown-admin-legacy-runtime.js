@@ -1703,7 +1703,7 @@
         <div class="u-item-actions">
           <button class="u-btn u-secondary u-small ud-edit" type="button">Editar</button>
           <button class="u-btn u-secondary u-small ud-variants" type="button">Ver / editar variantes</button>
-          <button class="u-btn u-danger u-small ud-delete" type="button">Eliminar</button>
+          <button class="u-btn u-secondary u-small ud-delete" type="button">Revisar baja</button>
         </div>`;
       const variantPanel=document.createElement("section");
       variantPanel.className="u-variant-panel";variantPanel.hidden=true;
@@ -1716,7 +1716,7 @@
         if(!variantPanel.hidden)await openProductVariants(product.id,variantPanel);
       };
       item.querySelector(".ud-edit").onclick=()=>editProduct(product.id);
-      item.querySelector(".ud-delete").onclick=()=>deleteProduct(product.id);
+      item.querySelector(".ud-delete").onclick=()=>inspectProductRetirement(product,item);
       el("udList").appendChild(item);
     });
   }
@@ -1997,17 +1997,50 @@
     }
   });
 
-  async function deleteProduct(id){
-    const product=products.find(item=>item.id===id);
-    if(!product||!confirm(`¿Eliminar "${product.name}"?`)) return;
-    const {error}=await db.from("products").delete().eq("id",id);
-    if(error){
-      const message=error.code==="23503"?"No se puede eliminar: el producto tiene movimientos o ventas vinculadas. Conserva su historial y márcalo como borrador.":error.message;
-      showToast(message,true);return;
-    }
-    showToast("Producto eliminado.");
-    resetForm();
-    await loadProducts();
+  // A5.1: advisory only. Browser-visible rows cannot establish whether a
+  // product is unreferenced: RLS may hide sale, order or movement records.
+  // Never execute a physical DELETE based on this client-side inspection.
+  async function inspectProductRetirement(product,item){
+    const previous=item.querySelector(".ud-a5-inspector");
+    if(previous){previous.remove();return;}
+    const panel=document.createElement("section");
+    panel.className="ud-a5-inspector";
+    panel.setAttribute("role","region");
+    panel.setAttribute("aria-label",`Auditoría de baja de ${product.name}`);
+    panel.innerHTML=`<h4>Revisión previa a la baja</h4>
+      <p><strong>${escapeHtml(product.name)}</strong> · UPC ${escapeHtml(product.barcode||"Sin UPC")}</p>
+      <p>Estado: ${escapeHtml(product.status||"Sin estado")} · Existencia registrada: <strong>${product.stock==null?"No informada":escapeHtml(String(product.stock))}</strong>.</p>
+      <p class="ud-a5-pending" role="status">Comprobando referencias visibles…</p>
+      <ul class="ud-a5-checks"></ul>
+      <p><strong>Retirar de tienda y POS:</strong> conserva el artículo, sus identificadores, existencias y movimientos históricos. Preparación A5; todavía no ejecutable aquí.</p>
+      <p><strong>Eliminar definitivamente:</strong> solo tras una auditoría transaccional con acceso a todas las relaciones, políticas y restricciones. No disponible desde el navegador.</p>
+      <strong class="ud-a5-warning">Ninguna baja se ejecutó. Las lecturas del navegador no autorizan una eliminación definitiva.</strong>
+      <button type="button" class="u-btn u-secondary u-small ud-a5-close">Cerrar revisión</button>`;
+    panel.querySelector(".ud-a5-close").onclick=()=>panel.remove();
+    item.appendChild(panel);
+    const checks=[
+      ["Variantes","product_variants","product_id"],
+      ["Movimientos de inventario","inventory_movements","product_id"],
+      ["Ventas POS","pos_sale_items","product_id"],
+      ["Pedidos web","order_items","product_id"],
+      ["Reservas de checkout","checkout_v2_items","product_id"],
+      ["Recepciones de taller","pos_service_receptions","service_product_id"]
+    ];
+    const results=await Promise.all(checks.map(async([name,table,column])=>{
+      try{
+        const {data,error}=await db.from(table).select("id").eq(column,product.id).limit(1);
+        if(error)return {name,result:"No verificable (acceso o consulta restringidos)"};
+        return {name,result:data?.length?"Referencia detectada":"Sin referencias visibles (no concluyente)"};
+      }catch(_){return {name,result:"No verificable (consulta fallida)"};}
+    }));
+    if(!panel.isConnected)return;
+    panel.querySelector(".ud-a5-pending")?.remove();
+    const list=panel.querySelector(".ud-a5-checks");
+    results.forEach(({name,result})=>{
+      const row=document.createElement("li");
+      row.textContent=`${name}: ${result}`;
+      list.appendChild(row);
+    });
   }
 
   el("udProductsTab").onclick=()=>switchAdminView("products");

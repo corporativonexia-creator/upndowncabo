@@ -83,6 +83,14 @@ http.createServer(async(req,res)=>{
     }
     return send([]);
   }
+  if(['/rest/v1/inventory_movements','/rest/v1/pos_sale_items','/rest/v1/order_items',
+    '/rest/v1/checkout_v2_items','/rest/v1/pos_service_receptions'].includes(url.pathname)){
+    if(options.retirementAuditDenied)return send({message:'Fixture historical SELECT denied by RLS',code:'42501'},403);
+    const reference=url.searchParams.get('product_id')||url.searchParams.get('service_product_id');
+    if(options.retirementHasHistory&&reference==='eq.p1'&&
+      ['/rest/v1/inventory_movements','/rest/v1/pos_sale_items'].includes(url.pathname))return send([{id:`history-${url.pathname.split('/').pop()}`}]);
+    return send([]);
+  }
   if(url.pathname.startsWith('/storage/v1/object/product-media/')){
     if(req.method==='POST'){
       if(!req.headers.authorization)return send({statusCode:'401',error:'Unauthorized',message:'Fixture Storage login required'},401);
