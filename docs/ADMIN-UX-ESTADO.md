@@ -85,5 +85,17 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Corrida A3.3 reforzada:** commit `59d2c35b12342f8390115519884d88f4bac89027`, [GitHub Actions #44363258424](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44363258424) **SUCCESS**, Chromium **22/22**, contratos **10/10**, scripts válidos, TypeScript, build y lint sin errores (advertencias de lint heredadas). Verificado `main` en `cff541a03dff8fc98437e1176dc3aef057c25562`, candidata sin despliegues Vercel. **GO para continuar auditoría/paridad A3, NO GO para borrar el respaldo, cambiar Supabase, fusionar o desplegar.**
 
+### A3.4 · Identificadores UPC y SKU (auditoría preparatoria; SIN implementación SQL)
+
+**Decisión del administrador:** UPC/código de barras independiente: se acepta el código original de fábrica por escáner, cámara o captura manual; alternativamente se genera EAN-13 interno. SKU estrictamente interno, automático, único, con reglas actuales de categoría y variantes; el operador no debe inventarlo ni modificarlo. Mostrar un candidato disponible en la ficha antes del guardado y volver a validarlo de manera autoritativa al guardar.
+
+**Hallazgos de lectura del repositorio:**
+
+- `next_category_sku` usa `category_sku_counters` con `INSERT ... ON CONFLICT DO UPDATE` para asignar correlativos, **no números al azar**. Los prefijos registrados en la migración son `WED`, `DRI`, `ROP`, etc.; el ejemplo comercial `UND-WED-0001` **no coincide con el formato histórico `WED-0001`**. No cambiar prefijos ni renumerar productos sin decisión específica.
+- La función actual genera el siguiente correlativo **sin comprobar contra `products.sku` ni `product_variants.sku`**. El esquema de prueba refleja `products_sku_key UNIQUE (sku)`, pero no una restricción única explícita en `product_variants.sku`. Un contador adelantado o duplicado heredado puede ocasionar error de alta, mientras que una variante concurrente podría repetir SKU.
+- El editor legado `updown-inventory-v2.js` llama `next_category_sku` al elegir la categoría (consume contador antes de guardar); la nueva ficha A3.3 no propone ni reserva un SKU antes del guardado y confía en el trigger `product_auto_identifiers` dentro de `admin_quick_product_create`. La variante predeterminada comparte deliberadamente el SKU con su producto padre; esa pareja vinculada **no representa dos artículos comerciales diferentes** y requiere preservar la compatibilidad POS.
+
+**Corrección propuesta, aún no autorizada:** endurecer la asignación SQL para avanzar el correlativo bajo el bloqueo actual y comprobar el candidato contra ambos conjuntos de SKU hasta hallar uno libre; hacer equivalente la generación de sufijos de variantes y proteger sus carreras mediante una garantía de unicidad apropiada. Exponer una **vista previa de solo lectura**, claramente provisional, a partir del prefijo y del siguiente correlativo libre; revalidar/confirmar el SKU real en el RPC de guardado y actualizar la ficha si otro operador se adelantó. Nunca presentar una previsualización no reservada como garantía absoluta. Probar colisiones históricas, categorías, variantes, concurrencia y reintentos solo en base local aislada. **No crear migraciones, alterar funciones, tablas o políticas ni acceder a datos comerciales reales sin autorización posterior.**
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
