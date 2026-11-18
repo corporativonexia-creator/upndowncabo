@@ -5,6 +5,7 @@ import RelatedProductsServer from "@/components/store/related-products-server";
 import { Suspense, cache } from "react";
 import { productMetadata } from "@/lib/storefront/product-metadata";
 import ProductDetail from "@/components/store/product-detail";
+import "@/components/store/premium-product-detail.css";
 
 // This memoizes authorization only during this React request, never across users.
 const ensurePreviewAdmin = cache(() => requireRole("admin", "/vista-previa"));
@@ -20,10 +21,10 @@ export default async function PrivateProductPage({ params }: Props) {
   await ensurePreviewAdmin();
   const product = await findShareableProduct((await params).productKey);
   if (!product) notFound();
-  return <>
+  return <div className="ud-premium-product-skin">
     <ProductDetail product={product} preview />
     <Suspense fallback={<div className="ud-related-loading" role="status">Explorando artículos similares…</div>}>
       <RelatedProductsServer product={product} preview />
     </Suspense>
-  </>;
+  </div>;
 }
