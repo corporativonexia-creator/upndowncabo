@@ -455,3 +455,16 @@ La auditoría de `loadStore()` encontró que una instancia del runtime desmontad
 **Comprobado aquí:** sintaxis JS del runtime corregido; test nuevo dinámico con respuestas simuladas tardías PASS; 24 rutas congeladas en ensamblador; fuente `main` sin modificación; barrera Próximamente y bloqueo de despliegue en candidata; referencia Vercel de producción existente. **No comprobado aquí:** build real del nuevo SHA, suite completa Node 40/40, Chromium después de 7D, privilegios efectivos de GitHub para branch protection y estado de checkout/pago en producción.
 
 **Dictamen:** **GO para QA final aislado**; **NO-GO para PR/merge/deploy/apertura** hasta satisfacer puertas.
+
+## 25. Protección nativa de main — comprobación GitHub (18-nov-2026)
+
+**Gate GitHub cerrado: PASS.** El administrador creó la regla de rama **UPNDOWN · Protección de producción MAIN**, ruleset ID `27534656`: https://github.com/corporativonexia-creator/upndowncabo/rules/27534656.
+
+- **GitHub API comprobada:** `enforcement=active`, `target=branch`, `conditions.ref_name.include=["~DEFAULT_BRANCH"]`, `exclude=[]`; `main` reportó `protected=true`. Bypass list vacía.
+- **Reglas efectivas:** `deletion` (prohibir borrado de rama), `non_fast_forward` (prohibir force push) y `pull_request` (exigir PR). Aprobaciones requeridas = 0; sin revisión de CODEOWNERS/último push/extra Copilot. Métodos de integración permitidos: merge, squash, rebase. No hay `status_checks` obligatorios todavía; se podrán introducir cuando CI esté estable y validado.
+- **Referencia de integridad:** `main` conserva SHA `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Candidata conserva bloqueo temporal `git.deploymentEnabled=false`; Vercel devolvió 0 despliegues para la rama candidata durante esta verificación.
+- **Efecto:** se cierra exclusivamente la **puerta de protección de `main`** definida en la sección 24. No autoriza por sí mismo crear una rama release, hacer push, PR, merge, deploy o abrir la tienda.
+
+**Puertas todavía pendientes:** QA final del release local repinneado a `c04513dabb8192aee9f555bbfb29583a116ece07` (40 contratos + 1 TODO esperados, TypeScript, lint, build y matriz Chromium 20 ciclos); revisión de política Vercel para nuevas ramas y preview; aprobación del diff y autorización explícita de integración. Mantener `UNDER_CONSTRUCTION=true`, POS, inventario, pagos y Supabase sin cambios.
+
+**Dictamen:** **GO control GitHub**; **NO-GO integración/despliegue** hasta las otras puertas.
