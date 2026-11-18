@@ -348,3 +348,21 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 4. Mantener **cero deploys en Vercel**, `git.deploymentEnabled=false`, `UNDER_CONSTRUCTION=true`, `main` sin cambios y Supabase fixture-only. Entregar resultado GO/NO-GO antes de considerar release.
 
 **Barrera independiente:** `main` sigue sin protección nativa (GitHub `protected=false`), requiere habilitación administrativa, no autorizada aquí. **NO-GO de producción** hasta corregir/validar el primer clic, resolver la intermitencia y proteger/revisar el release gate.
+
+## 18. Lote 3C — Validación final de regresiones
+
+**GO funcional en fixtures.** El primer clic de instructor queda validado. Galería/Lista a 1440 px no reprodujo la intermitencia en 12 arranques fríos y sigue como observación abierta, sin causa confirmada. El SHA inicial y final de código probado es `882975d0988f493042a52b7f525f65ac5272c02f`. El commit de cierre añade únicamente esta sección.
+
+| Verificación ejecutada | Resultado |
+| --- | --- |
+| `npm ci` | PASS, 405 paquetes |
+| `node --test tests/integration-lot2a-style.cjs tests/premium-white-contracts.cjs tests/integration-lot2c-shared-skin.cjs` | 36 PASS, 0 FAIL, 1 TODO preexistente |
+| `npm run check:admin-scripts` | PASS, 10 scripts |
+| `npx tsc --noEmit`, `npm run lint`, `npm run build` | PASS. ESLint: 0 errores y 9 advertencias. Next.js 16.3.3 |
+| Chromium, matriz completa | 52 PASS, 1 fallo de lectura del fixture, 0 excepciones de página |
+| Chromium, repetición focalizada de foto/reactivación | 5 PASS, 0 FAIL, 0 excepciones de página |
+
+- **P1 instructor.** Cuatro flujos completos en Chromium: privada ES a 1440 px, privada EN a 390 px, pública ES a 390 px y pública EN a 1440 px. Cada flujo exigió consentimiento. El clic inmediatamente después de la primera alta, sin recarga, produjo exactamente un RPC con ID, token y slug del primer alumno e instructor. El segundo alumno obtuvo un ID y un token distintos, y su clic se atribuyó exclusivamente a ese segundo alumno. La recarga restauró el propietario original del dispositivo y produjo un tercer evento con las credenciales del primer alumno, sin generar otra alta. Resultado agregado: ocho altas y doce registros de interés simulados, sin duplicados. El instructor inactivo no mostró enlace y se canceló la navegación de WhatsApp.
+- **P2 Galería/Lista a 1440 px.** Doce arrancadas sin preferencias: cuatro con catálogo antes de servicios, cuatro con servicios prioritarios y cuatro con espera explícita de servicios. En ocho se hizo clic en Lista en cuanto apareció el control. En dos de esos clics el catálogo todavía reportó `loading`. Los doce clics llegaron a `udsPreviewViewList` y activaron Lista. En cada ronda hubo tres alternancias Galería/Lista y recarga con persistencia. Dos rondas comprobaron además página 2, búsqueda que retorna a página 1 y filtro de marca. La matriz general comprobó el catálogo público y privado de 320 a 1440 px. Queda pendiente observar si vuelve a ocurrir en condiciones distintas.
+- **Clases y regresión comercial.** Foto, orden, visibilidad, ocultación/reactivación, nodo original del formulario, consentimiento y los otros cinco servicios comprobados en ambos canales a 390 y 1440 px. La primera lectura de evidencia de foto en `/__events` devolvió `ECONNRESET` tras guardar. La repetición focalizada comprobó la carga simulada, el PATCH limitado a los tres campos y la foto y orden visibles en ambos canales. El resto de la matriz validó filtros, búsqueda, paginación, fichas ES/EN, referencia, precio por variante y carrito con tope de stock.
+- **Alcance y barreras.** Sin commits correctivos nuevos: se validaron `17946d94` y `43f56468`, que ya estaban en el SHA inicial. Build y servidor Next restringidos a sockets HTTP en loopback, imágenes interceptadas en Chromium y fixtures separados para registros, admin y catálogo. Sin operaciones en Supabase real ni cambios en POS, inventarios o pagos. `UNDER_CONSTRUCTION=true` y `git.deploymentEnabled=false` comprobados. Vercel reportó 0 despliegues de la candidata. `main` sigue en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b` con `protected=false`. La protección de `main` sigue siendo un riesgo de lanzamiento independiente.
