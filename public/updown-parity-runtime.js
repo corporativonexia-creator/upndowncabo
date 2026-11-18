@@ -523,14 +523,13 @@
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
       const fallback="/assets/updown-product-placeholder.svg";
-      const imageSrc=PREVIEW_CATALOG&&(!item.image||typeof item.image!=="string"||!/^https?:\/\//i.test(item.image))?fallback:item.image||"";
+      const validImage=typeof item.image==="string"&&(/^https?:\/\//i.test(item.image)||item.image.startsWith("/"));
+      const imageSrc=validImage?item.image:fallback;
       row.innerHTML=`<img src="${escapeHtml(imageSrc)}" alt="${PREVIEW_CATALOG?"":escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
-      if(PREVIEW_CATALOG){
-        const image=row.querySelector("img");
-        image?.addEventListener("error",()=>{
-          if(image.getAttribute("src")!==fallback)image.src=fallback;
-        });
-      }
+      const image=row.querySelector("img");
+      image?.addEventListener("error",()=>{
+        if(image.getAttribute("src")!==fallback)image.src=fallback;
+      });
       row.querySelector(".uds-minus").onclick=()=>changeQty(item.id,-1);row.querySelector(".uds-plus").onclick=()=>changeQty(item.id,1);row.querySelector(".uds-remove").onclick=()=>removeFromCart(item.id);el("udsCartList").appendChild(row)
     })
   }
@@ -540,7 +539,7 @@
     if(isVariant&&!PREVIEW_CATEGORY_GROUPS?.length)return consultVariant(product);
     const ex=cart.find(i=>i.id===product.id);
     if(ex){const quantity=Number(ex.quantity)||0;if(quantity>=Number(product.stock)){showToast(currentLanguage==="en"?"You have reached the available stock.":"Ya alcanzaste las existencias disponibles.");return}ex.quantity=quantity+1}
-    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:product.cover_image_url,price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
+    else cart.push({id:product.id,variant_id:isVariant?product.variant_id:null,parent_id:isVariant?product.parent_id:product.id,name:product.name,slug:product.slug,sku:product.sku||null,image:productGallery(product)[0]||"",price:storefrontPricing(product).price,currency:product.currency||"MXN",stock:Number(product.stock),quantity:1,summary:golfSummary(product)});
     const quantity=cart.find(i=>i.id===product.id).quantity;
     saveCart();showToast(currentLanguage==="en"?`${product.name}: +1 added. ${quantity} ${quantity===1?"unit":"units"} in cart.`:`${product.name}: +1 agregado. ${quantity} ${quantity===1?"pieza":"piezas"} en el carrito.`)
   }
@@ -843,7 +842,12 @@
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    return `<div class="uds-card-media"><img src="${escapeHtml(product.cover_image_url||"")}" alt="${escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
+    const fallback="/assets/updown-product-placeholder.svg";
+    // Respect gallery photos even when the product lacks a designated cover.
+    const cover=productGallery(product)[0]||"";
+    const imageSrc=cover&&(/^https?:\/\//i.test(cover)||cover.startsWith("/"))?cover:fallback;
+    const placeholder=imageSrc===fallback;
+    return `<div class="uds-card-media${placeholder?" is-product-placeholder":""}"><img src="${escapeHtml(imageSrc)}" alt="${placeholder?"":escapeHtml(product.name)}" loading="lazy" decoding="async"><div class="uds-card-badges"><span class="uds-condition">${escapeHtml(condition)}</span>${pricing.percent>0?`<span class="uds-campaign-badge">-${pricing.percent}%</span>`:""}<span class="uds-stock ${stock.cls}">${escapeHtml(stock.text)}</span></div></div>
       <div class="uds-card-body">
         <div class="uds-category">${escapeHtml(product.brand||categoryLabel(product.categories)||"Golf")}</div>
         <h3>${escapeHtml(product.name)}</h3>
@@ -857,9 +861,18 @@
   function markImageFallback(img,host){
     if(!img||!host)return;
     img.addEventListener("error",()=>{
-      img.style.display="none";
-      host.classList.add("is-media-fallback");
-    },{once:true});
+      const fallback="/assets/updown-product-placeholder.svg";
+      if(img.getAttribute("src")!==fallback){
+        // Broken uploaded photo: use the approved velvet placeholder instead.
+        img.src=fallback;
+        img.alt="";
+        host.classList.add("is-product-placeholder");
+      }else{
+        // Last-resort fallback if the static asset itself cannot load.
+        img.style.display="none";
+        host.classList.add("is-media-fallback");
+      }
+    });
   }
   function bindCard(card,product){
     const media=card.querySelector(".uds-card-media");
@@ -1732,12 +1745,15 @@
   }
   // Stage 4: only the admin preview receives share actions.
   // Stable UUIDs ensure links keep working when a product's title changes.
-  function previewShareUrl(product){
+  function previewShareUrl(product,forPublicShare=false){
     if(!PREVIEW_CATEGORY_GROUPS?.length)return "";
     const id=String(product.variant_id||product.id||"").replace(/^variant:/,"").toLowerCase();
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id))return "";
     const slug=(String(product.name||"producto").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,64).replace(/-+$/g,""))||"producto";
-    const url=new URL("/vista-previa/producto/"+slug+"--"+(product.variant_id?"v":"p")+"-"+id,"https://upndowncabo.com");
+    // Public share links use the launch-ready canonical product route.
+    // Preview clicks/prefetch continue using the admin-only preview route.
+    const productRoute=(forPublicShare?"/producto/":"/vista-previa/producto/")+slug+"--"+(product.variant_id?"v":"p")+"-"+id;
+    const url=new URL(productRoute,"https://upndowncabo.com");
     const code=getStoredAffiliate()?.code;
     if(code)url.searchParams.set("ref",code);
     return url.toString();
@@ -1757,7 +1773,7 @@
       area.before(tools);
     }
     tools.replaceChildren();
-    const url=previewShareUrl(product);
+    const url=previewShareUrl(product,true);
     if(!url)return;
     const label=currentLanguage==="en"?"Share product":"Compartir producto";
     const b=(title,handler)=>{
@@ -1782,7 +1798,7 @@
       catch(e){window.prompt(currentLanguage==="en"?"Copy product link:":"Copia el enlace del producto:",url)}
     });
     const direct=document.createElement("a");
-    direct.href=url;direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
+    direct.href=previewShareUrl(product);direct.textContent=currentLanguage==="en"?"Open product page ↗":"Ver ficha individual ↗";
     direct.className="uds-preview-product-link";
     tools.appendChild(direct);
   }
@@ -4226,12 +4242,28 @@
       {label:txt("Ver categorías","View categories"),onClick:()=>scrollToId("udsCategories")}
     ]));
 
-    menu.appendChild(makeGroup(txt("Servicios","Services"),[
-      {label:txt("Reparación","Repair"),onClick:()=>openService(/reparaci|repair/i)},
-      {label:txt("Intercambios","Trade-ins"),onClick:()=>openService(/intercambio|trade/i)},
-      {label:txt("Mantenimiento","Maintenance"),onClick:()=>openService(/mantenimiento|maintenance/i)},
-      {label:txt("Restauración de Putters","Putter Restoration"),onClick:()=>openService(/putter/i)},
-    ]));
+    // Service shortcuts are driven by the same ordered, active database rows
+    // used by the storefront cards. Never hardcode old service names or keys.
+    const managedServiceLinks=Array.isArray(window.__UPDOWN_SERVICES__)
+      ?window.__UPDOWN_SERVICES__.filter(row=>row&&typeof row.key==="string")
+      :[];
+    const serviceActions=managedServiceLinks.map(row=>({
+      label:(isEnglish()?row.title_en:row.title_es)||row.title_es||row.key,
+      onClick:()=>{
+        closeMenu();
+        setTimeout(()=>{
+          if(!window.__UPDOWN_OPEN_SERVICE__?.(row.key)){
+            el("udsServices")?.scrollIntoView({behavior:"smooth",block:"start"});
+          }
+        },70);
+      },
+    }));
+    menu.appendChild(makeGroup(txt("Servicios","Services"),
+      serviceActions.length?serviceActions:[{
+        label:txt("Ver servicios","View services"),
+        onClick:()=>scrollToId("udsServices")
+      }]
+    ));
 
     menu.appendChild(makeGroup(txt("Golf en Los Cabos","Golf in Los Cabos"),[
       {label:txt("Campos de golf","Golf courses"),onClick:()=>scrollToId("udsCourses")},
