@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { findShareableProduct } from "@/lib/storefront/get-shareable-product";
+import { RelatedProductsLoading } from "@/components/store/related-products-rail";
 import RelatedProductsServer from "@/components/store/related-products-server";
 import { Suspense, cache } from "react";
 import { productMetadata } from "@/lib/storefront/product-metadata";
@@ -25,7 +26,7 @@ export default async function PrivateProductPage({ params }: Props) {
   return <div className="ud-premium-product-skin">
     <PreviewLocalProductNavigation />
     <ProductDetail product={product} preview />
-    <Suspense fallback={<div className="ud-related-loading" role="status">Explorando artículos similares…</div>}>
+    <Suspense fallback={<RelatedProductsLoading />}>
       <RelatedProductsServer product={product} preview />
     </Suspense>
   </div>;
