@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 
 MAIN_SHA = "44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b"
-SOURCE_SHA = "f59ca078cee500cdfe0550bbf3a6a22c9586e7a3"
+SOURCE_SHA = "7bae91bddfd19b705919db83c6d4ac71f0740543"
 CANDIDATE = "integracion/premium-white-candidata-20261117"
 FILES = (
     "public/assets/updown-product-placeholder.svg",
