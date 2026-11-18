@@ -287,3 +287,25 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 - **P2 Clases.** Se conserva el flujo y su DOM de reserva. El CTA configurable puede apuntar fuera del formulario y desviar el registro. Sigue pendiente acordar qué acción puede sustituir ese CTA y qué elementos dependen de la visibilidad. La foto y el orden siguen administrables mediante la configuración existente.
 - **P0 operativo, separado del QA funcional.** GitHub reportó `protected=false` para `main` en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Las reglas de `main` quedan fuera del lote. No hubo PR, merge ni escritura a esa rama.
 - **Vercel y Supabase.** La verificación previa de Vercel devolvió cero despliegues en la candidata. `git.deploymentEnabled=false` está presente en el SHA remoto inicial y en el árbol validado, y `UNDER_CONSTRUCTION=true` sigue activo. QA exclusivamente local con fixtures. Sin cambios de Supabase, POS, inventario, impresión, recepción o pagos.
+
+## 15. P2 Clases y protección de main — corrección quirúrgica en candidata (17-nov-2026)
+
+**Alcance autorizado:** limitar cambios a la administración de Clases, visibilidad DB y contratos. No hay autorización de merge, PR ni release. Línea base: candidata remota `83f465f433b2add0994abcccb82724f2fa5bf14a`. Todo el código de Lote 3B previo, incluidos precio, carrito, variantes y fichas, permanece fuera del diff funcional de este ajuste.
+
+### Corrección del servicio Clases — solo candidata
+- `src/components/admin/services-admin.tsx`: habilita **fotografía (opcional en cada guardado), índice de aparición e indicador visible/oculto** en el registro `classes`. El formulario administrativo continúa **sin campos editables de título/eyebrow/descripción/lista/CTA/notas/WhatsApp** para Clases. El guardado `classes` modifica exclusivamente `sort_order`, `is_active` y, si se carga foto, `image_url`; los demás campos DB y flujo comercial no se cambian.
+- `public/updown-parity-runtime.js`: la carga de `storefront_services` solo consulta servicios activos y ordenados. Ahora retira del DOM incluso la tarjeta `classes` si no figura activa, **sin reemplazar ni recrear** su nodo original de formulario y sus escuchas de registro/instructores. Se oculta el enlace Clases del encabezado desktop cuando su servicio está inactivo; el menú móvil nativo se alimenta de `__UPDOWN_SERVICES__` activos.
+- **Regla protegida:** el formulario `udsClassLeadForm`, consentimiento, guardado del prospecto, registro con instructor y botones de ese flujo NO se modifican. La tarjeta `classes` no consume el `cta_url` genérico de la tabla: un enlace arbitrario del administrador no puede desviar el registro. La edición editorial profunda del servicio y cualquier CTA alternativo quedan FUERA DE ALCANCE hasta decisión comercial separada.
+- `tests/premium-white-contracts.cjs`: añadidos **3 contratos** que fijan los permisos de Clases, el filtro de visibilidad y la continuidad del formulario. Total esperado de las tres suites Lote 2A/2B/2C: **34 pruebas regulares + 1 TODO** (antes 31 + 1 TODO).
+
+### Auditoría realizada aquí
+- Los 3 contratos nuevos se ejecutaron en **harness JS V8 contra archivos realmente leídos desde GitHub**: **3 PASS / 0 FAIL**.
+- `public/updown-parity-runtime.js` pasó análisis de sintaxis JS con `new Function`. Esto NO es `node --test`, `tsc`, `next build` ni E2E.
+- **P2 funcional:** requiere fixture E2E en Work de Clases activo/inactivo, orden, foto, encabezado y menú móvil, formulario de registro y persistencia de los demás servicios. No marcar GO hasta estas pruebas.
+
+### Seguridad de rama principal — BLOQUEO DE RELEASE
+- Lectura GitHub actual: `main` en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`; `protected=false`, rulesets `[]`. La lectura del detalle de protección devolvió HTTP 403, integración sin permiso administrativo. **NO se ha activado protección**; este conector no expone acciones para cambiarla.
+- Configuración recomendada por administrador de GitHub ANTES de cualquier PR/merge: `Settings → Branches → Add classic branch protection rule` para `main`; exigir PR, impedir force push y borrado, limitar bypass; exigir revisión/aprobación solo si existe revisor adicional disponible, y requerir checks una vez que estén establecidos en CI. Verificar luego que GitHub reporte `protected=true`. Si no hay revisor adicional, no establecer un requisito que paralice el único mantenedor; optar por PR obligatorio y controles automáticos disponibles.
+- **No quitar** el `vercel.json` de la candidata ni desactivar `UNDER_CONSTRUCTION=true`. Nunca mezclar este `vercel.json` temporal con `main`. La configuración de auto-deploy y el plan de release son decisiones separadas.
+
+**Siguiente fase:** Work debe ejecutar las tres suites formales y Chromium aislado con datos simulados para `classes` activo/inactivo, admin de foto/índice/visibilidad, reserva, menú responsive y seis servicios. Revalidar `main` y 0 deploys. La protección de `main` debe quedar confirmada por el administrador antes de integrar cualquier rama. **Estado: implementación estática lista para QA; NO-GO de publicación.**
