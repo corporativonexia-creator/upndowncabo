@@ -1,12 +1,12 @@
 # UP AND DOWN Cabo · INTEGRACION-ESTADO
 
-**Registro maestro para ChatGPT y Work — Lote 1**
+**Registro maestro para ChatGPT y Work — Lotes 1 y 2A**
 **Fecha de referencia:** 17 de noviembre de 2026
 **Repositorio:** `corporativonexia-creator/upndowncabo`
 **Rama candidata:** `integracion/premium-white-candidata-20261117`
 **Base exacta de main:** `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`
 **Rama de origen Premium White:** `offline-premium-white-20261114`, commit `19b44e25070f5da875a47008bc438c4e766087f9`
-**Estado del lote 1:** Preparación documental y protección automática instalada. SIN integración funcional todavía.
+**Estado general:** Lote 1 y Lote 2A completados en candidata protegida. Lote 2B pendiente.
 
 ## 1. Propósito y límites
 
@@ -89,3 +89,37 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 - No crear PR ni hacer merge a `main` ni desplegar.
 - Usar mocks/fixtures para pruebas; nunca modificar datos comerciales.
 - Reportar SHA final, pruebas realmente ejecutadas, fallas, bloqueos y riesgos.
+
+## 9. Registro de ejecución — Lote 2A (17-nov-2026)
+
+**Estado:** COMPLETADO EN RAMA CANDIDATA — **SIN PUBLICACIÓN**, **SIN CAMBIOS EN MAIN**. Implementación limitada a presentación y recursos: NO se fusionaron runtime comercial, scripts de servicios, filtros, carrito, POS ni inventario.
+
+### Archivos integrados (7)
+
+1. `src/app/vista-previa/premium-white.css`: importado SIN alteraciones desde rama Premium White, 44,076 caracteres (estilos blanco premium, tipografías, tarjetas, header responsive, logotipo de mayor presencia).
+2. `src/components/store/premium-product-detail.css`: añadido, hoja de ficha premium compartida, 6,791 caracteres.
+3. `public/assets/updown-product-placeholder.svg`: reemplazado por la imagen verde aterciopelada canónica aprobada del usuario, embebida WebP 600×400, firma FNV-1a `3030130964` de la cadena Base64.
+4. `src/app/globals.css`: añadido ÚNICAMENTE el fragmento de 504 caracteres para presentar íntegra la imagen de respaldo cuando exista `.is-product-placeholder`; toda la porción anterior de main se conservó byte por byte.
+5. `src/app/vista-previa/page.tsx`: agregado solo import de `premium-white.css` junto a `preview-header.css`. Mantiene `requireRole("admin")`.
+6. `src/app/producto/[productKey]/page.tsx`: agregado import de estilo premium y wrapper visual `.ud-premium-product-skin`. Conserva metadatos, JSON-LD, `ProductDetail` y `RelatedProductsServer`, además de `UNDER_CONSTRUCTION` en el proxy.
+7. `src/app/vista-previa/producto/[productKey]/page.tsx`: agregado el mismo estilo y wrapper visual, sin modificar autorización admin ni código de selección/carrito.
+
+**Nuevo contrato de auditoría, SOLO para la candidata:** `tests/integration-lot2a-style.cjs`. Ejecutadas sus **6 pruebas estáticas** de forma aislada con el contenido exacto de GitHub: **6 PASS, 0 FAIL**. Esto NO es una prueba de compilación, navegador ni conexión real de Supabase. `node --test tests/integration-lot2a-style.cjs` deberá ejecutarse en Work con el repositorio en disco. El contrato contiene una aserción de seguridad sobre el `vercel.json` temporal y debe excluirse o adaptarse antes de cualquier PR a `main`.
+
+### Verificaciones y protección
+
+- El SVG de portada no se recreó: se copió el arte canónico con el mismo hash.
+- El logotipo vectorial original del encabezado permanece sin reescrituras; se aumenta visualmente mediante el CSS aprovado.
+- No se copiaron los archivos históricos de backup/SQL ni la maqueta HTML separada.
+- No se tocaron: `public/updown-parity-runtime.js`, `public/updown-preview-services-stage7.js`, `src/components/store/storefront-parity.tsx`, `src/components/store/product-detail.tsx`, `src/components/store/responsive/store-search.tsx`, POS, inventario ni Supabase.
+- `vercel.json` de la candidata sigue teniendo `git.deploymentEnabled=false`. La comprobación de Vercel tras las escrituras visuales mostró **0 despliegues** asociados a esta rama.
+- No se alteró la puerta de lanzamiento `UNDER_CONSTRUCTION = true`.
+
+### Dependencias expresamente pendientes de Lote 2B/2C
+
+- El fondo verde está incorporado como asset; las tarjetas del catálogo sin foto recibirán su clase `.is-product-placeholder` y URL de respaldo al integrar el cambio del runtime en 2B. El estilo presente **no finge que esa conexión ya se haya realizado**.
+- Las mejoras de búsqueda, filtro móvil, navegación local y la sincronización funcional de servicios **todavía no están incorporadas a la candidata**. Integrarlas por función en Lote 2B.
+- La portada pública todavía usa la UX vigente de `main`. Extender la presentación Premium White a la ruta pública en Lote 2C, sin abrir «Próximamente».
+- Las pruebas completas de `next build`, TypeScript, ESLint, navegador y regresión comercial permanecen pendientes para Work, tras completar los lotes 2B/2C.
+
+**Gate de 2A:** sí para continuar con Lote 2B en esta candidata protegida. **NO** para merge a main o despliegue público.
