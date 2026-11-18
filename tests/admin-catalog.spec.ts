@@ -105,6 +105,7 @@ test('A5.1 review of retirement highlights inventory and historical references w
   await expect(inspector).toContainText('Variantes: Referencia detectada');
   await expect(inspector).toContainText('Movimientos de inventario: Referencia detectada');
   await expect(inspector).toContainText('Ventas POS: Referencia detectada');
+  await expect(inspector).toContainText('Pedidos web: Sin referencias visibles (no concluyente)');
   await expect(inspector).toContainText('Ninguna baja se ejecutó');
   const events=await (await request.get(`${fixture}/__events`)).json();
   expect(events.filter((e:{method:string,path:string})=>['POST','PUT','PATCH','DELETE'].includes(e.method)&&
@@ -118,7 +119,7 @@ test('A5.1 restricted historical reads never imply a product can be deleted',asy
   await card(page,'p2').locator('.ud-delete').click();
   const inspector=card(page,'p2').getByRole('region',{name:'Auditoría de baja de Polo clásico azul'});
   await expect(inspector).toContainText('No verificable (acceso o consulta restringidos)');
-  await expect(inspector).toContainText('Sin referencias visibles (no concluyente)');
+  await expect(inspector).toContainText('Variantes: Referencia detectada');
   await expect(inspector).toContainText('Eliminar definitivamente');
   await expect(inspector).toContainText('No disponible desde el navegador');
   const events=await (await request.get(`${fixture}/__events`)).json();
