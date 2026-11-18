@@ -48,7 +48,7 @@ test("the public launch gate remains independent of preview", () => {
 test("premium styling stays scoped and syntactically balanced", () => {
   assert.equal(braces(files.css), 0);
   assert.equal(braces(files.productCss), 0);
-  has(files.css, "#updown-store.uds-preview", ".uds-search-focus #udsServices");
+  has(files.css, "#updown-store:is(.uds-preview,.uds-premium-white)", ".uds-search-focus #udsServices");
   has(files.productCss, ".ud-premium-product-skin");
   has(files.detail, "ud-premium-product-skin", 'import "@/components/store/premium-product-detail.css"');
   has(files.publicPage, "ud-premium-product-skin", 'import "@/components/store/premium-product-detail.css"');
@@ -101,7 +101,7 @@ test("checkout is blocked by default in preview", () => {
     "previewCartWhatsAppUrl()");
 });
 test("services and languages remain connected", () => {
-  has(files.services, 'root?.classList.contains("uds-preview")');
+  has(files.services, 'root?.classList.contains("uds-premium-white")');
   has(files.search, 'label("Cerrar búsqueda", "Close search")');
   has(files.runtime, 'currentLanguage=lang==="en"?"en":"es"');
 });
@@ -172,7 +172,7 @@ test("admin continues to edit source records and protected classes content", () 
     'from("storefront_services").insert(fields)',
     'service.key === "classes"');
   has(files.parity,
-    "/updown-preview-services-stage7.js?v=services-admin-unified-v4-20261116");
+    "/updown-preview-services-stage7.js?v=services-premium-shared-v5-20261117");
 });
 
 test("no-photo cards use approved velvet image without touching real product photos", () => {
