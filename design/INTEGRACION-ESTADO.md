@@ -309,3 +309,22 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 - **No quitar** el `vercel.json` de la candidata ni desactivar `UNDER_CONSTRUCTION=true`. Nunca mezclar este `vercel.json` temporal con `main`. La configuración de auto-deploy y el plan de release son decisiones separadas.
 
 **Siguiente fase:** Work debe ejecutar las tres suites formales y Chromium aislado con datos simulados para `classes` activo/inactivo, admin de foto/índice/visibilidad, reserva, menú responsive y seis servicios. Revalidar `main` y 0 deploys. La protección de `main` debe quedar confirmada por el administrador antes de integrar cualquier rama. **Estado: implementación estática lista para QA; NO-GO de publicación.**
+
+## 16. QA de Clases en Work (17-nov-2026)
+
+**Resultado: NO-GO de lanzamiento.** El registro y los controles de Clases funcionan en el fixture. El seguimiento del primer clic de instructor queda abierto. SHA de código probado: `ad06a1c5cdf5fcd942d7a2a1a7a1bbe0ef6d4e79`. El cierre solo modifica este documento.
+
+| Prueba | Resultado |
+| --- | --- |
+| `npm ci` | PASS |
+| `node --test tests/integration-lot2a-style.cjs tests/premium-white-contracts.cjs tests/integration-lot2c-shared-skin.cjs` | 34 PASS, 0 FAIL y 1 TODO existente |
+| `npx tsc --noEmit`, `npm run lint`, `npm run build` | PASS. ESLint: 0 errores, 9 advertencias |
+| Chromium, matriz completa aislada | 38 PASS, 2 FAIL, 0 excepciones. Matriz comercial a 320, 390, 760, 1024 y 1440 px. Clases en ambos canales a 390 y 1440 px |
+| Chromium, repetición enfocada de Galería/Lista privada a 1440 px | 4/4 PASS tras completar la carga de servicios, más 2 comprobaciones de barreras PASS |
+
+- **PASS · Clases activo, inactivo y reactivado.** En público y privado el acceso desktop y el menú móvil nativo respetaron la visibilidad. Los otros cinco servicios siguieron visibles. En el admin el guardado sin foto envió solo orden y visibilidad. Reactivar con una foto simulada envió esos dos campos y la URL de foto. Tras recargar, la tarjeta mostró la foto de reemplazo y pasó a la primera posición.
+- **PASS · Formulario y consentimiento.** Chromium comparó la identidad del formulario capturado antes de cargar la configuración con el nodo visible después de cargarla. Inactivo, el nodo original quedó desconectado. El CTA externo simulado en la fila de Clases no apareció ni sustituyó el formulario. Sin consentimiento no hubo solicitud. Al autorizar, se creó un único registro de fixture con la referencia de vendedor y se mostraron los instructores. El instructor inactivo no ofreció enlace. La recarga restauró el contexto y permitió registrar interés sin crear otro lead.
+- **FAIL · Primer clic de instructor en la misma sesión.** Tras una inscripción nueva, la tarjeta de instructor mostraba un enlace con el nombre del alumno, pero el clic no llamó a `record_golf_instructor_interest` (0 solicitudes frente a 1 esperada). Después de recargar sí llamó al RPC simulado. `mcUpdateInstructorLinks()` captura el acceso al instalar los listeners, antes de que exista el lead. Su implementación coincide con la de `83f465f`. El clic externo se interceptó y no abrió WhatsApp.
+- **FAIL intermitente · Galería/Lista privada a 1440 px.** En una de las matrices completas, el primer clic de Lista dejó la galería activa. Pasó en la primera matriz aislada y en cuatro repeticiones con la carga de servicios terminada. Queda sin causa confirmada. El resto de la regresión revalidó búsqueda, filtros, paginación, ES/EN, fotos, variantes, precio, límite de stock, carrito y enlace con referencia.
+- **Aislamiento.** La primera ejecución intentó cargar una imagen estática externa mediante el optimizador de Next y agotó el tiempo de espera. La revisión automática rechazó consultar esa ejecución. Los resultados reportados provienen de una repetición con el optimizador interceptado en Chromium y conexiones HTTP y sockets de Next restringidos a loopback. Los registros, consentimientos, imágenes y eventos usados como evidencia pertenecen exclusivamente al fixture.
+- **Guarda operativa.** `UNDER_CONSTRUCTION=true` y `git.deploymentEnabled=false` verificados. La ruta pública real en la prueba conservó «Próximamente». Vercel devolvió 0 despliegues para la candidata. `main` sigue en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b` con `protected=false`. Sin cambios en Supabase, POS, main, sin PR ni merge.
