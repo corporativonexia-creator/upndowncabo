@@ -249,3 +249,41 @@ Chromium local con servidor Next compilado, catálogo de 32 artículos, variante
 - **P2 — Servicio Clases.** El runtime excluye deliberadamente el título, la descripción y el CTA de la fila `classes` del render administrable para preservar el flujo de reserva. Alinear los campos editables que deban respetarse con el flujo de clases antes de cambiar su contrato.
 - **P0 operativo — Publicación accidental.** `main` sigue en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. El endpoint de rama GitHub devolvió `protected=false` para `main`. La consulta de reglas administrativas devolvió 403. No hubo escritura en `main` ni cambios de configuración.
 - **Vercel:** 0 despliegues para la candidata, consultados por proyecto y rama. `git.deploymentEnabled=false` y `UNDER_CONSTRUCTION=true` comprobados. **Supabase:** solo fixtures locales. Sin migraciones, datos reales, pedidos, pagos ni cambios de POS, inventario, recepción o impresión.
+
+## 14. Lote 3B — Cierre de correcciones comerciales
+
+**Resultado técnico y comercial probado:** los dos P1 del Lote 3 quedan cerrados en el entorno de QA. **NO-GO de lanzamiento** por el riesgo P0 operativo de `main` sin protección de rama reportada por GitHub. La tienda continúa cerrada al público.
+
+- Rama exclusiva: `integracion/premium-white-candidata-20261117`.
+- SHA remoto de partida: `59928d3b1ec70ce5263a18992e0a2c1a4681833a`. HEAD local inicial limpio: `6a808a8c6380e621665cf349ed7f0f4e4fdddaca`.
+- Correcciones recuperadas y verificadas en el checkout local: `8bc1d9f019257d26721596b02596dc1c0cc8394a` (tipado de navegación) y `35b27cd50a409000d92c11a7be56ee15003519bf` (CSS del paginador anterior). Ambas estaban ausentes del remoto de partida.
+- SHA final de código validado localmente: `5f84cc82d163098cc942a061fafb9ace03955e2c`. El siguiente commit de cierre añade esta entrada documental.
+
+### Commits y archivos del Lote 3B
+
+| Commit local | Archivos | Corrección |
+| --- | --- | --- |
+| `39d0f7b31c5afc3118a5841c01353b9f692f05e6` | `public/updown-parity-runtime.js`, `src/components/store/storefront-parity.tsx`, `tests/premium-white-contracts.cjs` | Estado de vista y paginación compartido, con preferencias por canal. Los filtros y el orden se mantienen al alternar la vista. Cambiar la consulta reinicia la página. El paginador legado se omite en Premium White. Las tarjetas públicas abren la ficha canónica en su origen actual. Las consultas públicas y privadas, el cálculo comercial y los pedidos conservan sus guardas existentes. |
+| `5f84cc82d163098cc942a061fafb9ace03955e2c` | `src/components/store/product-detail.tsx`, `related-products-rail.tsx`, `use-storefront-language.ts`, páginas pública y privada `producto/[productKey]/page.tsx` | La ficha y los relacionados leen ES/EN guardado tras hidratar. Se localizan envío, botones, disponibilidad, galería, mensajes, acciones de compartir y enlaces de consulta. Los campos originales del producto, SKU, marca, precio, moneda y referencias se conservan. La ruta de regreso retiene la vista de la colección. |
+
+### Pruebas ejecutadas
+
+| Prueba | Resultado |
+| --- | --- |
+| `npm ci` | PASS, 405 paquetes |
+| Tres suites `node --test` de los lotes 2A, 2B y 2C | PASS, 31 contratos, 0 fallos y 1 TODO preexistente |
+| `npm run check:admin-scripts` | PASS, sintaxis de 10 scripts |
+| `npx tsc --noEmit` | PASS |
+| `npm run lint` | PASS, 0 errores y 9 advertencias preexistentes |
+| `npm run build` | PASS, Next.js 16.3.3, incluido prebuild |
+| Chromium en loopback con fixtures | 32 PASS, 0 FAIL, 0 excepciones de página |
+
+A **320, 390, 760, 1024 y 1440 px** se probó Galería/Lista y paginación de ambos canales, con opciones 4/8/16/32/64 en móvil y 12/24/48/96 en escritorio. En público se comprobó persistencia tras recargar, orden, contador, búsqueda con filtro activo y ausencia de doble paginador. El servidor auxiliar sirvió el HTML público compilado. El clic público apuntó a `/producto/…` y encontró la barrera activa. La ficha compartida se probó desde la ruta privada con administrador simulado.
+
+A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persistencia al abrir la ficha, recargar y acceder directamente. También se comprobó la galería, relacionados, acciones localizadas, enlace canónico y referencia `QA2026`. La variante simulada conservó $475 MXN y el tope de dos unidades. Se comprobó agregar, disminuir y eliminar. Se verificaron seis tarjetas de servicio, foto configurada de Clases y apertura de su formulario. El QA no envió solicitudes de reserva ni pedidos.
+
+### Pendientes y estado operativo
+
+- **P2 Clases.** Se conserva el flujo y su DOM de reserva. El CTA configurable puede apuntar fuera del formulario y desviar el registro. Sigue pendiente acordar qué acción puede sustituir ese CTA y qué elementos dependen de la visibilidad. La foto y el orden siguen administrables mediante la configuración existente.
+- **P0 operativo, separado del QA funcional.** GitHub reportó `protected=false` para `main` en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Las reglas de `main` quedan fuera del lote. No hubo PR, merge ni escritura a esa rama.
+- **Vercel y Supabase.** La verificación previa de Vercel devolvió cero despliegues en la candidata. `git.deploymentEnabled=false` está presente en el SHA remoto inicial y en el árbol validado, y `UNDER_CONSTRUCTION=true` sigue activo. QA exclusivamente local con fixtures. Sin cambios de Supabase, POS, inventario, impresión, recepción o pagos.
