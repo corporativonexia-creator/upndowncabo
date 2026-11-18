@@ -37,6 +37,8 @@ FILES = (
 ALLOWED_AFTER_SOURCE = {
     "scripts/prepare-release-local.py", "design/LOTE7-RELEASE-LOCAL-20261118.md",
     "design/INTEGRACION-ESTADO.md",
+    "design/LOTE8A-QA-GITHUB-20261118.md",
+    "design/LOTE8B-VERCEL-PREVIEW-AUDITORIA-20261118.md",
     # QA only: permitted in the candidate, excluded from the 24-file release.
     ".github/workflows/upndown-premium-release-qa.yml",
     "playwright.premium-release.config.ts",
