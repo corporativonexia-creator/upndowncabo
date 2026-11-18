@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/require-role";
 import StorefrontParity from "@/components/store/storefront-parity";
+import PreviewFilterAutoCollapse from "./preview-filter-auto-collapse";
+import PreviewDesktopSearchFocus from "./preview-desktop-search-focus";
+import PreviewLocalProductNavigation from "./preview-local-product-navigation";
 import "./preview-header.css";
 import "./premium-white.css";
 
@@ -11,5 +14,12 @@ export const metadata: Metadata = {
 
 export default async function StorefrontPreviewPage() {
   await requireRole("admin", "/vista-previa");
-  return <StorefrontParity previewMode />;
+  return (
+    <>
+      <PreviewLocalProductNavigation />
+      <StorefrontParity previewMode />
+      <PreviewFilterAutoCollapse />
+      <PreviewDesktopSearchFocus />
+    </>
+  );
 }
