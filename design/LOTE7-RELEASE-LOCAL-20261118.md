@@ -3,7 +3,7 @@
 **Fecha:** 18-nov-2026  
 **Estado:** LISTO PARA EJECUCIÓN LOCAL AISLADA EN WORK; **NO AUTORIZADO PARA PUSH, PR, MERGE O DESPLIEGUE**.  
 **Repositorio:** `corporativonexia-creator/upndowncabo`.  
-**Código auditado de origen (7B corregido):** `7bae91bddfd19b705919db83c6d4ac71f0740543`.  
+**Código de origen congelado (7D):** `c04513dabb8192aee9f555bbfb29583a116ece07`.  
 **Base `main` exacta:** `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`.  
 **Manifiesto autorizado:** [LOTE6-PREINTEGRACION-20261118.md](./LOTE6-PREINTEGRACION-20261118.md) (21 archivos aplicación + 3 tests; 4 exclusiones principales).
 
@@ -24,7 +24,7 @@ Se añadió `scripts/prepare-release-local.py` a la **candidata con `vercel.json
 
 3. El script imprime la ruta del **worktree temporal detached** (ejemplo `/tmp/upndown-release-local-xxxxxxxx`). Cambiarse a esa ruta; no crear una rama remota.
 4. Comprobar el manifiesto resultante: **21 archivos de aplicación + 3 suites = 24 rutas**. Sin `vercel.json`, sin documentos históricos de candidata, sin la utilidad local; `src/proxy.ts` debe ser byte por byte el de `main`.
-5. Ejecutar `npm ci`, tres suites `node --test` (39 contratos + 1 TODO esperados, incluidos 2 contratos nuevos de ciclo de vida del runtime), `npm run check:admin-scripts`, `npx tsc --noEmit`, `npm run lint`, `npm run build`.
+5. Ejecutar `npm ci`, tres suites `node --test` (40 contratos + 1 TODO esperados, incluidos 3 contratos nuevos de ciclo de vida del runtime), `npm run check:admin-scripts`, `npx tsc --noEmit`, `npm run lint`, `npm run build`.
 6. Chromium en entorno aislado con datos simulados: rutas públicas/privadas, gate Próximamente y preview admin, diseño blanco 320/390/760/1024/1440, Lista/Galería y persistencia, búsqueda/filtrado, enlaces locales/canónicos, ES/EN, variantes/fotos/carrito/topes de stock, Clases foto/orden/visibilidad, consentimiento/primer clic/segundo alumno/recarga, cinco servicios restantes, SEO y metadatos.
 7. Verificar que no se abrió ningún checkout/pago real, no hubo mutaciones de Supabase ni cambios en POS. Guardar informe GO/NO-GO y **no ejecutar `git push`, `git merge`, `git commit`, crear PR o desplegar**.
 
@@ -54,3 +54,15 @@ El Lote 7 original construyó correctamente pero reprodujo una intermitencia de 
 - El ensamblador `scripts/prepare-release-local.py` fue **repinneado** a fuente inmutable `7bae91bddfd19b705919db83c6d4ac71f0740543`, manteniendo la base de `main` `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Work debe crear **un worktree nuevo**, no reutilizar `/tmp/upndown-release-local-0alnher5` porque contiene código antiguo.
 - **QA requerido antes del siguiente gate**: ejecutar suite completa (esperado 39 PASS + 1 TODO), `check:admin-scripts`, `tsc`, lint, build, Chromium focalizado con matriz acumulada de viewport y resolución 1440 en ambos canales; repetir primer clic de instructores, variantes/carrito/stock y rutas protegidas. No dar GO si el click de Lista vuelve a perderse.
 - Este cambio **no** autoriza push/PR/merge/despliegue ni retirar `UNDER_CONSTRUCTION`. La protección de `main` y la política de despliegue siguen pendientes.
+
+## 5. Lote 7D — protección de finalización asíncrona y nuevos controles
+
+**Fecha:** 18-nov-2026. **Estado:** código corregido y prueba dinámica aislada PASS; **suite Node/Chromium posterior aún pendiente**.
+
+- `public/updown-parity-runtime.js`, commit `ce6f5ef2e5328f5528ff596a1b1cb6807d5ba144`: `loadStore()` revisa `parityIsCurrent()` al comienzo, después de respuestas de catálogo/categorías/promociones y al terminar la obtención de variantes; `refreshCampaignsForCheckout()` lo verifica después de su RPC. Las finalizaciones de instancias viejas no deben renderizar el catálogo actual, escribir caché ni activar reconciliaciones de carrito. No se alteraron cantidades, precios, consultas de variantes, checkout ni contratos de datos.
+- `tests/premium-white-contracts.cjs`, commit `c04513dabb8192aee9f555bbfb29583a116ece07`: test asíncrono real sobre cuerpos de las funciones recuperadas de GitHub, con respuestas deliberadamente tardías de catálogo y promociones, más una ejecución actual que debe seguir renderizando. **1/1 PASS en harness V8 aislado**; en combinación con los 2 contratos previos hay 3 contratos nuevos del ciclo de vida.
+- Se repinneó el ensamblador local a `SOURCE_SHA=c04513dabb8192aee9f555bbfb29583a116ece07`, conservando `MAIN_SHA=44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Work debe generar un worktree **nuevo** con exactamente 21 archivos de aplicación + 3 suites, sin `vercel.json` ni documentación.
+- **Expectativa de contratos tras 7D: 40 PASS + 1 TODO**; no declarar PASS del total hasta ejecutar `node --test` en el release local. Debe repetirse `npm ci`, `check:admin-scripts`, `tsc`, lint y build, más los ciclos de Chromium móvil → escritorio y matriz completa, incluyendo Galería/Lista 1440, Clases, traducción y carrito.
+- No se realizaron PR, merge, despliegue, operaciones en Supabase real ni cambios en `main`. Su protección sigue pendiente. La publicación comercial sigue bloqueada.
+
+**Dictamen:** GO de revisión técnica aislada; **NO-GO para PR/merge/deploy** hasta QA Chromium completo, branch protection y política Vercel verificados.
