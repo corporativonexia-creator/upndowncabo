@@ -326,5 +326,45 @@ test("admin service status summary renders evaluated visibility/order without li
     "Service summary must render an evaluated JSX template, not literal delimiters");
 });
 
+test("responsive runtime lifetimes invalidate stale catalog callbacks", () => {
+  const start = files.runtime.indexOf('const parityRoot=el("updown-store");');
+  const end = files.runtime.indexOf('window.__UPDOWN_SEARCH_STATUS__="loading";', start);
+  assert.ok(start > 0 && end > start, "Runtime lifecycle snippet missing");
+  const lifetimeSource = files.runtime.slice(start, end);
+  const create = new Function("el", "window", lifetimeSource + "return {active:parityIsCurrent};");
+  const root = { isConnected: true };
+  const listeners = {};
+  const window = {
+    addEventListener: (event, listener) => {
+      (listeners[event] ||= []).push(listener);
+    }
+  };
+  const first = create(() => root, window);
+  assert.equal(first.active(), true);
+  const second = create(() => root, window);
+  assert.equal(first.active(), false, "Old runtime must not act on newer controls");
+  assert.equal(second.active(), true);
+  root.isConnected = false;
+  assert.equal(second.active(), false, "Detached root must never be rendered");
+  root.isConnected = true;
+  for (const listener of listeners["updown:storefront-dispose"] || []) listener();
+  assert.equal(second.active(), false, "Disposed runtime must stay inactive");
+});
+
+test("catalog view controls and copy-ready callbacks are owned by the current runtime", () => {
+  has(files.runtime,
+    'if(!catalogPresentation||!parityIsCurrent())return;',
+    'if(existing.__updownParityOwner===parityLifetime)return;',
+    'tools.__updownParityOwner=parityLifetime;',
+    'existing.remove();',
+    'el("udsPreviewCatalogPager")?.remove();',
+    'function renderProducts(){\n  if(!parityIsCurrent())return;',
+    'window.removeEventListener("updown:copy-ready",onCopyReady);',
+    'if(window.__UPDOWN_LANGUAGE_LISTENER__===onCopyReady)window.__UPDOWN_LANGUAGE_LISTENER__=null;',
+    'previewViewport.removeEventListener("change",onViewportChange)'
+  );
+  assert.match(files.runtime, /const onCopyReady=\(\)=>\{if\(parityIsCurrent\(\)\)applyLanguage\(currentLanguage\)\}/);
+});
+
 // Still pending: requires an actual browser session and fixture backend.
 test.todo("Browser E2E: login, variants, cart, links, ES/EN, mobile/desktop at 320/390/1280");
