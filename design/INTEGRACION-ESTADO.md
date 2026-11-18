@@ -386,3 +386,16 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 - **Chromium con fixtures:** 4 PASS, 0 FAIL y 0 excepciones de página. Las siete filas simuladas mostraron Visible/Oculto e Índice, y únicamente Clases mostró Registro protegido. Se comprobó que otros servicios conservaran sus campos editoriales.
 - **Controles de Clases:** el formulario siguió limitado a foto, índice y visibilidad. El guardado sin foto ocultó Clases y actualizó el índice a 9, sin enviar un campo de imagen. La reactivación cargó una imagen simulada y cambió el índice a 1. El rótulo cambió al guardar y la recarga conservó imagen, orden y visibilidad, con los campos protegidos ausentes.
 - **Alcance:** QA exclusivo del panel administrativo con backend simulado en loopback. Sin regresiones detectadas en ese alcance. Las barreras de la candidata siguen vigentes. Sin PR, merge, despliegue ni modificaciones de main, Supabase real, POS, pagos o Próximamente. El dictamen de release de la sección 19 sigue vigente.
+
+## 21. Lote 7 — ensamblaje local de release sin push (18-nov-2026)
+
+**Hito:** preparada herramienta local en `scripts/prepare-release-local.py`; instrucciones en [LOTE7-RELEASE-LOCAL-20261118.md](./LOTE7-RELEASE-LOCAL-20261118.md). **Aún NO se ha ejecutado sobre un checkout real de producción.**
+
+- SHA de código fuente congelado: `f59ca078cee500cdfe0550bbf3a6a22c9586e7a3`; SHA base `main`: `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`.
+- El ensamblador crea un worktree detached únicamente local desde `main` y transfiere **21 archivos de aplicación y 3 suites**. No copia `vercel.json`, expedientes de candidata ni los propios scripts de preparación. Verifica `UNDER_CONSTRUCTION=true`, los SHA, la ausencia de cambios posteriores de código, la identidad de `origin` y que el diff sea exactamente las 24 rutas seleccionadas.
+- Adaptaciones locales de pruebas Lote 2A/2C: reemplazan el requisito de `git.deploymentEnabled=false` **exclusivo de la candidata** por la ausencia del `vercel.json` temporal, conservando la aserción de «Próximamente».
+- Se probó el ensamblador en un repositorio Git sintético de prueba con remote bare local: worktree 24/24 rutas esperadas, exclusión de `vercel.json`, gate intacto y 2/2 contratos adaptados PASS. La utilidad pasó `python3 -m py_compile`. Estos resultados **no sustituyen** el QA/compilación del checkout real en Work.
+- No hubo push, PR, merge, release branch remota, despliegues intencionales ni alteración de Supabase/POS/checkout. **Siguiente actor: Work**, ejecución del ensamblador en checkout real limpio, pruebas formales y Chromium con fixtures; entregar resultado local sin push.
+- Para avanzar a deploy técnico, aún se requiere protección nativa de `main`, política Vercel de PRs/ramas y autorización explícita de integración. La apertura pública requiere autorización posterior independiente y pruebas controladas de cobro.
+
+**Dictamen:** GO para ensamblaje local aislado en Work; NO-GO para push/PR/merge/deploy.
