@@ -377,3 +377,12 @@ A 390 y 1440 px se cambió el idioma en el catálogo y se verificó su persisten
 - **Riesgo de release crítico:** las suites `integration-lot2a-style.cjs` y `integration-lot2c-shared-skin.cjs` verifican la presencia de `vercel.json` temporal. Al preparar el checkout **local, sin push** de release, deberán adaptarse para comprobar la **ausencia** de esa salvaguarda en la rama propuesta sin perder los tests de `UNDER_CONSTRUCTION=true`. Nunca retirar `vercel.json` de esta candidata antes de una estrategia explícita.
 - **Seguridad comprobada:** `src/proxy.ts` idéntico en main y candidata; bloqueo `UNDER_CONSTRUCTION=true`; `main` sin protección (`protected=false`, rulesets vacíos); cero despliegues Vercel de la candidata al iniciar la auditoría. No hubo mutaciones de Supabase, POS, inventario, pagos ni checkout.
 - **Siguiente gate:** QA focalizado de la interpolación administrativa en Work; habilitar protección de `main` por administrador; acordar política de despliegues de release. **No abrir PR, fusionar o publicar sin nueva autorización separada.**
+
+## 20. QA focalizado posterior a preintegración (18-nov-2026)
+
+**PASS del ajuste JSX en Servicios.** SHA de código probado: `a19c67f11c9b7d1b839e3b9a981a25f316129eef`. El commit de cierre solo documenta el resultado.
+
+- **Contratos:** 37 PASS, 0 FAIL y 1 TODO preexistente en las tres suites. `npx tsc --noEmit`, `npm run lint` y `npm run build` pasaron. ESLint reportó 0 errores y 9 advertencias.
+- **Chromium con fixtures:** 4 PASS, 0 FAIL y 0 excepciones de página. Las siete filas simuladas mostraron Visible/Oculto e Índice, y únicamente Clases mostró Registro protegido. Se comprobó que otros servicios conservaran sus campos editoriales.
+- **Controles de Clases:** el formulario siguió limitado a foto, índice y visibilidad. El guardado sin foto ocultó Clases y actualizó el índice a 9, sin enviar un campo de imagen. La reactivación cargó una imagen simulada y cambió el índice a 1. El rótulo cambió al guardar y la recarga conservó imagen, orden y visibilidad, con los campos protegidos ausentes.
+- **Alcance:** QA exclusivo del panel administrativo con backend simulado en loopback. Sin regresiones detectadas en ese alcance. Las barreras de la candidata siguen vigentes. Sin PR, merge, despliegue ni modificaciones de main, Supabase real, POS, pagos o Próximamente. El dictamen de release de la sección 19 sigue vigente.
