@@ -495,3 +495,19 @@ La auditoría de `loadStore()` encontró que una instancia del runtime desmontad
 - **Protección main:** ruleset ID 27534656 sigue activo; SHA `main=44e3f10...` intacto. No se crearon PR, nuevas ramas remotas o despliegues, ni se alteró Vercel/Supabase/POS.
 
 **Dictamen:** **GO para la fase de aislamiento/plan de release con autorización posterior**, **NO-GO para pruebas de escritura en Preview y salida remota sin control ambiental**. Mantener `UNDER_CONSTRUCTION=true`; deploy técnico y apertura comercial siguen siendo autorizaciones distintas.
+
+## 28. Decisión del administrador: variables compartidas en Preview y producción (18-nov-2026)
+
+**Decisión explícita:** el administrador solicita **conservar las mismas variables actuales de Supabase en Vercel Preview y Production** y **no crear un nuevo proyecto de staging**. Informa que las pruebas de la página las realizan solamente él y la persona administradora. Se acepta como criterio operativo **para preparar el PR técnico y una Preview protegida**, sin alterar ninguna variable o base de datos.
+
+**Alcance y riesgo residual:** un Preview de Vercel es una implementación distinta del frontend, **no** una base de datos distinta. Las variables públicas `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` se comparten entre entornos; Vercel Authentication limita quién accede al deploy, pero no impide que el código autorizado escriba en los datos reales. El tamaño reducido del equipo no elimina ese riesgo ni descarta efectos secundarios de una ruta o acción. `SUPABASE_SECRET_KEY` está limitada a Production.
+
+**Reglas obligatorias de operación para Preview compartida:**
+1. **Solo QA visual y lecturas verificadas:** diseño, responsive, navegación, búsqueda y revisión de datos sin acciones mutables; únicamente usuarios autorizados mediante Vercel Authentication. No registrar órdenes, ventas, devoluciones, alta/edición/baja de artículos, fotografías, imágenes, servicios, alumnos, prospectos, inventario, autorizaciones, pagos o recepción de equipos, ni efectuar otras mutaciones.
+2. **Flujos mutables** (incluidos POS, checkout, promociones, formularios y clases) deben seguir validándose con GitHub Actions y fixtures locales aislados; no usar credenciales comerciales ni generar transacciones de prueba en Supabase real.
+3. No crear dominios personalizados para Preview ni anular SSO. No desplegar directamente desde la candidata bloqueada: preparar una rama release **selectiva** y revisar el comportamiento de auto-preview ANTES del primer push. Inspeccionar el diff de **24 rutas exactas** y que `src/proxy.ts` mantenga `UNDER_CONSTRUCTION=true`.
+4. Si hace falta probar flujos con escritura realista antes de lanzamiento, esta decisión debe reconsiderarse y proporcionar staging separado u otro aislamiento efectivo. No se presume que Preview está sandboxed.
+
+**Último QA automático:** run `44322871917`, commit `0f4f65635d823e63f6b57242ec37b0cf842f6726`, `conclusion=success` en GitHub Actions tras incorporar solo los documentos de los lotes 8A/8B a la lista de exclusión/deriva controlada del ensamblador. QA previo `44274494221` también SUCCESS. No se modificó código comercial posterior a fuente `c04513dabb8192aee9f555bbfb29583a116ece07`.
+
+**Estado de lanzamiento:** GO para **preparar el PR selectivo sujeto a autorización explícita**; no se ha creado aún una rama de release remota, PR, merge ni deploy. El posterior deploy técnico mantendrá «Próximamente». Su retiro y la apertura al público requerirán autorización independiente.
