@@ -333,6 +333,9 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) throw new Error("La cantidad debe ser un número entero positivo o cero.");
         if (hasVariants && !variants.length) throw new Error("Agrega al menos una variante.");
         if (variants.some(v => !Number.isInteger(Number(v.quantity)) || Number(v.quantity) < 0)) throw new Error("Revisa las cantidades de las variantes.");
+        const codes = [barcode, ...(hasVariants ? variants.map(v => v.barcode) : [])]
+          .map(value => value.trim().toLowerCase()).filter(Boolean);
+        if (new Set(codes).size !== codes.length) throw new Error("Cada código de barras de esta ficha debe ser diferente. Revisa el producto y sus variantes.");
         if (advanced.salePrice !== undefined && advanced.salePrice !== "" && (
           !Number.isFinite(Number(advanced.salePrice)) || Number(advanced.salePrice) < 0 ||
           Number(advanced.salePrice) > Number(price)

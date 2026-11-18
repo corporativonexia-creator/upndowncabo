@@ -15,7 +15,10 @@ test("A3 keeps the old product editor, its handlers, and the quick capture imple
   assert.match(shell, /createPortal\(<QuickProductEntry embedded \/>, productHost\)/);
   assert.match(shell, /captureVisited/);
   assert.match(shell, /dangerouslySetInnerHTML=\{ADMIN_MARKUP\}/);
-  assert.match(read("src/app/admin/productos/alta-rapida/page.tsx"), /<QuickProductEntry \/>/);
+  const legacyRoute = read("src/app/admin/productos/alta-rapida/page.tsx");
+  assert.match(legacyRoute, /redirect\("\/admin\?producto=nuevo"\)/);
+  assert.doesNotMatch(legacyRoute, /<QuickProductEntry \/>/);
+  assert.match(tabs, /URLSearchParams\(window\.location\.search\)/);
 });
 
 test("A3 capture is lazy and reuses existing barcode, photo and variant paths", () => {

@@ -98,17 +98,34 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/rest/v1/rpc/admin_quick_product_create'){
     if(options.quickCreateError)return send({message:'Fixture quick create failure',code:'FIXTURE'},400);
     let product=products.find(p=>p.id===body.p_request_id);
+    const replayed=Boolean(product);
     if(!product){
       const category=({c1:'Ropa',c2:'Palos',c3:'Calzado'})[body.p_category_id]||'Sin categoría';
       product={id:body.p_request_id,name:body.p_name,category_id:body.p_category_id,categories:{name:category},
-        sku:'SIM-0001',barcode:body.p_barcode||'2000000000091',price:body.p_price,stock:body.p_quantity,
+        sku:({c1:'ROP-0003',c2:'PAL-0001',c3:'ZAP-0001'})[body.p_category_id]||'SIM-0001',barcode:body.p_barcode||'2000000000091',price:body.p_price,stock:0,
         sale_price:null,currency:'MXN',status:'draft',featured:false,new_arrival_enabled:true,
         brand:null,model:null,item_condition:'new',online_visible:true,pos_visible:true,
         specifications:{},product_images:[],created_at:new Date().toISOString()};
       products.unshift(product);
-      variants.push({id:'sim-variant',product_id:product.id,title:'Única',sku:product.sku,barcode:product.barcode,stock:product.stock,attributes:{},is_active:true});
+      const entries=Array.isArray(body.p_variants)?body.p_variants:[];
+      if(!entries.length){
+        product.stock=body.p_quantity;
+        variants.push({id:`sim-${product.id}-default`,product_id:product.id,title:'Única',sku:product.sku,barcode:product.barcode,stock:product.stock,attributes:{},is_active:true});
+      }else{
+        for(const [i,entry] of entries.entries()){
+          variants.push({id:`sim-${product.id}-${i+1}`,product_id:product.id,title:entry.title,
+            sku:`${product.sku}-V${String(i+1).padStart(2,'0')}`,barcode:entry.barcode||`2000000000${String(i+10).padStart(3,'0')}`,
+            stock:entry.quantity,attributes:entry.attributes||{},is_active:true});
+        }
+      }
+      const images=Array.isArray(body.p_images)?body.p_images:[];
+      for(const [i,imageUrl] of images.entries()){
+        const image={id:`sim-img-${product.id}-${i+1}`,product_id:product.id,image_url:imageUrl,
+          sort_order:i+1,is_primary:i===0};
+        gallery.push(image);product.product_images.push(image);
+      }
     }
-    return send({product_id:product.id,name:product.name,sku:product.sku,barcode:product.barcode,status:'draft',replayed:false});
+    return send({product_id:product.id,name:product.name,sku:product.sku,barcode:product.barcode,status:'draft',replayed});
   }
   if(url.pathname==='/rest/v1/rpc/next_internal_barcode')return send(options.invalidBarcode?'invalid':'2000000000084');
   if(url.pathname==='/rest/v1/rpc/admin_inventory_save_variant'){

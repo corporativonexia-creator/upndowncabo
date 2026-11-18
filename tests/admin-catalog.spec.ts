@@ -325,24 +325,79 @@ test('stock and linked history prevent variant deletion',async({page,request})=>
 
 
 for (const scenario of [{category:'c1',size:'XS',other:'XXL'},{category:'c3',size:'25.5',other:'27'}]) {
-  test(`quick entry adds only requested variants: ${scenario.category}`,async({page})=>{
+  test(`unified entry adds only requested variants: ${scenario.category}`,async({page})=>{
     await login(page);await page.goto('/admin/productos/alta-rapida');
-    await page.getByRole('combobox',{name:'Categoría',exact:true}).selectOption(scenario.category);
-    const names=page.getByLabel('Nombre de variante',{exact:true});
+    await expect(page).toHaveURL(/\/admin\?producto=nuevo$/);
+    const host=page.locator('#udUnifiedProductHost');
+    await expect(host.getByRole('heading',{name:'Nueva ficha de producto'})).toBeVisible();
+    await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption(scenario.category);
+    const names=host.getByLabel('Nombre de variante',{exact:true});
     await expect(names).toHaveCount(0);
-    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await host.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
     await expect(names).toHaveCount(1);
-    await page.getByRole('combobox',{name:'Talla',exact:true}).selectOption(scenario.size);
+    await host.getByRole('combobox',{name:'Talla',exact:true}).selectOption(scenario.size);
     await expect(names.first()).toHaveValue(scenario.size);
-    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await host.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
     await expect(names).toHaveCount(2);
-    await page.getByRole('combobox',{name:'Talla',exact:true}).nth(1).selectOption(scenario.other);
+    await host.getByRole('combobox',{name:'Talla',exact:true}).nth(1).selectOption(scenario.other);
     await expect(names.first()).toHaveValue(scenario.size);
     await expect(names.nth(1)).toHaveValue(scenario.other);
-    await page.getByRole('button',{name:'Quitar variante 2',exact:true}).click();
+    await host.getByRole('button',{name:'Quitar variante 2',exact:true}).click();
     await expect(names).toHaveCount(1);
-    await page.getByLabel('Tiene variantes (talla, color u otras)').uncheck();
-    await page.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+    await host.getByLabel('Tiene variantes (talla, color u otras)').uncheck();
+    await host.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
     await expect(names).toHaveCount(1);await expect(names.first()).toHaveValue(scenario.size);
   });
 }
+
+test('A3.5 persists two requested variants and both parent and variant photos in one save',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Nombre del producto').fill('Polo doble variante QA');
+  await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption('c1');
+  await host.locator('input[placeholder="0.00"]').fill('499');
+  await host.locator('#quick-barcode').fill('2005550000001');
+  await host.locator('input[type=file][multiple]').first().setInputFiles(photoFixture);
+  await expect(host.locator('img[alt*="Foto 1 de Polo doble"]')).toBeVisible();
+  await host.getByLabel('Tiene variantes (talla, color u otras)').check();
+  await host.getByLabel('Nombre de variante',{exact:true}).fill('Polo XS');
+  await host.getByRole('combobox',{name:'Talla',exact:true}).selectOption('XS');
+  await host.locator('input[placeholder="Vacío = generar automáticamente"]').first().fill('2005550000002');
+  await host.locator('[class*="variantPhoto"] input[type=file][capture=environment]').first().setInputFiles(photoFixture);
+  await expect(host.locator('img[alt^="Foto de la variante"]')).toHaveCount(1);
+  await host.getByRole('button',{name:'＋ Agregar variante',exact:true}).click();
+  await host.getByLabel('Nombre de variante',{exact:true}).nth(1).fill('Polo XXL');
+  await host.getByRole('combobox',{name:'Talla',exact:true}).nth(1).selectOption('XXL');
+  await host.locator('input[placeholder="Vacío = generar automáticamente"]').nth(1).fill('2005550000003');
+  await host.getByRole('button',{name:'Guardar ficha completa'}).click();
+  await expect(host.getByText(/Ficha completa guardada como borrador/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  const create=events.find((e:{path:string})=>e.path.endsWith('admin_quick_product_create'));
+  expect(create.body.p_variants).toHaveLength(2);
+  expect(create.body.p_images).toHaveLength(1);
+  expect(create.body.p_variants[0].attributes.image_url).toMatch(/^http/);
+  const saved=await (await request.get(`${fixture}/rest/v1/product_variants?product_id=eq.${create.body.p_request_id}`)).json();
+  expect(saved).toHaveLength(2);
+  expect(saved.map((v:{sku:string})=>v.sku)).toEqual(['ROP-0003-V01','ROP-0003-V02']);
+  expect(saved[0].attributes).toMatchObject({talla:'XS',image_url:create.body.p_variants[0].attributes.image_url});
+  expect(saved[1].attributes).toMatchObject({talla:'XXL'});
+  expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(2);
+});
+
+test('A3.5 rejects duplicate UPC inside one ficha before any upload or product write',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Nombre del producto').fill('Prueba UPC duplicado');
+  await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption('c1');
+  await host.locator('input[placeholder="0.00"]').fill('199');
+  await host.locator('#quick-barcode').fill('2005550000010');
+  await host.getByLabel('Tiene variantes (talla, color u otras)').check();
+  await host.getByLabel('Nombre de variante',{exact:true}).fill('XS duplicado');
+  await host.locator('input[placeholder="Vacío = generar automáticamente"]').fill('2005550000010');
+  await host.getByRole('button',{name:'Guardar ficha completa'}).click();
+  await expect(host.getByRole('alert')).toContainText('Cada código de barras de esta ficha debe ser diferente');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.some((e:{path:string})=>e.path.endsWith('/admin_quick_product_create')||e.path.startsWith('/storage/v1/object/product-media/'))).toBe(false);
+});

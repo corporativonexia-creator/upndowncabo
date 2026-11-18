@@ -24,7 +24,9 @@ function boot(){
  tabs.addEventListener("click",e=>{const b=e.target.closest("button[data-view]");if(b)show(b.dataset.view)});document.addEventListener("click",e=>{if(e.target.closest?.("#udNew")){show("capture");setTimeout(()=>window.scrollTo({top:0,behavior:"smooth"}),20)}if(e.target.closest?.("[data-product-capture-link]")){e.preventDefault();show("capture")}if(e.target.closest?.("#udCancel"))show("catalog");if(e.target.closest?.(".ud-edit"))show("form")},true);
  // The full editor signals readiness only after its existing editProduct handler
  // has loaded the requested item and staged optional fields for review.
- window.addEventListener("updown:admin-product-editor-opened",()=>show("form"));show("catalog");return true;
+ window.addEventListener("updown:admin-product-editor-opened",()=>show("form"));
+ // Old bookmarks now enter the same single creation form, never a second route.
+ show(new URLSearchParams(window.location.search).get("producto")==="nuevo"?"capture":"catalog");return true;
 }
 let n=0;const t=setInterval(()=>{if(boot()||++n>100)clearInterval(t)},250);
 })();
