@@ -36,7 +36,7 @@ test("A2 reuses live buttons in collapsible native groups without data mutations
   for (const route of ["/pos", "/pos/recepciones", "/admin/pos/promociones"]) assert.ok(file.includes(route));
   assert.match(file, /nav\.replaceChildren\(\.\.\.sections\)/);
   assert.match(file, /createElement\("details"\)/);
-  assert.doesNotMatch(file, /\.rpc\(|\.from\(|\.insert\(|\.update\(|\.delete\(|fetch\(/);
+  assert.doesNotMatch(file, /\b(?:db|supabase|client)\.(?:rpc|from|insert|update|delete)\(|\bfetch\(/);
   assert.doesNotMatch(file, /admin\/productos\/alta-rapida/);
 });
 

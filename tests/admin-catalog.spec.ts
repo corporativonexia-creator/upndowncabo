@@ -16,6 +16,27 @@ async function ready(page:Page){
 }
 const card=(page:Page,id:string)=>page.locator(`#udList .u-item[data-product-id="${id}"]`);
 
+
+test('Premium White admin shell mounts original buttons in an expandable sidebar',async({page})=>{
+  await login(page);await ready(page);
+  const root=page.locator('#updown-admin');
+  await expect(root).toHaveClass(/ud-premium-white/);
+  await expect(page.locator('.ud-admin-legacy')).toHaveAttribute('data-admin-ready','true');
+  const nav=root.locator('.u-admin-nav');
+  await expect(nav).toHaveAttribute('data-premium-sidebar','ready');
+  for(const id of ['udProductsTab','udOrdersTab','udv2PosTab']){
+    await expect(page.locator('#'+id)).toHaveCount(1);
+  }
+  const products=nav.locator('[data-sidebar-section=products]');
+  const sales=nav.locator('[data-sidebar-section=sales]');
+  await expect(products).toHaveAttribute('open','');
+  await sales.locator('summary').click();
+  await expect(sales).toHaveAttribute('open','');
+  await expect(products).not.toHaveAttribute('open','');
+  await expect(sales.locator('a[href="/pos/recepciones"]')).toBeVisible();
+  await expect(sales.locator('a[href="/admin/pos/promociones"]')).toBeVisible();
+});
+
 test.beforeEach(async({request,page})=>{
   await request.post(`${fixture}/__reset`,{data:{}});
   // All data traffic remains local. External fonts/images are irrelevant to these tests.
@@ -107,8 +128,8 @@ test('variant summary failure leaves parent search usable and offers retry',asyn
 
 test('script parse failure is surfaced by the loader instead of an eternal spinner',async({page})=>{
   await page.route('**/updown-admin-legacy-runtime.js?*',route=>route.fulfill({contentType:'application/javascript',body:'const broken = ;'}));
-  await login(page);await expect(page.locator('#udList [role=alert]')).toContainText('No se pudo iniciar');
-  await expect(page.getByRole('button',{name:'Reintentar inicio'})).toBeVisible();
+  await login(page);await expect(page.locator('.ud-admin-splash[role=alert]')).toContainText('No se pudo iniciar');
+  await expect(page.getByRole('button',{name:'Reintentar',exact:true})).toBeVisible();
 });
 
 test('mobile catalog can filter and open the product editor',async({page})=>{
