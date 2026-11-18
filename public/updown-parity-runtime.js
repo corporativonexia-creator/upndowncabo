@@ -3053,15 +3053,21 @@
     }
   }catch{}
 
-  document.querySelectorAll("#updown-store .uds-teacher-whatsapp").forEach(link=>{
-    link.addEventListener("click",()=>{
-      if(!udsGolfLessonLeadId||!udsGolfLessonLeadToken)return;
-      db.rpc("record_golf_instructor_interest",{
-        p_lead_id:udsGolfLessonLeadId,
-        p_lead_token:udsGolfLessonLeadToken,
-        p_instructor_slug:link.getAttribute("data-instructor-slug")
-      }).then(({error})=>{if(error)console.warn("Instructor analytics event failed",error)});
-    });
+  // Delegation is bound once to the ORIGINAL teachers container: managed
+  // instructor links are rendered asynchronously and may be replaced later.
+  // Resolve the CURRENT successful registration on click, not at render time.
+  // This also credits a second student's registration in the same session
+  // without overwriting the first student's persistent device access.
+  el("udsTeachers")?.addEventListener("click",event=>{
+    const link=event.target?.closest?.(".uds-teacher-whatsapp");
+    const slug=link?.getAttribute("data-instructor-slug");
+    if(!slug||!udsGolfLessonLeadId||!udsGolfLessonLeadToken)return;
+    db.rpc("record_golf_instructor_interest",{
+      p_lead_id:udsGolfLessonLeadId,
+      p_lead_token:udsGolfLessonLeadToken,
+      p_instructor_slug:slug
+    }).then(({error})=>{if(error)console.warn("Instructor analytics event failed",error)})
+      .catch(error=>console.warn("Instructor analytics event failed",error));
   });
 
   // H80: service content is managed separately from the protected golf lesson workflow.
@@ -3487,21 +3493,14 @@
   }
 
   function mcUpdateInstructorLinks(){
-    const access=mcLessonAccess();
+    // This renderer controls ONLY the WhatsApp URL. Attribution is handled by
+    // the single delegated click listener on #udsTeachers using the currently
+    // registered student's active lead/token (including new same-session leads).
     document.querySelectorAll("#updown-store .uds-managed-teacher-whatsapp").forEach(link=>{
       const instructor=mcState.instructors.find(x=>x.slug===link.dataset.instructorSlug);
       if(!instructor)return;
       const phone=mcInstructorPhone(instructor);
       link.href=`https://wa.me/${phone}?text=${encodeURIComponent(mcInstructorMessage(instructor))}`;
-
-      link.onclick=()=>{
-        if(!access?.id||!access?.token)return;
-        mcRpc("record_golf_instructor_interest",{
-          p_lead_id:access.id,
-          p_lead_token:access.token,
-          p_instructor_slug:instructor.slug
-        }).catch(error=>console.warn("Instructor analytics event failed",error));
-      };
     });
   }
 
