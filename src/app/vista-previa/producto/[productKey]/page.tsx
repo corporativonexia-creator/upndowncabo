@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { findShareableProduct } from "@/lib/storefront/get-shareable-product";
+import { RelatedProductsLoading } from "@/components/store/related-products-rail";
 import RelatedProductsServer from "@/components/store/related-products-server";
 import { Suspense, cache } from "react";
 import { productMetadata } from "@/lib/storefront/product-metadata";
 import ProductDetail from "@/components/store/product-detail";
+import "@/components/store/premium-product-detail.css";
+import PreviewLocalProductNavigation from "../../preview-local-product-navigation";
 
 // This memoizes authorization only during this React request, never across users.
 const ensurePreviewAdmin = cache(() => requireRole("admin", "/vista-previa"));
@@ -20,10 +23,11 @@ export default async function PrivateProductPage({ params }: Props) {
   await ensurePreviewAdmin();
   const product = await findShareableProduct((await params).productKey);
   if (!product) notFound();
-  return <>
+  return <div className="ud-premium-product-skin">
+    <PreviewLocalProductNavigation />
     <ProductDetail product={product} preview />
-    <Suspense fallback={<div className="ud-related-loading" role="status">Explorando artículos similares…</div>}>
+    <Suspense fallback={<RelatedProductsLoading />}>
       <RelatedProductsServer product={product} preview />
     </Suspense>
-  </>;
+  </div>;
 }

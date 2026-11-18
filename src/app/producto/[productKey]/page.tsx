@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { findShareableProduct } from "@/lib/storefront/get-shareable-product";
+import { RelatedProductsLoading } from "@/components/store/related-products-rail";
 import RelatedProductsServer from "@/components/store/related-products-server";
 import { Suspense } from "react";
 import { productMetadata } from "@/lib/storefront/product-metadata";
 import ProductDetail from "@/components/store/product-detail";
+import "@/components/store/premium-product-detail.css";
 import { productPageUrl } from "@/lib/storefront/product-share";
 
 type Props = { params: Promise<{ productKey: string }> };
@@ -36,11 +38,11 @@ export default async function ProductPage({ params }: Props) {
       url: productPageUrl(product.key, false),
     },
   };
-  return <>
+  return <div className="ud-premium-product-skin">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
     <ProductDetail product={product} preview={false} />
-    <Suspense fallback={<div className="ud-related-loading" role="status">Explorando artículos similares…</div>}>
+    <Suspense fallback={<RelatedProductsLoading />}>
       <RelatedProductsServer product={product} preview={false} />
     </Suspense>
-  </>;
+  </div>;
 }
