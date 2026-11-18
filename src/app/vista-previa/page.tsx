@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/auth/require-role";
 import StorefrontParity from "@/components/store/storefront-parity";
 import "./preview-header.css";
+import "./premium-white.css";
 
 export const metadata: Metadata = {
   title: "Vista previa privada · UP AND DOWN",
