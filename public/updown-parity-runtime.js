@@ -6,6 +6,15 @@
   if(!SUPABASE_URL||!SUPABASE_KEY)throw new Error("UP AND DOWN: faltan variables públicas de Supabase.");
   const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   const el=id=>document.getElementById(id);
+  // One runtime lifetime per responsive mount. A prior async catalog response
+  // must not render into the new storefront or bind the new view controls.
+  const parityRoot=el("updown-store");
+  const parityLifetime={};
+  window.__UPDOWN_PARITY_LIFETIME__=parityLifetime;
+  let parityDisposed=false;
+  const parityIsCurrent=()=>!parityDisposed&&Boolean(parityRoot?.isConnected)
+    &&window.__UPDOWN_PARITY_LIFETIME__===parityLifetime;
+  window.addEventListener("updown:storefront-dispose",()=>{parityDisposed=true},{once:true});
   window.__UPDOWN_SEARCH_STATUS__="loading";
   let products=[],filteredProducts=[],categories=[],activeCategory="all",modalProduct=null;
   let storefrontPromotions=[];
@@ -1070,12 +1079,21 @@
 }
 
   function installPreviewCatalogControls(){
-  if(!catalogPresentation||el("udsPreviewCatalogTools"))return;
+  if(!catalogPresentation||!parityIsCurrent())return;
   const grid=el("udsGrid"),bar=document.querySelector("#updown-store #udsCatalog .uds-catalog-bar");
   if(!grid||!bar)return;
+  const existing=el("udsPreviewCatalogTools");
+  if(existing){
+    if(existing.__updownParityOwner===parityLifetime)return;
+    // An old mount may have installed controls on the new DOM before its
+    // pending request finished. Never keep its obsolete click callbacks.
+    existing.remove();
+    el("udsPreviewCatalogPager")?.remove();
+  }
   bar.id="udsPreviewCatalogBar";
   const tools=document.createElement("div");
   tools.id="udsPreviewCatalogTools";
+  tools.__updownParityOwner=parityLifetime;
   tools.className="uds-preview-catalog-tools";
   tools.innerHTML=`
     <label class="uds-preview-sort"><span>Ordenar:</span>
@@ -1138,6 +1156,10 @@
   };
   if(previewViewport.addEventListener)previewViewport.addEventListener("change",onViewportChange);
   else previewViewport.addListener(onViewportChange);
+  window.addEventListener("updown:storefront-dispose",()=>{
+    if(previewViewport.removeEventListener)previewViewport.removeEventListener("change",onViewportChange);
+    else previewViewport.removeListener(onViewportChange);
+  },{once:true});
 }
 
   function drawPreviewCatalogPager(){
@@ -1201,6 +1223,7 @@
 }
 
   function renderProducts(){
+  if(!parityIsCurrent())return;
   const grid=el("udsGrid");
   if(!grid)return;
   grid.replaceChildren();
@@ -2651,8 +2674,13 @@
   }
   window.__UPDOWN_SET_LANGUAGE__=applyLanguage;
   if(window.__UPDOWN_LANGUAGE_LISTENER__)window.removeEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
-  window.__UPDOWN_LANGUAGE_LISTENER__=()=>applyLanguage(currentLanguage);
-  window.addEventListener("updown:copy-ready",window.__UPDOWN_LANGUAGE_LISTENER__);
+  const onCopyReady=()=>{if(parityIsCurrent())applyLanguage(currentLanguage)};
+  window.__UPDOWN_LANGUAGE_LISTENER__=onCopyReady;
+  window.addEventListener("updown:copy-ready",onCopyReady);
+  window.addEventListener("updown:storefront-dispose",()=>{
+    window.removeEventListener("updown:copy-ready",onCopyReady);
+    if(window.__UPDOWN_LANGUAGE_LISTENER__===onCopyReady)window.__UPDOWN_LANGUAGE_LISTENER__=null;
+  },{once:true});
   if(el("udsLangEs"))if(el("udsLangEs"))el("udsLangEs").onclick=()=>applyLanguage("es");if(el("udsLangEn"))if(el("udsLangEn"))el("udsLangEn").onclick=()=>applyLanguage("en");
 
   // Navegación inmersiva y fija.
