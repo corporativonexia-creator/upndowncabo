@@ -1,12 +1,12 @@
 # UP AND DOWN Cabo · INTEGRACION-ESTADO
 
-**Registro maestro para ChatGPT y Work — Lotes 1 y 2A**
+**Registro maestro para ChatGPT y Work — Lotes 1, 2A y 2B**
 **Fecha de referencia:** 17 de noviembre de 2026
 **Repositorio:** `corporativonexia-creator/upndowncabo`
 **Rama candidata:** `integracion/premium-white-candidata-20261117`
 **Base exacta de main:** `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`
 **Rama de origen Premium White:** `offline-premium-white-20261114`, commit `19b44e25070f5da875a47008bc438c4e766087f9`
-**Estado general:** Lote 1 y Lote 2A completados en candidata protegida. Lote 2B pendiente.
+**Estado general:** Lotes 1, 2A y 2B integrados en candidata protegida. Lote 2C (paridad de portada pública sin abrir lanzamiento) pendiente.
 
 ## 1. Propósito y límites
 
@@ -59,7 +59,8 @@ Operaciones autorizadas únicamente en este lote: nueva rama desde el SHA exacto
 |---|---|---|---|---|
 | 1 | Base limpia, Vercel protegido, 23 archivos inventariados, registro maestro | ChatGPT | `main` vigente | **Hecho**; verificar que no hubo deploy |
 | 2A | Integración selectiva Premium White + portada pública, sin tocar POS | ChatGPT | Inventario de Lote 1 | Código completo en candidata, sin `main`, no deploy |
-| 2B | Revisión adicional de URL pública, seguridad y servicios | ChatGPT | Lote 2A | Contratos y revisión por archivo |
+| 2B | Búsqueda y filtros, Galería/Lista, navegación a fichas, compartir, 6 servicios Supabase | ChatGPT | Lote 2A | **Integrado en candidata; controles estáticos PASS** |
+| 2C | Unificar experiencia Premium White en portada pública, conservando Próximamente | ChatGPT | Lote 2B | Pendiente, sin publicar ni deploy |
 | 3 | `npm ci`, build, TypeScript, ESLint y suite QA | Work | Lote 2A/2B | Evidencia real de pruebas, commits puntuales en candidata |
 | 4 | Impresión de taller, inventario categoría, SKU/fotos: solo ramas pertinentes | ChatGPT | Rama principal y pruebas separadas | PRs **separados**, seguridad POS |
 | 5 | Browser UX E2E + regresión | Work | Candidata verificable | Matriz de pruebas y defectos reproducibles |
@@ -123,3 +124,39 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 - Las pruebas completas de `next build`, TypeScript, ESLint, navegador y regresión comercial permanecen pendientes para Work, tras completar los lotes 2B/2C.
 
 **Gate de 2A:** sí para continuar con Lote 2B en esta candidata protegida. **NO** para merge a main o despliegue público.
+
+## 10. Registro de ejecución — Lote 2B (17-nov-2026)
+
+**Estado: INTEGRADO EN CANDIDATA, sin publicar.** Revisión selectiva de `offline-premium-white-20261114`, aplicada solo a `integracion/premium-white-candidata-20261117`. La portada pública sigue pendiente de Lote 2C. NO se mezcló una rama completa por git merge, y NO se editaron POS, inventario administrativo, Stripe ni checkout.
+
+### Cambios funcionales verificados en código
+- **Buscador inteligente:** búsqueda en tiempo real existente conservada, mejoras de enfoque/escritorio mediante `preview-desktop-search-focus.tsx`, resultados con imagen de respaldo de producto en `store-search.tsx`; sin modificar el origen de datos.
+- **Filtros:** filtros de categoría/condición/marca/mano/flex/loft y orden existentes preservados; `preview-filter-auto-collapse.tsx` cierra el panel móvil después de aplicar/limpiar, sin sustituir handlers.
+- **Galería/Lista:** control, persistencia de vista y paginación del runtime preservados; la presentación Premium White de 2A los estiliza en preview.
+- **Fichas independientes:** `preview-local-product-navigation.tsx` enruta los clics y prefetch a la ruta privada local `/vista-previa/producto/...` incluso al inspeccionar en localhost; navegación a variantes y relacionados protegida por `requireRole("admin")`.
+- **Compartir:** en `public/updown-parity-runtime.js` y `product-detail.tsx` los enlaces destinados a WhatsApp/copiar son canónicos `https://upndowncabo.com/producto/...`, mantienen IDs de producto/variante y referencia de vendedor. La navegación interna de preview permanece privada. **No levantar la barrera pública** por este cambio.
+- **Servicios administrables:** `updown-preview-services-stage7.js` ahora es únicamente presentación. No reescribe texto/títulos/CTAs del administrador. Menú móvil construye atajos desde `window.__UPDOWN_SERVICES__`, alimentado por `public.storefront_services` (filtro `is_active`, orden `sort_order`). `storefront-parity.tsx` actualiza versiones cacheadas para evitar runtime obsoleto.
+- **Imagen faltante:** portada y miniaturas muestran el asset canónico del Lote 2A cuando no hay fotografía válida, sin reemplazar imágenes reales.
+- **Seguridad comercial:** se contrastaron y conservaron idénticas las funciones `storefrontPricing`, `reconcilePreviewCart` (precios/existencias por variante) y `stockCopy` frente a la base de candidata. No se modificó esquema/datos de Supabase, ni cantidades de venta.
+
+### Archivos cambiados (11 funcionales + 1 suite)
+1. `src/app/vista-previa/preview-desktop-search-focus.tsx` — nuevo
+2. `src/app/vista-previa/preview-filter-auto-collapse.tsx` — nuevo
+3. `src/app/vista-previa/preview-local-product-navigation.tsx` — nuevo
+4. `src/app/vista-previa/page.tsx` — actualizado
+5. `src/app/vista-previa/producto/[productKey]/page.tsx` — actualizado
+6. `public/updown-parity-runtime.js` — integrado con cambios funcionales auditados
+7. `public/updown-preview-services-stage7.js` — simplificado a presentación DB-led
+8. `src/components/store/product-detail.tsx` — enlace canónico al compartir
+9. `src/components/store/responsive/store-search.tsx` — fallback de producto
+10. `src/components/store/storefront-parity.tsx` — cache-busting de scripts
+11. `tests/premium-white-contracts.cjs` — nueva suite 18 contratos + 1 TODO E2E
+
+### Evidencia y límites
+- Consulta **solo lectura** a proyecto Supabase `upanddown`: `public.storefront_services` contiene **6 registros activos de 6**, sin escritura ni re-ejecución de SQL de unificación.
+- Comprobaciones ad hoc realizadas sobre el contenido real de GitHub: **28 PASS / 0 FAIL** (17 controles funcionales/seguridad y 11 controles visuales/administración). Scripts comerciales parseados con constructor JS: **2 PASS**.
+- Se añadió la suite `tests/premium-white-contracts.cjs` con **18 tests y un TODO navegador**. **No se ejecutó `node --test` ni `npm ci`, `next build`, TypeScript, ESLint o Playwright en un checkout local**; esas pruebas continúan pendientes de Work/Lote 3. No presentar el chequeo textual como E2E.
+- Verificado el `vercel.json` exclusivo de candidata: `git.deploymentEnabled=false`. Vercel: **0 deployments de esta rama** en consulta posterior a commits funcionales (volver a verificar tras el registro).
+- `main` se mantuvo en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Sin pull request, merge, despliegue ni cambio a `UNDER_CONSTRUCTION=true`.
+
+**Siguiente puerta:** Lote 2C, extender Premium White a la tienda pública manteniendo el bloqueo de lanzamiento. Después, ejecutar build y QA con Work y aprobar cualquier PR/despliegue de forma independiente.
