@@ -116,5 +116,7 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Puertas pendientes para release:** confirmar Chromium de CI, permisos reales equivalentes de RLS/Storage en entorno no productivo, fotos HEIC en móvil real, prueba PostgreSQL multi-sesión de generación SKU y riesgo de galería llena con operadores concurrentes. El guardado de ficha completa continúa siendo una acción de usuario con dos transacciones; no declarar atomicidad total. No aplicar la migración A3.4 ni eliminar funciones heredadas en producción sin decisión posterior.
 
+**Primera corrida de A3.5:** [GitHub Actions #44395062707](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44395062707) **23/25 Chromium PASS, 2 NO GO**. Ambos fallos correspondieron exclusivamente al enlace legado redirigido: el instalador de pestañas activó la captura antes de que el efecto React suscribiera `updown:admin-product-view`. Se corrigió en `admin-parity.tsx` releyendo el estado real (`!host.hidden`) después de registrar el listener, manteniendo la carga diferida normal. **Requiere nueva corrida integral antes de GO.**
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

@@ -121,6 +121,10 @@ export default function AdminParity() {
       }
     };
     window.addEventListener("updown:admin-product-view", onView);
+    // A bookmarked /admin?producto=nuevo can select capture before React
+    // attaches this listener. Recover its already-active state without
+    // mounting the form during normal catalog startup.
+    if (!host.hidden) setCaptureVisited(true);
     return () => window.removeEventListener("updown:admin-product-view", onView);
   }, [bootState]);
 

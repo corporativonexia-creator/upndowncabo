@@ -14,6 +14,7 @@ test("A3 keeps the old product editor, its handlers, and the quick capture imple
   const shell = read("src/components/admin/admin-parity.tsx");
   assert.match(shell, /createPortal\(<QuickProductEntry embedded \/>, productHost\)/);
   assert.match(shell, /captureVisited/);
+  assert.match(shell, /if \(!host\.hidden\) setCaptureVisited\(true\)/);
   assert.match(shell, /dangerouslySetInnerHTML=\{ADMIN_MARKUP\}/);
   const legacyRoute = read("src/app/admin/productos/alta-rapida/page.tsx");
   assert.match(legacyRoute, /redirect\("\/admin\?producto=nuevo"\)/);
