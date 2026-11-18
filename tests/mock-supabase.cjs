@@ -11,8 +11,8 @@ const baseVariants = [
   {id:'v3',product_id:'p2',title:'M azul',sku:'ROP-0010-M',barcode:'2000000000060',attributes:{talla:'M'}},
   {id:'v4',product_id:'p3',title:'Única',sku:'PAL-001-U',barcode:'2000000000077',attributes:{}},
 ].map(v=>({...v,stock:5,price:null,sale_price:null,is_active:true,low_stock_threshold:2,created_at:'2026-01-01T00:00:00Z'}));
-let products,variants,gallery,events,options;
-function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};}reset();
+let products,variants,gallery,events,options,uploadedPaths;
+function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};uploadedPaths=new Set();}reset();
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.test',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 function token(){const enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');return `${enc({alg:'HS256',typ:'JWT'})}.${enc({sub:user.id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)})}.${Buffer.from('fixture-signature').toString('base64url')}`;}
 http.createServer(async(req,res)=>{
@@ -66,7 +66,12 @@ http.createServer(async(req,res)=>{
     return send([]);
   }
   if(url.pathname.startsWith('/storage/v1/object/product-media/')){
-    if(req.method==='POST')return send({Key:url.pathname.slice('/storage/v1/object/'.length)});
+    if(req.method==='POST'){
+      if(uploadedPaths.has(url.pathname))return send({statusCode:'409',error:'Duplicate',message:'The resource already exists'},409);
+      uploadedPaths.add(url.pathname);
+      if(options.storageLostResponse)return send({statusCode:'503',error:'ServiceUnavailable',message:'Fixture upload response lost'},503);
+      return send({Key:url.pathname.slice('/storage/v1/object/'.length)});
+    }
     return send([]);
   }
   if(url.pathname==='/rest/v1/product_variants'){

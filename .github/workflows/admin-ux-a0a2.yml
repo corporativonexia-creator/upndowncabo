@@ -39,7 +39,12 @@ jobs:
         run: npx tsc --noEmit
       - name: Build with mock Supabase only
         run: npm run build
-      - name: Install test browser
-        run: npx playwright install --with-deps chromium
+      - name: Select Chromium browser for tests
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Admin UI regression against mock Supabase
         run: npm run test:admin

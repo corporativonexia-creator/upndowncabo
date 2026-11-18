@@ -205,6 +205,19 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     finally { if (version === lookupVersion.current) setChecking(false); }
   }
   function changeCode(value: string) { ++lookupVersion.current; setBarcode(value); setMatch(null); setMatches([]); setChecking(false); photoRequestRef.current = null; existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url)); existingPhotosRef.current = []; setExistingPhotos([]); }
+  async function uploadOwnedPhoto(path: string, file: File) {
+    const storage = db.storage.from("product-media");
+    // Only request-owned UUID paths. Never ask Storage to replace an object;
+    // public buckets with INSERT-only policies must be able to accept photos.
+    const { error } = await storage.upload(path, file, { contentType: "image/jpeg", upsert: false });
+    if (error) {
+      // The server may have stored the file before the response was lost.
+      // A 409 on our previously chosen UUID path is a safe idempotent replay.
+      const duplicate = String(error.statusCode) === "409" && /already exists|duplicate/i.test(error.message);
+      if (!duplicate) throw error;
+    }
+    return storage.getPublicUrl(path).data.publicUrl;
+  }
   async function generateCode(target?: string) {
     if (busyRef.current || processingRef.current) return;
     busyRef.current = true; setBusy(true); setError("");
@@ -270,11 +283,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       for (const photo of missing) {
         if (photo.uploaded) continue;
         const path = `products/upc/${request.productId}/${request.request}/${photo.id}.jpg`;
-        // A retry can safely replace only this request-owned UUID path, never
-        // a pre-existing gallery object.
-        const { error: uploadError } = await db.storage.from("product-media").upload(path, photo.file, { contentType: "image/jpeg", upsert: true });
-        if (uploadError) throw uploadError;
-        photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+        photo.uploaded = await uploadOwnedPhoto(path, photo.file);
       }
       const inserts = missing.filter(photo => !recorded.has(photo.uploaded)).map((photo, index) => ({
         product_id: request.productId, image_url: photo.uploaded!, alt_text: `${match.product_name} · fotografía por UPC`,
@@ -347,10 +356,9 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       for (const photo of capture.photos) {
         if (photo.uploaded) continue;
         const path = `products/quick/${capture.request}/${photo.id}.jpg`;
-        const { error } = await db.storage.from("product-media").upload(path, photo.file, { contentType: "image/jpeg", upsert: true });
-        if (error) throw error;
+        const uploaded = await uploadOwnedPhoto(path, photo.file);
         // eslint-disable-next-line react-hooks/immutability -- Private retry snapshot cloned from state; not a React state mutation.
-        photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+        photo.uploaded = uploaded;
       }
       // Each variant photo lives in its own storage object and metadata.
       // Reuse uploaded URLs when retrying the same request to avoid duplicates.
@@ -358,11 +366,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         if (!variant.photo) continue;
         if (!variant.photo.uploaded) {
           const path = `products/quick/${capture.request}/variants/${variant.id}.jpg`;
-          const { error: uploadError } = await db.storage.from("product-media").upload(
-            path, variant.photo.file, { contentType: "image/jpeg", upsert: true }
-          );
-          if (uploadError) throw uploadError;
-          variant.photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+          variant.photo.uploaded = await uploadOwnedPhoto(path, variant.photo.file);
         }
       }
       const { data, error } = await db.rpc("admin_quick_product_create", {

@@ -67,4 +67,7 @@ test("A3.3 UPC photo attachment updates gallery only, with explicit retries and 
   assert.match(quick, /products\/upc\/\$\{request\.productId\}/);
   assert.match(quick, /Galería|galería/);
   assert.doesNotMatch(quick, /db\.from\("product_images"\)\.delete\(/);
+  assert.match(quick, /uploadOwnedPhoto/);
+  assert.match(quick, /upsert: false/);
+  assert.doesNotMatch(quick, /upsert: true/);
 });

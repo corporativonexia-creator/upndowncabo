@@ -401,3 +401,25 @@ test('A3.5 rejects duplicate UPC inside one ficha before any upload or product w
   const events=await (await request.get(`${fixture}/__events`)).json();
   expect(events.some((e:{path:string})=>e.path.endsWith('/admin_quick_product_create')||e.path.startsWith('/storage/v1/object/product-media/'))).toBe(false);
 });
+
+test('A3.5 photo retry recovers an already-uploaded UUID without overwriting Storage',async({page,request})=>{
+  await configure(request,{storageLostResponse:true});
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Nombre del producto').fill('Imagen con red interrumpida');
+  await host.getByRole('combobox',{name:'Categoría',exact:true}).selectOption('c1');
+  await host.locator('input[placeholder="0.00"]').fill('100');
+  await host.locator('input[type=file][multiple]').first().setInputFiles(photoFixture);
+  await expect(host.locator('img[alt^="Foto 1 de"]')).toHaveCount(1);
+  await host.getByRole('button',{name:'Guardar ficha completa'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture upload response lost');
+  await configure(request,{storageLostResponse:false});
+  await host.getByRole('button',{name:'Reintentar guardado'}).click();
+  await expect(host.getByText(/Ficha completa guardada como borrador/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  const uploads=events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'));
+  expect(uploads).toHaveLength(2);
+  expect(uploads[0].path).toBe(uploads[1].path);
+  expect(events.filter((e:{path:string})=>e.path.endsWith('admin_quick_product_create'))).toHaveLength(1);
+});
