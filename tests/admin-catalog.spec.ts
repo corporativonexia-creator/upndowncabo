@@ -288,6 +288,93 @@ test('A3.3 adds photos to a scanned UPC gallery without replacing historical ima
   expect(events.some((e:{path:string})=>/admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
 });
 
+test('A3.9 Storage INSERT denial preserves photo selection and retry uses a non-upsert UUID path',async({page,request})=>{
+  await configure(request,{storageInsertForbidden:true});await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture Storage INSERT denied');
+  await expect(photos.locator('img[alt="Nueva foto 1"]')).toBeVisible();
+  const blocked=await (await request.get(`${fixture}/__events`)).json();
+  expect(blocked.filter((e:{path:string,method:string})=>e.path==='/rest/v1/product_images'&&e.method==='POST')).toHaveLength(0);
+  await configure(request,{storageInsertForbidden:false});
+  await photos.getByRole('button',{name:'Reintentar fotos'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  const uploads=events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'));
+  expect(uploads).toHaveLength(2);
+  expect(uploads[0].path).toBe(uploads[1].path);
+  expect(uploads.every((e:{authorized:boolean,storageUpsert:string})=>e.authorized&&e.storageUpsert!=='true')).toBe(true);
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(1);
+  expect(events.some((e:{path:string})=>/admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
+});
+
+test('A3.9 gallery INSERT policy denial retries metadata without uploading the same file again',async({page,request})=>{
+  await configure(request,{galleryInsertForbidden:true});await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
+  await expect(host.getByRole('alert')).toContainText('Fixture product_images INSERT denied by RLS');
+  await configure(request,{galleryInsertForbidden:false});
+  await photos.getByRole('button',{name:'Reintentar fotos'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico/)).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(1);
+  expect(events.filter((e:{path:string,method:string})=>e.path==='/rest/v1/product_images'&&e.method==='POST')).toHaveLength(2);
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(1);
+});
+
+test('A3.9 factory barcode of a variant attaches the image to its parent without changing the variant',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000046');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await expect(photos).toBeVisible();
+  await photos.locator('input[type=file][capture=environment]').setInputFiles(photoFixture);
+  await photos.getByRole('button',{name:'Guardar 1 fotografía(s) en este UPC'}).click();
+  await expect(host.getByText(/fotografía\(s\) asociadas a Polo clásico/)).toBeVisible();
+  const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  expect(images).toHaveLength(1);
+  expect(images[0]).toMatchObject({product_id:'p1',sort_order:1,is_primary:true});
+  const variants=await (await request.get(`${fixture}/rest/v1/product_variants?product_id=eq.p1`)).json();
+  expect(variants.find((v:{id:string})=>v.id==='v1')).toMatchObject({
+    sku:'ROP-001-XS',barcode:'2000000000046',stock:5,
+  });
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>['POST','PATCH','DELETE'].includes(e.method)&&e.path==='/rest/v1/product_variants')).toHaveLength(0);
+});
+
+test('A3.9 an invalid HEIC capture is rejected before any image or inventory write',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.locator('#quick-barcode').fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await photos.locator('input[type=file][capture=environment]').setInputFiles({
+    name:'captura-invalida.heic',mimeType:'image/heic',buffer:Buffer.from('fixture-invalid-heic-file'),
+  });
+  await expect(host.getByRole('alert')).toBeVisible();
+  await expect(photos.locator('img[alt="Nueva foto 1"]')).toHaveCount(0);
+  await expect(photos.getByRole('button',{name:/Guardar .*fotografía/})).toBeDisabled();
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.some((e:{path:string,method:string})=>e.path.startsWith('/storage/v1/object/')||
+    e.path==='/rest/v1/product_images'&&e.method!=='GET'||
+    /admin_inventory_adjust|admin_quick_inventory_receive/.test(e.path))).toBe(false);
+});
+
 test('A3.3 one-save retry reuses the same product ID when advanced metadata fails',async({page,request})=>{
   await configure(request,{metadataError:true});
   await login(page);await ready(page);

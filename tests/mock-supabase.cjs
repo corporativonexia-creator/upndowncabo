@@ -25,7 +25,8 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
   if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
-  events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization});
+  events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization,
+    storageUpsert:url.pathname.startsWith('/storage/v1/object/')?String(req.headers['x-upsert']||''):undefined});
   if(url.pathname==='/auth/v1/token'){
     if(body.password!=='fixture-password')return send({message:'Invalid login credentials',error_code:'invalid_credentials'},400);
     return send({access_token:token(),token_type:'bearer',expires_in:3600,refresh_token:'fixture-refresh',user});
@@ -58,6 +59,7 @@ http.createServer(async(req,res)=>{
       return send(removed);
     }
     if(req.method==='POST'){
+      if(options.galleryInsertForbidden)return send({message:'Fixture product_images INSERT denied by RLS',code:'42501'},403);
       if(options.galleryError)return send({message:'Fixture image insert failure',code:'FIXTURE'},503);
       const rows=Array.isArray(body)?body:[body];
       for(const row of rows){
@@ -75,6 +77,9 @@ http.createServer(async(req,res)=>{
   }
   if(url.pathname.startsWith('/storage/v1/object/product-media/')){
     if(req.method==='POST'){
+      if(!req.headers.authorization)return send({statusCode:'401',error:'Unauthorized',message:'Fixture Storage login required'},401);
+      if(req.headers['x-upsert']==='true')return send({statusCode:'403',error:'Unauthorized',message:'Fixture Storage UPDATE denied'},403);
+      if(options.storageInsertForbidden)return send({statusCode:'403',error:'Unauthorized',message:'Fixture Storage INSERT denied'},403);
       if(uploadedPaths.has(url.pathname))return send({statusCode:'409',error:'Duplicate',message:'The resource already exists'},409);
       uploadedPaths.add(url.pathname);
       if(options.storageLostResponse)return send({statusCode:'503',error:'ServiceUnavailable',message:'Fixture upload response lost'},503);
