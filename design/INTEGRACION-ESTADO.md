@@ -1,12 +1,12 @@
 # UP AND DOWN Cabo · INTEGRACION-ESTADO
 
-**Registro maestro para ChatGPT y Work — Lotes 1, 2A y 2B**
+**Registro maestro para ChatGPT y Work — Lotes 1, 2A, 2B y 2C**
 **Fecha de referencia:** 17 de noviembre de 2026
 **Repositorio:** `corporativonexia-creator/upndowncabo`
 **Rama candidata:** `integracion/premium-white-candidata-20261117`
 **Base exacta de main:** `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`
 **Rama de origen Premium White:** `offline-premium-white-20261114`, commit `19b44e25070f5da875a47008bc438c4e766087f9`
-**Estado general:** Lotes 1, 2A y 2B integrados en candidata protegida. Lote 2C (paridad de portada pública sin abrir lanzamiento) pendiente.
+**Estado general:** Lotes 1, 2A, 2B y 2C integrados en candidata protegida. Pendiente Lote 3: build/TypeScript/lint/QA real; sin permiso de merge o deploy.
 
 ## 1. Propósito y límites
 
@@ -60,7 +60,7 @@ Operaciones autorizadas únicamente en este lote: nueva rama desde el SHA exacto
 | 1 | Base limpia, Vercel protegido, 23 archivos inventariados, registro maestro | ChatGPT | `main` vigente | **Hecho**; verificar que no hubo deploy |
 | 2A | Integración selectiva Premium White + portada pública, sin tocar POS | ChatGPT | Inventario de Lote 1 | Código completo en candidata, sin `main`, no deploy |
 | 2B | Búsqueda y filtros, Galería/Lista, navegación a fichas, compartir, 6 servicios Supabase | ChatGPT | Lote 2A | **Integrado en candidata; controles estáticos PASS** |
-| 2C | Unificar experiencia Premium White en portada pública, conservando Próximamente | ChatGPT | Lote 2B | Pendiente, sin publicar ni deploy |
+| 2C | Presentación Premium White compartida en portada pública + preview, Próximamente intacto | ChatGPT | Lote 2B | **Integrado y auditado estáticamente; QA real pendiente** |
 | 3 | `npm ci`, build, TypeScript, ESLint y suite QA | Work | Lote 2A/2B | Evidencia real de pruebas, commits puntuales en candidata |
 | 4 | Impresión de taller, inventario categoría, SKU/fotos: solo ramas pertinentes | ChatGPT | Rama principal y pruebas separadas | PRs **separados**, seguridad POS |
 | 5 | Browser UX E2E + regresión | Work | Candidata verificable | Matriz de pruebas y defectos reproducibles |
@@ -160,3 +160,34 @@ Cada lote debe actualizar únicamente este registro maestro (resumen, SHA, prueb
 - `main` se mantuvo en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Sin pull request, merge, despliegue ni cambio a `UNDER_CONSTRUCTION=true`.
 
 **Siguiente puerta:** Lote 2C, extender Premium White a la tienda pública manteniendo el bloqueo de lanzamiento. Después, ejecutar build y QA con Work y aprobar cualquier PR/despliegue de forma independiente.
+
+## 11. Registro de ejecución — Lote 2C (17-nov-2026)
+
+**Estado: IMPLEMENTADO EN RAMA CANDIDATA — SIN PUBLICACIÓN.** El diseño Premium White de /vista-previa se aplica ahora a la portada pública desde el mismo CSS. No se convierte la tienda pública en un preview admin: el modo operativo comercial, filtros/datos y control de autorización siguen separados.
+
+**Línea base:** commit `1f6b682efe0e10521e7bcc3bd5f592e012f77016` (cierre Lote 2B). **Commit de Lote 2C antes de este registro:** `7ec321b374e58d113f989d698cad10e0e178c90e` (ajustar referencia al SHA final del registro).
+
+### Cambios quirúrgicos
+1. `src/app/vista-previa/preview-header.css` y `src/app/vista-previa/premium-white.css`: selectors scope-gated `#updown-store:is(.uds-preview,.uds-premium-white)`; el segundo modificador es **solo visual**. El encabezado móvil fuera de la raíz también usa `:is(.uds-preview-mobile-header,.uds-premium-white-mobile-header)`. Se preserva la paleta canónica, dimensiones de iconos/logotipo y reglas responsive; no se copian estilos globales abiertos al POS/admin.
+2. `src/components/store/storefront-parity.tsx`: agrega `uds-premium-white` a la raíz común, manteniendo `uds-preview` **solo** para `previewMode=true`. Usa el mismo markup Premium con acceso visual VS Golf en el header en ambas rutas, conserva el runtime comercial público y su vista `previewMode=false`. Carga el script de presentación Stage 7 para ambas rutas, pero **Stage 8 de ubicación sigue cargándose solo en preview**.
+3. `src/app/page.tsx`: importa las dos hojas compartidas y reutiliza auxiliares de enfoque/buscador y autocierre de filtros. Mantiene `<StorefrontParity />` **sin** `previewMode` ni `requireRole`, detrás de la barrera general.
+4. `src/components/store/responsive/mobile-header.tsx`: clase visual `uds-premium-white-mobile-header` sobre el encabezado canónico; no sustituye handlers ni rutas.
+5. `src/app/vista-previa/preview-desktop-search-focus.tsx` y `preview-filter-auto-collapse.tsx`: buscan la nueva clase visual compartida, conservando listeners y limpieza.
+6. `public/updown-preview-services-stage7.js`: acepta la clase visual en ambas rutas; **no** modifica registros ni reescribe título, bullets, imagen, estado, CTA, costo o URL de `storefront_services`.
+7. `tests/integration-lot2a-style.cjs` y `tests/premium-white-contracts.cjs`: contratos de selectores/servicios actualizados para el nuevo alcance visual; `tests/integration-lot2c-shared-skin.cjs` nuevo, con **7 contratos**.
+
+### Auditoría
+- Los 7 contratos del Lote 2C pasaron con un **harness de aserciones en memoria** alimentado con el contenido exacto de archivos GitHub: **7 PASS/0 FAIL**. **No equivale** a ejecutar `node --test` con Node ni a compilar Next.js. El constructor de pruebas no realizó solicitudes públicas ni mutaciones.
+- CSS (ambos archivos): llaves balanceadas, selectores compartidos `:is()` y scope móvil verificados.
+- Comparación del commit Lote 2B al cierre de código 2C: **11 archivos cambiados**, únicamente estilos, presentación, home y tests; **sin modificación de `public/updown-parity-runtime.js`**, POS, inventario, tabla de productos ni datos Supabase.
+- `src/proxy.ts` permanece con `UNDER_CONSTRUCTION = true`. `vercel.json` temporal de candidata permanece con `git.deploymentEnabled=false`.
+- Consulta Vercel: **0 despliegues** de esta rama después de cambios y tests, verificación anterior a este registro; repetir al cerrar el commit documental.
+- `main` sigue en `44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b`. Sin PR, merge, checkout de ramas antiguas ni despliegue.
+
+### Frontera funcional y pendientes reales
+- Esta fase es de **paridad VISUAL** donde el DOM compartido lo permite. La vista previa conserva funcionalidades exclusivas ligadas a `PREVIEW_CATALOG` (vista Galería/Lista y sus controles de paginación, navegación interna admin, filtros de preview). **No** se activó `PREVIEW_CATALOG` en público para no modificar checkout, stock ni otras reglas comerciales. Confirmar la paridad de controles de catálogo pública/privada como gate específico de lanzamiento; no afirmar todavía funcionalidad pública idéntica.
+- El componente móvil VS Golf conserva su comportamiento existente por ruta aunque el aspecto esté unificado. Validar acciones y accesibilidad desde navegador real.
+- **PENDIENTE:** `npm ci`, `node --test` (Lote 2A/2B/2C), TypeScript, ESLint, `next build`, Playwright escritorio/móvil y pruebas reales de buscador, galería/lista, filtros, servicios, variantes, carrito y ficha. Reservado a Lote 3 y Lote 5.
+- Antes de eventual PR a `main`, retirar o excluir explícitamente `vercel.json` **sin desproteger prematuramente la candidata**; esa operación requiere autorización de release separada.
+
+**Siguiente puerta:** autorizar Lote 3 para pruebas de compilación y regresión offline, sin deploy ni operaciones sobre la base.
