@@ -902,7 +902,8 @@
   background: #fff !important;
   font: 600 14px/1.3 Arial,sans-serif !important;
 }
-#updown-store:is(.uds-preview,.uds-premium-white) #udsMobileCatalogPager58 {
+/* The public mobile catalog still uses the legacy pager. */
+#updown-store.uds-preview #udsMobileCatalogPager58 {
   display: none !important;
 }
 #updown-store:is(.uds-preview,.uds-premium-white) #udsCatalog {

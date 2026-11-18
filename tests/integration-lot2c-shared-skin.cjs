@@ -35,7 +35,10 @@ test("public page imports same presentation layers as the authorized preview", (
 });
 
 test("CSS is shared via an explicit visual class and selectors remain balanced", () => {
-  for (const css of [sharedHeader, sharedSkin]) {
+  const privatePager = "#updown-store.uds-preview #udsMobileCatalogPager58";
+  assert.ok(sharedHeader.includes(privatePager + " {"));
+  assert.ok(!sharedHeader.includes("#updown-store:is(.uds-preview,.uds-premium-white) #udsMobileCatalogPager58"));
+  for (const css of [sharedHeader.replace(privatePager, ""), sharedSkin]) {
     assert.equal(cssBraces(css), 0);
     assert.ok(css.includes("#updown-store:is(.uds-preview,.uds-premium-white)"));
     assert.ok(css.includes(".uds-native-mobile-header:is(.uds-preview-mobile-header,.uds-premium-white-mobile-header)"));
