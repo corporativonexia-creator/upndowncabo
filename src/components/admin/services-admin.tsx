@@ -44,6 +44,14 @@ function ServiceEditor({ service, onSaved, onCancel }: { service: Service; onSav
     event.preventDefault(); if (busy) return;
     const form = new FormData(event.currentTarget);
     const fields: Record<string, unknown> = {};
+    // All six cards share visibility/order. Clases keeps copy, CTA and lead
+    // workflow locked, but admins may safely set its photo, order and status.
+    const order = Number(form.get("sort_order"));
+    if (!Number.isInteger(order) || order < 1 || order > 2147483647) {
+      setFailed(true); setMessage("El índice debe ser un número entero mayor que cero."); return;
+    }
+    fields.sort_order = order;
+    fields.is_active = form.get("is_active") === "on";
     if (!protectedLesson) {
       for (const [field] of textFields) for (const lang of ["es", "en"]) {
         const value = String(form.get(`${field}_${lang}`) || "").trim();
@@ -55,10 +63,8 @@ function ServiceEditor({ service, onSaved, onCancel }: { service: Service; onSav
         if (!validLink(url)) { setFailed(true); setMessage("El CTA debe usar un enlace http/https, una ruta del sitio o un ancla."); return; }
         if (Boolean(fields[`cta_label_${lang}`]) !== Boolean(url)) { setFailed(true); setMessage(`Completa tanto el nombre como el enlace del CTA en ${lang.toUpperCase()}, o deja ambos vacíos.`); return; }
       }
-      const order = Number(form.get("sort_order"));
-      if (!Number.isInteger(order) || order < 1 || order > 2147483647) { setFailed(true); setMessage("El índice debe ser un número entero mayor que cero."); return; }
-      fields.sort_order = order; fields.is_active = form.get("is_active") === "on"; fields.use_referral = form.get("use_referral") === "on";
-    } else if (!file) { setFailed(true); setMessage("Selecciona una foto para Clases de golf."); return; }
+      fields.use_referral = form.get("use_referral") === "on";
+    }
     setBusy(true); setFailed(false); setMessage("Guardando…");
     const db = createClient(); let uploadPath: string | null = null; let linked = false;
     try {
@@ -90,12 +96,12 @@ function ServiceEditor({ service, onSaved, onCancel }: { service: Service; onSav
           }} /></label><small>Recomendado: 1200 × 800 px. {file?.name}</small>
           {file ? <button type="button" onClick={() => { setFile(null); setMessage(""); }}>Descartar foto seleccionada</button> : null}
         </div>
-        {protectedLesson ? <p className={styles.protected}>Clases de golf: solo puedes cambiar la foto. El contenido, el botón y su flujo de registro están protegidos.</p> : <>
-          <div className={styles.settings}>
-            <label>Índice de aparición<input name="sort_order" type="number" min="1" max="2147483647" step="1" required defaultValue={service.sort_order} /></label>
-            <label><input name="is_active" type="checkbox" defaultChecked={service.is_active} /> Mostrar en la tienda</label>
-            <label><input name="use_referral" type="checkbox" defaultChecked={service.use_referral} /> WhatsApp general: usar asesor de la referencia</label>
-          </div>
+        <div className={styles.settings}>
+          <label>Índice de aparición<input name="sort_order" type="number" min="1" max="2147483647" step="1" required defaultValue={service.sort_order} /></label>
+          <label><input name="is_active" type="checkbox" defaultChecked={service.is_active} /> Mostrar en la tienda</label>
+          {!protectedLesson ? <label><input name="use_referral" type="checkbox" defaultChecked={service.use_referral} /> WhatsApp general: usar asesor de la referencia</label> : null}
+        </div>
+        {protectedLesson ? <p className={styles.protected}>Clases de golf: puedes cambiar la foto, el orden y su visibilidad. El título, los textos, el botón de registro, el formulario y los instructores siguen protegidos para no desviar solicitudes.</p> : <>
           <p className={styles.hint}>El índice menor aparece primero. Los enlaces ya incluyen los mensajes actuales de WhatsApp. La opción de asesor aplica al contacto general; GHIN conserva su contacto especial. Si falta una traducción, la tienda muestra el contenido en español.</p>
           <div className={styles.languages}>{(["es", "en"] as const).map(lang => <section key={lang} aria-label={lang === "es" ? "Contenido en español" : "Contenido en inglés"}>
             <h3>{lang === "es" ? "Español" : "English"}</h3>
@@ -131,7 +137,7 @@ export default function ServicesAdmin() {
     <header className={styles.heading}><div><h2 id="services-admin-heading">Servicios</h2><p>Fotos, textos en ambos idiomas, enlaces y orden de aparición.</p></div><button type="button" disabled={loading || Boolean(error) || adding} onClick={() => setAdding(true)}>+ Agregar servicio</button></header>
     {loading ? <p role="status">Cargando servicios…</p> : error ? <div role="alert"><p>{error}</p><button onClick={() => setReload(value => value + 1)}>Volver a intentar</button></div> : <>
       {adding ? <ServiceEditor service={emptyService(Math.max(0, ...rows.map(row => row.sort_order)) + 1)} onSaved={row => { onSaved(row); setAdding(false); }} onCancel={() => setAdding(false)} /> : null}
-      {sorted.map(row => <details className={styles.card} key={row.key}><summary><strong>{row.title_es}</strong><span>{row.key === "classes" ? "Solo foto · Contenido protegido" : `${row.is_active ? "Visible" : "Oculto"} · Índice ${row.sort_order}`}</span></summary><ServiceEditor service={row} onSaved={onSaved} /></details>)}
+      {sorted.map(row => <details className={styles.card} key={row.key}><summary><strong>{row.title_es}</strong><span>`${row.is_active ? "Visible" : "Oculto"} · Índice ${row.sort_order}${row.key === "classes" ? " · Registro protegido" : ""}`</span></summary><ServiceEditor service={row} onSaved={onSaved} /></details>)}
       {!rows.length ? <p>No hay servicios registrados.</p> : null}
     </>}
   </section>;
