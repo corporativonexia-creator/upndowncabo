@@ -67,7 +67,7 @@ Estado: **A3.1 validada técnicamente en CI; NO completa la retirada de Alta rá
 
 La propuesta `captura básica → completar en editor heredado` **no cumple el requisito**: el administrador necesita una sola alta completa, con variantes, imágenes, información comercial y descripciones en una sola pantalla y una sola confirmación. La revisión de A3.2 se conserva únicamente como antecedente. No integrarla ni presentar su QA como autorización para release.
 
-### A3.3 · Una sola alta completa y fotografías directas por UPC (candidata en QA)
+### A3.3 · Una sola alta completa y fotografías directas por UPC (QA aislado aprobado)
 
 - `Nueva ficha` ahora es el **único formulario de creación visible** dentro del administrador: UPC manual o cámara, fotos/HEIC, categoría, precio y moneda, canal, existencias/variantes, marca/modelo/condición, oferta, descripciones ES/EN, destacados, Novedades y especificaciones de golf. El editor heredado solo aparece al elegir **Editar** sobre un producto existente; se bloquea su antigua inserción directa sin identificador.
 - Un único clic en `Guardar ficha completa` realiza la operación idempotente `admin_quick_product_create` para SKU, UPC, variantes, imágenes y existencia inicial, y luego una actualización **acotada a metadatos de la nueva ficha** (moneda, canales y campos avanzados expresamente capturados). No se incluye SKU, UPC, precio normal, stock ni status en esa actualización. El producto queda `draft`, sin publicación automática. Si falla la segunda escritura, se conserva el mismo `request_id` para un reintento sin duplicar el producto.
@@ -79,9 +79,11 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Riesgos que faltan antes de retirar el respaldo:** SKU manual distinto del SKU generado por RPC (requiere auditar reglas de unicidad y consistencia con variantes); edición completa de variantes ya existentes en la misma ficha; concurrencia entre dos operadores que llenan simultáneamente una galería de diez fotos; y compatibilidad RLS/Storage para los nuevos objetos mediante las políticas existentes. No se autoriza alterar tablas, migraciones ni políticas en este lote. **Todas las pruebas usan fixture local.**
 
-**QA A3.3:** verificar un solo botón y metadatos en el mismo guardado; que la segunda operación no reescribe UPC/SKU/precio normal/stock/status; búsqueda por UPC existente; upload y asociación correcta con galería conservada incluso tras fallar/reintentar; 10 scripts, TypeScript, build, lint, contratos, Chromium y POS simulado. Estado de CI y SHA se agregarán al cerrar la corrida.
+**QA A3.3:** un solo botón con metadatos en el mismo guardado; actualización sin reescritura de UPC/SKU/precio normal/stock/status; búsqueda por UPC existente; carga y asociación de fotografías preservando galería incluso después de fallo y reintento; protección ante galería llena y reintento idempotente de metadatos. Todo comprobado únicamente con fixture aislado, sin acceder a productos reales.
 
-**Primera corrida A3.3:** commit `12e42d32716285e5db4e158549e5b125a5ef6d76`, [GitHub Actions #44361873220](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44361873220) **SUCCESS**, Chromium **20/20**, contratos **10/10**, sintaxis, lint, TypeScript y build correctos; POS local 20 PASS / 1 SKIP. Se agregan posteriormente pruebas de capacidad máxima y reintento tras falla de metadatos, que requieren su propia corrida antes del cierre definitivo.
+**Primera corrida A3.3:** commit `12e42d32716285e5db4e158549e5b125a5ef6d76`, [GitHub Actions #44361873220](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44361873220) **SUCCESS**, Chromium **20/20**, contratos **10/10**, sintaxis, lint, TypeScript y build correctos; POS local 20 PASS / 1 SKIP.
+
+**Corrida A3.3 reforzada:** commit `59d2c35b12342f8390115519884d88f4bac89027`, [GitHub Actions #44363258424](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44363258424) **SUCCESS**, Chromium **22/22**, contratos **10/10**, scripts válidos, TypeScript, build y lint sin errores (advertencias de lint heredadas). Verificado `main` en `cff541a03dff8fc98437e1176dc3aef057c25562`, candidata sin despliegues Vercel. **GO para continuar auditoría/paridad A3, NO GO para borrar el respaldo, cambiar Supabase, fusionar o desplegar.**
 
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
