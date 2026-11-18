@@ -17,10 +17,10 @@ test("Premium White preview skin is imported without relaxing authorization", ()
   assert.match(page, /await requireRole\("admin", "\/vista-previa"\)/);
   assert.match(page, /<StorefrontParity previewMode\s*\/>/);
 });
-test("visual skin is scoped to preview and includes larger canonical header branding", () => {
+test("visual skin stays scope-gated and includes larger canonical header branding", () => {
   const css = fromRoot("src/app/vista-previa/premium-white.css");
   assert.equal(cssBraces(css), 0);
-  assert.match(css, /#updown-store\.uds-preview/);
+  assert.ok(css.includes("#updown-store:is(.uds-preview,.uds-premium-white)"));
   assert.match(css, /PW-UX-08 · More brand presence/);
   assert.match(css, /\.uds-original-vector-logo/);
   assert.match(css, /\.uds-preview-mobile-header/);
