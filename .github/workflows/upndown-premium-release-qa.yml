@@ -1,0 +1,144 @@
+name: UpNDown Premium White release QA (local fixtures)
+
+on:
+  push:
+    branches:
+      - integracion/premium-white-candidata-20261117
+    paths:
+      - .github/workflows/upndown-premium-release-qa.yml
+      - scripts/prepare-release-local.py
+      - public/updown-parity-runtime.js
+      - tests/premium-white-contracts.cjs
+      - tests/premium-release-viewport.spec.ts
+      - playwright.premium-release.config.ts
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upndown-premium-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-qa:
+    name: Selective release / 40 contracts / Chromium (fixtures)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:4319
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-publishable-key
+      NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT: "false"
+    steps:
+      - name: Checkout candidate without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Fail closed unless using loopback fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$NEXT_PUBLIC_SUPABASE_URL" = "http://127.0.0.1:4319"
+          test "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" = "fixture-publishable-key"
+          test "$NEXT_PUBLIC_ENABLE_LEGACY_CHECKOUT" = "false"
+          if env | grep -Eq '^(SUPABASE_SECRET_KEY|SUPABASE_SERVICE_ROLE_KEY|DATABASE_URL|STRIPE_SECRET_KEY)='; then
+            echo "Refusing to run fixture tests with live database or billing secrets"
+            exit 1
+          fi
+
+      - name: Assemble exact 24-file local release from protected main SHA
+        id: assembly
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/prepare-release-local.py | tee "$RUNNER_TEMP/upndown-assembly.log"
+          RELEASE_DIR="$(awk '$1 == "PATH:" {print $2}' "$RUNNER_TEMP/upndown-assembly.log")"
+          test -n "$RELEASE_DIR"
+          test -d "$RELEASE_DIR"
+          test ! -e "$RELEASE_DIR/vercel.json"
+          grep -q 'const UNDER_CONSTRUCTION = true' "$RELEASE_DIR/src/proxy.ts"
+          echo "RELEASE_DIR=$RELEASE_DIR" >> "$GITHUB_ENV"
+          echo "release_dir=$RELEASE_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Copy QA-only Playwright scripts into ephemeral release worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp tests/premium-release-viewport.spec.ts "$RELEASE_DIR/tests/premium-release-viewport.spec.ts"
+          cp playwright.premium-release.config.ts "$RELEASE_DIR/playwright.premium-release.config.ts"
+          test ! -e "$RELEASE_DIR/vercel.json"
+          git -C "$RELEASE_DIR" status --short
+
+      - name: Install reviewed application dependencies
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npm ci
+
+      - name: Premium White full contract suites (expect 40 PASS + 1 TODO)
+        working-directory: ${{ env.RELEASE_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/integration-lot2a-style.cjs tests/integration-lot2c-shared-skin.cjs tests/premium-white-contracts.cjs
+
+      - name: Admin scripts and TypeScript checks
+        working-directory: ${{ env.RELEASE_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run check:admin-scripts
+          npx tsc --noEmit
+
+      - name: ESLint
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npm run lint
+
+      - name: Production-mode Next build with fixture keys
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npm run build
+
+      - name: Install Chromium
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Existing admin fixture browser suite
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npm run test:admin
+
+      - name: Premium release 20 responsive cycles + launch gate
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npx playwright test --config=playwright.premium-release.config.ts
+
+      - name: Existing POS fixture browser suite
+        working-directory: ${{ env.RELEASE_DIR }}
+        run: npm run test:pos:browser
+
+      - name: Reconfirm no launch change and no git push
+        working-directory: ${{ env.RELEASE_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e vercel.json
+          grep -q 'const UNDER_CONSTRUCTION = true' src/proxy.ts
+          test "$(git rev-parse HEAD)" = "44e3f10bc8cf32d0b468ea6f406d4b4171a79d4b"
+          echo "QA COMPLETE — no commit, push, PR, merge, Supabase writes or deployment"
+
+      - name: Upload isolated browser diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upndown-premium-qa-${{ github.run_id }}
+          path: |
+            ${{ env.RELEASE_DIR }}/test-results
+            ${{ env.RELEASE_DIR }}/playwright-report
+            ${{ runner.temp }}/upndown-assembly.log
+          if-no-files-found: ignore
+          retention-days: 7
