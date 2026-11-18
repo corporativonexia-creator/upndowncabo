@@ -194,5 +194,7 @@ La propuesta `captura básica → completar en editor heredado` **no cumple el r
 
 **Puertas A4.1 que continúan abiertas:** comprobación en iPhone de cámara y HEIC auténtico, permisos efectivos de catálogo/galería/Storage en staging aislado y auditoría de la galería heredada ante edición explícita. No tocar datos comerciales reales, Supabase alojado ni `main`.
 
+**QA A4.1:** primer ensayo `4088aa5ca3b00728be122b94ab0af70fdc4de63b`, [Actions #44417116541](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44417116541) **NO GO**: 32/34 Chromium por una aserción que contaba lecturas HEAD como escrituras y por una etiqueta repetida que provocaba un selector ambiguo en la prueba heredada. Corregidos ambos sin alterar persistencia ni lógica comercial. Segundo ensayo `409a9c1c5cb2086e92cb3fdc2a5b0263174904fa`, [Actions #44417682773](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44417682773) **SUCCESS**: Chromium **34/34**; contratos **12/12**; SKU PGlite **7/7**, SKU multi-sesión PostgreSQL **2/2**, galería propuesta aislada PostgreSQL **5/5**, diez scripts sintácticamente correctos, TypeScript y build PASS, ESLint sin errores y nueve advertencias preexistentes. **GO para A4.1 en candidata; NO GO para producción, migraciones o integración a main.**
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
