@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * Desktop-only navigation polish for the protected preview.
+ * Desktop-only navigation polish for shared Premium White storefronts.
  * Search state, matching, filters and URL history remain owned by the
  * existing storefront runtime. This component only measures the header
  * for CSS sticky positioning and restores the search/results viewport.
@@ -64,7 +64,7 @@ export default function PreviewDesktopSearchFocus() {
     };
 
     const attach = () => {
-      const next = document.querySelector<HTMLElement>("#updown-store.uds-preview");
+      const next = document.querySelector<HTMLElement>("#updown-store.uds-premium-white");
       if (!next || next === root) {
         measureHeader();
         return;
