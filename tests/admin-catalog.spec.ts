@@ -169,6 +169,82 @@ test('A3 catalog edit still uses original full editor',async({page})=>{
   await expect(page.locator('#udUnifiedProductHost')).toBeHidden();
 });
 
+test('A3.2 stages advanced fields locally and uses the original editor only after confirmation',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Nombre del producto').fill('Driver de prueba A3');
+  await host.getByLabel('Categoría',{exact:true}).selectOption('c2');
+  await host.getByLabel(/Precio de venta/).fill('499');
+  await host.getByLabel('Código de barras',{exact:true}).fill('2001234000001');
+  await host.getByText('Información avanzada').click();
+  await host.getByLabel('Marca',{exact:true}).fill('Marca simulada');
+  await host.getByLabel('Modelo',{exact:true}).fill('Modelo QA');
+  await host.getByLabel('Condición',{exact:true}).selectOption('demo');
+  await host.getByLabel('Descripción corta · Español').fill('Texto local sin persistir');
+  await host.locator('details details summary').click();
+  await host.getByLabel('Loft',{exact:true}).fill('10.5°');
+  await host.getByLabel('Mano',{exact:true}).selectOption('Right');
+  await page.getByRole('button',{name:'Catálogo',exact:true}).click();
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  await expect(host.getByLabel('Marca',{exact:true})).toHaveValue('Marca simulada');
+  const before=await (await request.get(`${fixture}/__events`)).json();
+  expect(before.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(0);
+  await host.getByRole('button',{name:'Guardar + siguiente producto'}).click();
+  await expect(host.getByText(/registrado como borrador/)).toBeVisible();
+  await expect(host.getByText(/Los borradores ya están creados, pero estos campos siguen únicamente en esta sesión/)).toBeVisible();
+  const staged=await (await request.get(`${fixture}/__events`)).json();
+  const create=staged.find((e:{path:string})=>e.path.endsWith('/admin_quick_product_create'));
+  expect(create.body).toMatchObject({p_name:'Driver de prueba A3',p_category_id:'c2',p_price:499,p_barcode:'2001234000001',p_quantity:0});
+  expect(create.body).not.toHaveProperty('brand');
+  const patches=staged.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products');
+  expect(patches).toHaveLength(1);
+  expect(patches[0].body).toEqual({currency:'MXN',online_visible:true,pos_visible:true});
+
+  await host.getByRole('button',{name:/Revisar y completar ficha/}).click();
+  await expect(page.locator('#udProductWorkspaceTabs button[data-view="form"]')).toHaveClass(/is-active/);
+  await expect(page.locator('#udName')).toHaveValue('Driver de prueba A3');
+  await expect(page.locator('#udSku')).toHaveValue('SIM-0001');
+  await expect(page.locator('#udStatus')).toHaveValue('draft');
+  await expect(page.locator('#udBrand')).toHaveValue('Marca simulada');
+  await expect(page.locator('#udModel')).toHaveValue('Modelo QA');
+  await expect(page.locator('#udCondition')).toHaveValue('demo');
+  await expect(page.locator('#udSpecLoft')).toHaveValue('10.5°');
+  await expect(page.locator('#udSpecHand')).toHaveValue('Right');
+  const opened=await (await request.get(`${fixture}/__events`)).json();
+  expect(opened.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products')).toHaveLength(1);
+  await page.locator('#udSave').click();
+  await expect(page.locator('#udToast')).toContainText('Producto actualizado');
+  await expect(host.locator('section[aria-label="Fichas con detalles avanzados pendientes"]')).toHaveCount(0);
+  const saved=await (await request.get(`${fixture}/__events`)).json();
+  const advancedUpdate=saved.filter((e:{method:string,path:string})=>e.method==='PATCH'&&e.path==='/rest/v1/products').at(-1);
+  expect(advancedUpdate.body).toMatchObject({
+    name:'Driver de prueba A3',sku:'SIM-0001',barcode:'2001234000001',price:499,stock:0,
+    status:'draft',brand:'Marca simulada',model:'Modelo QA',item_condition:'demo',
+    short_description:'Texto local sin persistir',specifications:{hand:'Right',loft:'10.5°'}
+  });
+  expect(saved.some((e:{path:string})=>/admin_inventory_adjust|admin_inventory_receive/.test(e.path))).toBe(false);
+});
+
+test('A3.2 opening a scanned existing product is read-only until the original editor saves',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
+  const host=page.locator('#udUnifiedProductHost');
+  await host.getByLabel('Código de barras',{exact:true}).fill('2000000000015');
+  await host.getByRole('button',{name:'Buscar',exact:true}).click();
+  await expect(host.getByText('Polo clásico',{exact:true})).toBeVisible();
+  await host.getByRole('button',{name:'Abrir ficha completa de este producto'}).click();
+  await expect(page.locator('#udName')).toHaveValue('Polo clásico');
+  await expect(page.locator('#udBarcode')).toHaveValue('2000000000015');
+  await expect(page.locator('#udPrice')).toHaveValue('350');
+  await expect(page.locator('#udStock')).toHaveValue('5');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>
+    ['POST','PUT','PATCH','DELETE'].includes(e.method)&&
+    (/\/rest\/v1\/(products|product_variants|inventory_movements)/.test(e.path)||
+      /\/rpc\/admin_quick_product_create/.test(e.path)))).toHaveLength(0);
+});
+
 
 test('variant deletion confirms, preserves cancellation and removes only empty unlinked variant',async({page,request})=>{
   await configure(request,{zeroStock:true});await login(page);await ready(page);

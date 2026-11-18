@@ -35,3 +35,22 @@ test("A3 preserves isolation and does not introduce data-layer or deployment edi
   assert.doesNotMatch(tabs, /supabase|\.rpc\(|\.from\(|fetch\(/);
   assert.match(read("public/updown-product-smart-entry-v1.js"), /data-product-capture-link=""/);
 });
+
+test("A3.2 prepares advanced fields without changing the quick-create RPC or automatic commercial writes", () => {
+  const quick = read("src/components/admin/quick-product-entry.tsx");
+  assert.match(quick, /type AdvancedDraft/);
+  assert.match(quick, /advanced: \{ \.\.\.advanced \}/);
+  assert.match(quick, /Los borradores ya están creados, pero estos campos siguen únicamente en esta sesión/);
+  assert.match(quick, /updown:admin-product-details-saved/);
+  assert.match(quick, /updown:admin-product-edit-request/);
+  const rpc = quick.match(/db\.rpc\("admin_quick_product_create", \{([\s\S]*?)\}\);/);
+  assert.ok(rpc, "Must continue calling the existing idempotent quick-create RPC");
+  assert.doesNotMatch(rpc[1], /advanced|brand|model|salePrice|stock:/);
+  assert.doesNotMatch(quick, /\.update\(\{[^}]*brand|\.insert\(\{[^}]*brand/);
+
+  const legacy = read("public/updown-admin-legacy-runtime.js");
+  assert.match(legacy, /applyAdvancedProductDraft/);
+  assert.match(legacy, /window\.addEventListener\("updown:admin-product-edit-request"/);
+  assert.match(legacy, /if\(product\.status==="draft"\)applyAdvancedProductDraft/);
+  assert.match(read("public/updown-product-tabs-v1.js"), /updown:admin-product-editor-opened/);
+});

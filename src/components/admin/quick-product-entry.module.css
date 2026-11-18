@@ -10,3 +10,24 @@
 .embedded .card .primary { background: #123d32; }
 .embedded .card input:focus, .embedded .card select:focus { border-color: #2f7058; }
 @media (max-width: 520px) { .embedded { padding: 4px 0 20px; } .embedded .card { padding: 16px 12px; } }
+
+/* A3.2: advanced capture is an optional local draft, never a background write. */
+.embedded .advanced { border: 1px solid #dce8e0; background: #f6f8f6; border-radius: 15px; padding: 14px 16px; margin: 18px 0 22px; }
+.embedded .advanced > summary, .embedded .advancedSpecs > summary { cursor: pointer; font-size: 14px; font-weight: 800; color: #123d32; }
+.embedded .advanced > summary span { color: #2f7058; font-size: 11px; font-weight: 600; margin-left: 8px; }
+.embedded .advanced > p { color: #49645a; font-size: 12px; line-height: 1.6; margin: 12px 0 18px; }
+.embedded .advanced label { margin-bottom: 14px; }
+.embedded .advanced textarea { display: block; width: 100%; min-height: 72px; resize: vertical; border: 1px solid #d2ddd6; border-radius: 12px; padding: 12px; margin-top: 8px; background: #fff; color: #123d32; font: inherit; box-sizing: border-box; }
+.embedded .advanced textarea:focus { outline: 2px solid #b7de45; outline-offset: 1px; }
+.embedded .advanced .toggle { border-top: 0; padding: 8px 0; font-weight: 650; }
+.embedded .advancedSpecs { border-top: 1px solid #dce8e0; margin-top: 8px; padding-top: 14px; }
+.embedded .advancedSpecs .grid { margin-top: 14px; }
+.embedded .advancedSpecs small { margin-bottom: 10px; }
+.embedded .nextStep { border-top: 1px solid #bddfc8; padding-top: 10px; margin-top: 10px; }
+.embedded .nextStep p { margin: 6px 0 12px; font-size: 13px; }
+.embedded .nextStep button { border: 0; border-radius: 11px; background: #123d32; color: #fff; font-weight: 750; padding: 13px 16px; min-height: 44px; cursor: pointer; }
+.embedded .pendingDetails { margin: 15px 0; padding: 16px; border: 1px solid #d8bb74; border-radius: 15px; background: #fffcf2; }
+.embedded .pendingDetails strong { font-size: 14px; color: #6a4e16; }
+.embedded .pendingDetails p { color: #6a583b; font-size: 12px; line-height: 1.5; }
+.embedded .pendingDetails button { display: block; width: 100%; margin-top: 8px; padding: 12px; text-align: left; background: #fff; border: 1px solid #dfc990; border-radius: 10px; font-size: 13px; font-weight: 700; color: #123d32; cursor: pointer; }
+@media (max-width: 620px) { .embedded .advanced .grid { grid-template-columns: 1fr; gap: 0; } .embedded .advanced > summary span { display: block; margin-left: 0; margin-top: 4px; } }

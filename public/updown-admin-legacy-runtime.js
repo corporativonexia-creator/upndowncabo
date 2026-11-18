@@ -1818,6 +1818,43 @@
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
+  // A3.2: reuse the existing editor for the second step of the unified ficha.
+  // Applying a local draft only fills controls; it never writes to Supabase.
+  // The administrator must review the complete form and press Actualizar.
+  function applyAdvancedProductDraft(draft){
+    if(!draft||typeof draft!=="object"||Array.isArray(draft))return;
+    const fields={
+      brand:"udBrand",model:"udModel",condition:"udCondition",salePrice:"udSalePrice",
+      shortDescription:"udShort",description:"udDescription",
+      shortDescriptionEn:"udShortEn",descriptionEn:"udDescriptionEn",
+      specHand:"udSpecHand",specLoft:"udSpecLoft",specFlex:"udSpecFlex",
+      specShaft:"udSpecShaft",specGrip:"udSpecGrip",specConditionScore:"udSpecConditionScore",
+      specPlayerProfile:"udSpecPlayerProfile",specNotes:"udSpecNotes"
+    };
+    Object.entries(fields).forEach(([field,id])=>{
+      if(!Object.prototype.hasOwnProperty.call(draft,field))return;
+      const control=el(id),value=draft[field];
+      if(control&&typeof value==="string")control.value=value;
+    });
+    if(typeof draft.featured==="boolean")el("udFeatured").checked=draft.featured;
+    if(typeof draft.newArrival==="boolean")el("udNewArrival").checked=draft.newArrival;
+    updateGolfSpecsVisibility();
+    setMessage(el("udFormMessage"),"Revisa los detalles preparados y pulsa Actualizar producto para guardarlos. La ficha continúa como borrador hasta que decidas publicarla.");
+  }
+
+  window.addEventListener("updown:admin-product-edit-request",async event=>{
+    const productId=event.detail?.productId;
+    if(typeof productId!=="string"||!productId)return;
+    if(!products.some(product=>product.id===productId))await loadProducts();
+    const product=products.find(item=>item.id===productId);
+    if(!product){showToast("No se encontró la ficha en el catálogo. Actualiza e inténtalo de nuevo.",true);return;}
+    editProduct(productId);
+    // A staged draft is applicable only to the newly created draft product;
+    // editing an existing active product starts from its stored values.
+    if(product.status==="draft")applyAdvancedProductDraft(event.detail?.advanced);
+    window.dispatchEvent(new CustomEvent("updown:admin-product-editor-opened",{detail:{productId}}));
+  });
+
   function resetForm(){
     el("udProductForm").reset();
     el("udProductId").value="";
@@ -1964,6 +2001,7 @@
       showToast(id?"Producto actualizado.":"Producto creado.");
       resetForm();
       await loadProducts();
+      if(id)window.dispatchEvent(new CustomEvent("updown:admin-product-details-saved",{detail:{productId:id}}));
     }catch(error){
       setMessage(el("udFormMessage"),error.message,true);
     }finally{

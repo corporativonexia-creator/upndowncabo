@@ -10,7 +10,15 @@ type Category = { id: string; name: string; variant_schema: string[] };
 type Match = { product_id: string; product_name: string; variant_id: string | null; variant_title: string; sku: string; barcode: string; stock: number; price: number; status: string };
 type Photo = { id: string; file: File; url: string; uploaded?: string };
 type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string>; photo?: Photo | null };
-type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[] };
+type AdvancedDraft = Partial<{
+  brand: string; model: string; condition: "new" | "preowned" | "demo"; salePrice: string;
+  shortDescription: string; description: string; shortDescriptionEn: string; descriptionEn: string;
+  featured: boolean; newArrival: boolean;
+  specHand: string; specLoft: string; specFlex: string; specShaft: string;
+  specGrip: string; specConditionScore: string; specPlayerProfile: string; specNotes: string;
+}>;
+type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[]; advanced: AdvancedDraft };
+type RecentProduct = { id: string; name: string; sku: string; advanced: AdvancedDraft };
 const labels: Record<string, string> = { talla: "Talla", color: "Color", genero: "Género", mano: "Mano", loft: "Loft", flex: "Flex", longitud: "Longitud" };
 const money = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
 const freshVariant = (): Variant => ({ id: crypto.randomUUID(), title: "", barcode: "", quantity: "0", attributes: {} });
@@ -97,6 +105,9 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const [price, setPrice] = useState(""); const [currency, setCurrency] = useState<"MXN" | "USD">("MXN"); const [salesChannel, setSalesChannel] = useState<"both" | "physical" | "online">("both"); const [barcode, setBarcode] = useState(""); const [quantity, setQuantity] = useState("0");
   const [photos, setPhotos] = useState<Photo[]>([]); const photosRef = useRef<Photo[]>([]);
   const [hasVariants, setHasVariants] = useState(false); const [variants, setVariants] = useState<Variant[]>([]);
+  const [advanced, setAdvanced] = useState<AdvancedDraft>({});
+  const [recentProduct, setRecentProduct] = useState<RecentProduct | null>(null);
+  const [pendingDetails, setPendingDetails] = useState<RecentProduct[]>([]);
   const variantsRef = useRef<Variant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]); const [match, setMatch] = useState<Match | null>(null);
   const [receiving, setReceiving] = useState("1"); const [reason, setReason] = useState("Entrada desde alta rápida móvil");
@@ -113,6 +124,17 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const sizeType = categorySizeType(selectedCategory?.name || "");
   const variantFields = sizeType && !fields.includes("talla") ? ["talla", ...fields] : fields;
   const locked = busy || processing || pending;
+  const updateAdvanced = <K extends keyof AdvancedDraft>(field: K, value: AdvancedDraft[K]) => setAdvanced(current => ({ ...current, [field]: value }));
+  const advancedCount = Object.values(advanced).filter(value => value !== "" && value !== undefined).length;
+  const hasAdvancedDetails = (draft: AdvancedDraft) => Object.values(draft).some(value => value !== "" && value !== undefined);
+
+  function openEditor(productId: string, draft?: AdvancedDraft) {
+    // No write is performed here. The original editor loads the product and
+    // applies only user-entered draft fields; saving remains an explicit step.
+    window.dispatchEvent(new CustomEvent("updown:admin-product-edit-request", {
+      detail: { productId, advanced: draft || {} },
+    }));
+  }
 
   const refreshCounts = useCallback(async () => {
     const results = await Promise.all([db.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"), db.from("products").select("id", { count: "exact", head: true }).eq("status", "active")]);
@@ -133,10 +155,20 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   useEffect(() => { variantsRef.current = variants; }, [variants]);
   useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
   useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || captureRef.current || receiveRef.current) { e.preventDefault(); e.returnValue = ""; } };
+    const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || captureRef.current || receiveRef.current || pendingDetails.length) { e.preventDefault(); e.returnValue = ""; } };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [name]);
+  }, [name, pendingDetails.length]);
+  useEffect(() => {
+    const onDetailsSaved = (event: Event) => {
+      const productId = (event as CustomEvent<{ productId: string }>).detail?.productId;
+      if (!productId) return;
+      setPendingDetails(current => current.filter(item => item.id !== productId));
+      setRecentProduct(current => current?.id === productId ? { ...current, advanced: {} } : current);
+    };
+    window.addEventListener("updown:admin-product-details-saved", onDetailsSaved);
+    return () => window.removeEventListener("updown:admin-product-details-saved", onDetailsSaved);
+  }, []);
 
   async function lookup(code: string) {
     const version = ++lookupVersion.current;
@@ -205,7 +237,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); setPhotos([]); photosRef.current = [];
     variantsRef.current.forEach(v => { if (v.photo) URL.revokeObjectURL(v.photo.url); });
     variantsRef.current = [];
-    setName(""); setBarcode(""); setQuantity("0"); setVariants([]); setHasVariants(false);
+    setName(""); setBarcode(""); setQuantity("0"); setVariants([]); setHasVariants(false); setAdvanced({});
     setMatches([]); setMatch(null); setPending(false); captureRef.current = null;
     // Keep category and price for consecutive captures from the same batch.
     requestAnimationFrame(() => nameInput.current?.focus());
@@ -219,7 +251,11 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) throw new Error("La cantidad debe ser un número entero positivo o cero.");
         if (hasVariants && !variants.length) throw new Error("Agrega al menos una variante.");
         if (variants.some(v => !Number.isInteger(Number(v.quantity)) || Number(v.quantity) < 0)) throw new Error("Revisa las cantidades de las variantes.");
-        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v, attributes: { ...v.attributes }, photo: v.photo ? { ...v.photo } : null })) : [] };
+        if (advanced.salePrice !== undefined && advanced.salePrice !== "" && (
+          !Number.isFinite(Number(advanced.salePrice)) || Number(advanced.salePrice) < 0 ||
+          Number(advanced.salePrice) > Number(price)
+        )) throw new Error("El precio de oferta debe estar entre cero y el precio normal.");
+        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v, attributes: { ...v.attributes }, photo: v.photo ? { ...v.photo } : null })) : [], advanced: { ...advanced } };
         setPending(true);
       }
       const capture = captureRef.current;
@@ -263,6 +299,11 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         .select("id").single();
       if (visibilityError) throw visibilityError;
       setSuccess(`✓ ${data.name} registrado como borrador · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
+      const recent = { id: data.product_id, name: data.name, sku: data.sku, advanced: capture.advanced };
+      setRecentProduct(recent);
+      if (hasAdvancedDetails(capture.advanced)) {
+        setPendingDetails(current => [...current.filter(item => item.id !== recent.id), recent]);
+      }
       window.dispatchEvent(new Event("updown:admin-products-refresh"));
       setCount(n => n + 1); clearProduct(); void refreshCounts();
     } catch (e) { setError(friendly(e)); }
@@ -294,7 +335,8 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     {!embedded && <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>}
     <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / CAPTURA</div><h1>{embedded ? "Nueva ficha de producto" : "Alta rápida"}</h1><p>Escanea, registra fotografías, prepara variantes y continúa con el siguiente artículo.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
     <div className={styles.notice}><b>Borrador por default</b><span>Disponible en Productos e Inventario. Completa la ficha desde el catálogo para publicarlo.</span></div>
-    {success && <div className={styles.success} role="status">{success}</div>}
+    {success && <div className={styles.success} role="status"><p>{success}</p>{embedded && recentProduct && !hasAdvancedDetails(recentProduct.advanced) && <div className={styles.nextStep}><p><b>Paso 2 · Información completa</b></p><p>Puedes completar marca, descripciones, condición y especificaciones sin volver a buscar el producto.</p><button type="button" onClick={() => openEditor(recentProduct.id)}>Revisar y completar ficha de {recentProduct.name} →</button></div>}</div>}
+    {embedded && pendingDetails.length > 0 && <section className={styles.pendingDetails} aria-label="Fichas con detalles avanzados pendientes"><strong>Detalles avanzados pendientes · {pendingDetails.length}</strong><p>Los borradores ya están creados, pero estos campos siguen únicamente en esta sesión. Abre cada ficha, revisa y confirma su actualización antes de salir.</p>{pendingDetails.map(item => <button key={item.id} type="button" onClick={() => openEditor(item.id, item.advanced)}>Revisar y completar ficha de {item.name} · {item.sku} →</button>)}</section>}
     {error && <div className={styles.error} role="alert">{error}</div>}
     {pending && !busy && <p className={styles.notice}>La captura quedó pendiente. Reintenta el mismo guardado para confirmar el resultado sin duplicarlo.</p>}
     <section className={styles.card}>
@@ -304,6 +346,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       {checking && <p role="status">Buscando código…</p>}
       {matches.length > 1 && <label className={styles.label}>Selecciona la variante<select disabled={locked} value={match?.variant_id || ""} onChange={e => setMatch(matches.find(m => m.variant_id === e.target.value) || null)}><option value="">Elegir variante…</option>{matches.map((m, i) => <option key={m.variant_id || i} value={m.variant_id || ""}>{m.product_name} · {m.variant_title} · {m.sku}</option>)}</select></label>}
       {match && <div className={styles.found}><div className={styles.eyebrow}>CÓDIGO YA REGISTRADO</div><h2>{match.product_name}</h2><p>{match.variant_title} · {match.sku} · {money(match.price)}</p><strong>Existencia actual: {match.stock}</strong>
+        {embedded && <button type="button" disabled={locked} onClick={() => openEditor(match.product_id)}>Abrir ficha completa de este producto</button>}
         {match.variant_id ? <form onSubmit={receive}><fieldset disabled={locked}><label>Cantidad recibida<input type="number" min="1" step="1" required value={receiving} onChange={e => setReceiving(e.target.value)} /></label><label>Referencia<input required minLength={3} value={reason} onChange={e => setReason(e.target.value)} /></label><p>Nueva existencia estimada: <b>{Number(match.stock) + Number(receiving || 0)}</b></p></fieldset><button className={styles.primary} disabled={busy || processing} type="submit">{busy ? "Registrando…" : pending ? "Reintentar entrada" : "Registrar entrada de inventario"}</button></form> : <p>Este producto necesita una variante de inventario. Complétala desde <Link href="/admin">Productos</Link>.</p>}
       </div>}
     </section>
@@ -313,6 +356,37 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
         <div className={styles.grid}><label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} required><option value="">Seleccionar…</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Precio de venta · {currency}<input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} min="0.01" max="99999999" step="0.01" required placeholder="0.00" /></label></div>
         <label>Moneda del precio<select value={currency} onChange={e => setCurrency(e.target.value as "MXN" | "USD")}><option value="MXN">MXN · Pesos mexicanos</option><option value="USD">USD · Dólares estadounidenses</option></select></label>
         <label>Canal de venta<select value={salesChannel} onChange={e => setSalesChannel(e.target.value as "both" | "physical" | "online")}><option value="both">Tienda física y online</option><option value="physical">Solo tienda física (POS)</option><option value="online">Solo tienda online</option></select></label>
+        {embedded && <details className={styles.advanced}>
+          <summary>Información avanzada <span>{advancedCount ? `${advancedCount} campos preparados` : "Opcional · marca, descripción, golf y promociones"}</span></summary>
+          <p>Estos datos se preparan aquí y se revisan en el editor existente después de crear el borrador. <b>No se guardarán hasta que confirmes el paso 2.</b></p>
+          <div className={styles.grid}>
+            <label>Marca<input value={advanced.brand || ""} maxLength={140} onChange={e => updateAdvanced("brand", e.target.value)} /></label>
+            <label>Modelo<input value={advanced.model || ""} maxLength={140} onChange={e => updateAdvanced("model", e.target.value)} /></label>
+            <label>Condición<select value={advanced.condition || ""} onChange={e => updateAdvanced("condition", e.target.value as AdvancedDraft["condition"])}><option value="">Conservar condición inicial (nuevo)</option><option value="new">Nuevo</option><option value="preowned">Seminuevo</option><option value="demo">Demo</option></select></label>
+            <label>Precio de oferta · {currency}<input type="number" min="0" max={price || "99999999"} step="0.01" value={advanced.salePrice || ""} onChange={e => updateAdvanced("salePrice", e.target.value)} placeholder="Sin oferta" /></label>
+          </div>
+          <label>Descripción corta · Español<textarea value={advanced.shortDescription || ""} onChange={e => updateAdvanced("shortDescription", e.target.value)} /></label>
+          <label>Descripción completa · Español<textarea value={advanced.description || ""} onChange={e => updateAdvanced("description", e.target.value)} /></label>
+          <label>Descripción corta · Inglés<textarea lang="en" value={advanced.shortDescriptionEn || ""} onChange={e => updateAdvanced("shortDescriptionEn", e.target.value)} /></label>
+          <label>Descripción completa · Inglés<textarea lang="en" value={advanced.descriptionEn || ""} onChange={e => updateAdvanced("descriptionEn", e.target.value)} /></label>
+          <div className={styles.grid}>
+            <label className={styles.toggle}><input type="checkbox" checked={advanced.featured || false} onChange={e => updateAdvanced("featured", e.target.checked)} />Producto destacado</label>
+            <label className={styles.toggle}><input type="checkbox" checked={advanced.newArrival !== false} onChange={e => updateAdvanced("newArrival", e.target.checked)} />Mostrar en Novedades al publicar</label>
+          </div>
+          <details className={styles.advancedSpecs}><summary>Características de golf y observaciones</summary>
+            <div className={styles.grid}>
+              <label>Mano<select value={advanced.specHand || ""} onChange={e => updateAdvanced("specHand", e.target.value)}><option value="">No especificada</option><option value="Right">Diestro (RH)</option><option value="Left">Zurdo (LH)</option></select></label>
+              <label>Loft<input value={advanced.specLoft || ""} onChange={e => updateAdvanced("specLoft", e.target.value)} /></label>
+              <label>Flex<select value={advanced.specFlex || ""} onChange={e => updateAdvanced("specFlex", e.target.value)}><option value="">No especificado</option>{["Ladies", "Senior", "Wedge", "Regular", "Stiff", "X-Stiff", "Xstiff", "Junior"].map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+              <label>Shaft / varilla<input value={advanced.specShaft || ""} onChange={e => updateAdvanced("specShaft", e.target.value)} /></label>
+              <label>Grip<input value={advanced.specGrip || ""} onChange={e => updateAdvanced("specGrip", e.target.value)} /></label>
+              <label>Condición / calificación<input value={advanced.specConditionScore || ""} onChange={e => updateAdvanced("specConditionScore", e.target.value)} /></label>
+              <label>Ideal para<input value={advanced.specPlayerProfile || ""} onChange={e => updateAdvanced("specPlayerProfile", e.target.value)} /></label>
+            </div>
+            <label>Observaciones del equipo<textarea value={advanced.specNotes || ""} onChange={e => updateAdvanced("specNotes", e.target.value)} /></label>
+            <small>Los campos técnicos de palos se aplicarán solo si la categoría corresponde; el editor actual conserva esta validación.</small>
+          </details>
+        </details>}
         <div className={styles.photoHead}><label>Fotografías del producto padre <small>{photos.length} / 10 · opcionales</small></label></div>
         <div className={styles.tools}><label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" onChange={addPhotos} /></label><label className={styles.fileButton}>＋ Elegir de galería<input type="file" accept="image/*,.heic,.heif" multiple onChange={addPhotos} /></label></div>
         {processing && <p role="status">Preparando fotos…</p>}

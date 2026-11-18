@@ -63,5 +63,18 @@ Estado: **A3.1 validada técnicamente en CI; NO completa la retirada de Alta rá
 
 **Cierre de QA A3.1:** commit funcional `1cd192dad9a85c3f730948de3629a9fdc414f8ae`, [GitHub Actions #44351055124](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44351055124) **SUCCESS**: 17/17 Chromium, 8/8 contratos A0–A3, 10 scripts con sintaxis válida, TypeScript PASS, build PASS, lint sin errores (9 advertencias heredadas). POS local: 20 PASS / 1 SKIP. Vercel candidata: cero despliegues. **GO para A3.1 únicamente**. No habilitar borrado de Alta rápida ni fusionar hasta completar paridad y A3 integral.
 
+### A3.2 · Captura avanzada con revisión explícita (candidata, pendiente de QA de CI)
+
+- En `Nueva ficha` se habilita una sección desplegable de información avanzada: marca, modelo, condición, oferta, descripciones ES/EN, destacado, Novedades, especificaciones de golf y observaciones. Son datos locales, conservados al alternar pestañas. No se agregan parámetros al RPC de creación ni escrituras nuevas en segundo plano.
+- El primer guardado usa **exactamente** el RPC `admin_quick_product_create` y la actualización existente de moneda/canales; genera un borrador. Los datos avanzados **NO se persisten en esa operación** y la interfaz lo advierte expresamente.
+- El botón `Revisar y completar ficha` abre el mismo registro en el editor completo histórico, con los campos avanzados precargados de manera local. Solo el clic explícito en `Actualizar producto` ejecuta el guardado existente. No se borran ni regeneran SKU, código, precio, existencias o imágenes por el mecanismo de transferencia.
+- Si se capturan varios artículos consecutivos con detalles avanzados, se conserva una **lista de pendientes** en memoria para que no se sobrescriba el trabajo de un artículo anterior. Se retira cada pendiente solo después de confirmarse el guardado en el editor. Al intentar cerrar o recargar la página con pendientes, el navegador advertirá de los datos locales que aún no se han persistido.
+- Si el UPC pertenece a un producto existente, se ofrece `Abrir ficha completa de este producto` sin realizar entradas de inventario ni mutaciones automáticas. Se conserva el flujo independiente y explícito de recepción.
+- La transición usa eventos locales (`updown:admin-product-edit-request` y `updown:admin-product-editor-opened`) para reutilizar `editProduct`, `loadProducts`, la validación de golf y el editor de galerías; no hay nuevo servicio ni API.
+
+**Límite de A3.2:** la ficha opera en dos pasos visibles para conservar el contrato de escritura original. Falta consolidar el guardado avanzado sin payload integral que incluya columnas comerciales, y completar paridad de galería/edición de variantes (A3 posterior y A4). No retirar todavía `/admin/productos/alta-rapida`, el editor antiguo ni la protección `vercel.json`. La posibilidad preexistente de modificación involuntaria de `stock` por el guardado integral del editor es un riesgo a auditar antes de reemplazar el flujo. **Prohibido ejecutar estas pruebas contra Supabase real.**
+
+**QA A3.2:** ampliar fixture local para simular identificación por UPC, borrador idempotente y paso de edición; comprobar ausencia de escrituras avanzadas antes de confirmar, mantener SKU/UPC/precio/stock/estado en payload legado, TypeScript, sintaxis, lint, build, contratos, Chromium en GitHub Actions y POS simulado. Estado final y SHA se registrarán después de CI.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

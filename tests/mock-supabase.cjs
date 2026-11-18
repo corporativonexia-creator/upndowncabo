@@ -32,7 +32,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/auth/v1/user')return send(user);
   if(url.pathname==='/auth/v1/logout')return send({});
   if(url.pathname==='/rest/v1/profiles')return send({id:user.id,role:'admin',is_active:true,full_name:'Fixture Admin'});
-  if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1},{id:'c2',name:'Palos',sort_order:2},{id:'c3',name:'Calzado',sort_order:3}]);
+  if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1,is_active:true,variant_schema:['talla','color']},{id:'c2',name:'Palos',sort_order:2,is_active:true,variant_schema:['mano','loft','flex']},{id:'c3',name:'Calzado',sort_order:3,is_active:true,variant_schema:['talla']}]);
   if(url.pathname==='/rest/v1/rpc/pos_is_session_active')return send(true);
   if(url.pathname==='/rest/v1/rpc/pos_get_my_access')return send({employee_id:'employee-qa',employee_number:'QA01',full_name:'QA Cashier',employee_role:'pos_admin',employee_status:'active',terminal_id:'terminal-qa',terminal_name:'QA Terminal',terminal_authorized:true,open_shift_id:'shift-qa',opening_cash:500});
   if(url.pathname==='/rest/v1/rpc/pos_get_current_shift_sales')return send({sales:[],cash_movements:[],cash_in:0,cash_out:0,cash_refunds:0,expected_cash:500});
@@ -60,6 +60,33 @@ http.createServer(async(req,res)=>{
     if(id?.startsWith('in.')&&options.summaryDelay)await new Promise(r=>setTimeout(r,options.summaryDelay));
     if(id?.startsWith('in.')&&options.summaryError)return send({message:'Fixture variants failure'},503);
     return send(id?.startsWith('eq.')?variants.filter(v=>v.product_id===id.slice(3)):variants);
+  }
+  if(url.pathname==='/rest/v1/rpc/admin_quick_barcode_lookup'){
+    const code=String(body.p_barcode||'').trim();
+    const exactVariant=variants.filter(v=>v.barcode===code).map(v=>{
+      const p=products.find(product=>product.id===v.product_id);
+      return {product_id:p.id,product_name:p.name,variant_id:v.id,variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:v.stock,price:p.price,status:p.status};
+    });
+    const parent=exactVariant.length?[]:products.filter(p=>p.barcode===code).map(p=>{
+      const v=variants.find(variant=>variant.product_id===p.id);
+      return {product_id:p.id,product_name:p.name,variant_id:v?.id||null,variant_title:v?.title||'Principal',sku:v?.sku||p.sku,barcode:v?.barcode||p.barcode,stock:v?.stock??p.stock,price:p.price,status:p.status};
+    });
+    return send({rows:[...exactVariant,...parent]});
+  }
+  if(url.pathname==='/rest/v1/rpc/admin_quick_product_create'){
+    if(options.quickCreateError)return send({message:'Fixture quick create failure',code:'FIXTURE'},400);
+    let product=products.find(p=>p.id===body.p_request_id);
+    if(!product){
+      const category=({c1:'Ropa',c2:'Palos',c3:'Calzado'})[body.p_category_id]||'Sin categoría';
+      product={id:body.p_request_id,name:body.p_name,category_id:body.p_category_id,categories:{name:category},
+        sku:'SIM-0001',barcode:body.p_barcode||'2000000000091',price:body.p_price,stock:body.p_quantity,
+        sale_price:null,currency:'MXN',status:'draft',featured:false,new_arrival_enabled:true,
+        brand:null,model:null,item_condition:'new',online_visible:true,pos_visible:true,
+        specifications:{},product_images:[],created_at:new Date().toISOString()};
+      products.unshift(product);
+      variants.push({id:'sim-variant',product_id:product.id,title:'Única',sku:product.sku,barcode:product.barcode,stock:product.stock,attributes:{},is_active:true});
+    }
+    return send({product_id:product.id,name:product.name,sku:product.sku,barcode:product.barcode,status:'draft',replayed:false});
   }
   if(url.pathname==='/rest/v1/rpc/next_internal_barcode')return send(options.invalidBarcode?'invalid':'2000000000084');
   if(url.pathname==='/rest/v1/rpc/admin_inventory_save_variant'){
