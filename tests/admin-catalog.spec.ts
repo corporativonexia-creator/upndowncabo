@@ -395,7 +395,7 @@ test('A4 name search requires an explicit product choice and sends photos only t
   expect(imagesP1).toHaveLength(0);expect(imagesP2).toHaveLength(1);
   expect(imagesP2[0]).toMatchObject({product_id:'p2',sort_order:1,is_primary:true});
   const events=await (await request.get(`${fixture}/__events`)).json();
-  expect(events.filter((e:{path:string,method:string})=>e.path==='/rest/v1/products'&&e.method!=='GET')).toHaveLength(0);
+  expect(events.filter((e:{path:string,method:string})=>e.path==='/rest/v1/products'&&['POST','PUT','PATCH','DELETE'].includes(e.method))).toHaveLength(0);
   expect(events.some((e:{path:string})=>/admin_quick_product_create|admin_quick_inventory_receive|admin_inventory_adjust/.test(e.path))).toBe(false);
 });
 

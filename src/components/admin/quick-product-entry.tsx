@@ -469,7 +469,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   // UPC and catalog selection share exactly one photo uploader and one retry state.
   const photoUploadSection = embedded && photoTarget && <section className={styles.upcPhotos} aria-label="Fotografías por UPC">
     <h3>Agregar fotos a este producto</h3>
-    <p>Las imágenes se asociarán a <b>{photoTarget.productName}</b> ({photoTarget.label}), sin modificar precio, SKU ni inventario. Si se escaneó una variante, se guardarán en la galería del producto padre.</p>
+    <p>Las imágenes se asociarán a {photoTarget.productName} ({photoTarget.label}), sin modificar precio, SKU ni inventario. Si se escaneó una variante, se guardarán en la galería del producto padre.</p>
     <div className={styles.tools}>
       <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={addExistingPhotos} /></label>
       <label className={styles.fileButton}>＋ Elegir fotos<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked} onChange={addExistingPhotos} /></label>
