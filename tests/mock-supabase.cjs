@@ -24,7 +24,7 @@ http.createServer(async(req,res)=>{
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.labelFixture){variants[1].price=475;variants[1].sale_price=420;products[0].sale_price=390;products[0].currency='USD';}if(body.zeroPriceFixture)variants[0].sale_price=0;if(body.invalidLabelBarcode)variants[0].barcode='1234567890123';if(body.factoryUpcFixture)variants[0].barcode='036000291452';if(body.badUpcFixture)variants[0].barcode='036000291453';if(body.reconciliationFixture){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);variants[1].is_active=false;products.push({...structuredClone(products[2]),id:'p-service',name:'Servicio de ajuste',sku:'SR-QA',barcode:null,stock:0,status:'active',pos_visible:true,is_service:true});}if(body.retirementArchivedProduct)Object.assign(products[1],{status:'archived',online_visible:false,pos_visible:false,featured:false,new_arrival_enabled:false});if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.labelFixture){variants[1].price=475;variants[1].sale_price=420;products[0].sale_price=390;products[0].currency='USD';}if(body.zeroPriceFixture)variants[0].sale_price=0;if(body.invalidLabelBarcode)variants[0].barcode='1234567890123';if(body.factoryUpcFixture)variants[0].barcode='036000291452';if(body.badUpcFixture)variants[0].barcode='036000291453';if(body.reconciliationFixture){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);variants[1].is_active=false;}if(body.retirementArchivedProduct)Object.assign(products[1],{status:'archived',online_visible:false,pos_visible:false,featured:false,new_arrival_enabled:false});if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization,
     storageUpsert:url.pathname.startsWith('/storage/v1/object/')?String(req.headers['x-upsert']||''):undefined});
   if(url.pathname==='/auth/v1/token'){
@@ -136,7 +136,14 @@ http.createServer(async(req,res)=>{
     }
     const productId=url.searchParams.get('id');
     if(productId?.startsWith('eq.'))return send(products.filter(p=>p.id===productId.slice(3)));
-    return send(url.searchParams.get("pos_visible")==="eq.true"?products.filter(p=>p.pos_visible):products);
+    // Standalone service is virtual in the POS reconciliation SELECT only.
+    // Do not expose it to the legacy startup synchronizer: that code creates a
+    // missing variant, which contaminated this read-only four-row test.
+    const projection=options.reconciliationFixture&&url.searchParams.get('select')?.includes('is_service')
+      ?[...products,{...structuredClone(baseProducts[2]),id:'p-service',name:'Servicio de ajuste',sku:'SR-QA',
+        barcode:null,stock:0,status:'active',pos_visible:true,is_service:true}]
+      :products;
+    return send(url.searchParams.get("pos_visible")==="eq.true"?projection.filter(p=>p.pos_visible):projection);
   }
   if(url.pathname==='/rest/v1/product_images'){
     if(req.method==='DELETE'){

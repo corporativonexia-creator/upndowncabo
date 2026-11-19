@@ -271,6 +271,8 @@ test('A6.4 reconciliation identifies inactive variants, standalone POS services 
   await expect(region).toContainText('Servicio de ajuste');
   await region.getByText('Existencias diferentes (1)').click();
   await expect(region).toContainText('Inventario 7 · POS 5');
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,body?:Record<string,unknown>}>;
+  expect(events.filter(e=>e.path==='/rest/v1/rpc/admin_inventory_save_variant'&&e.body?.p_product_id==='p-service')).toHaveLength(0);
 });
 
 test('A6.4 restricted reconciliation reports an error instead of treating hidden rows as absent',async({page,request})=>{
