@@ -297,5 +297,7 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **Límite categórico:** no se modifican los argumentos de `pos_reception_create`/`pos_reception_set_ready`, la lógica de cobro, inventario, registro, folios, pagos, autenticación ni impresión térmica/PDF. El escaneo y cobro en POS siguen siendo acciones independientes; A8.1 es exclusivamente lectura y presentación. QA con cliente/terminal y recepciones **ficticias** prueba una respuesta lenta contra una búsqueda nueva, limpieza, conservación de filas ante RLS simulado y ausencia de operaciones comerciales.
 
+**Aislamiento de QA:** la primera corrida de A8.1 aprobó sus dos casos de navegador, pero un caso previo de conciliación encontró una quinta variante sintética inesperada tras varias pruebas secuenciales. Se reforzó el reinicio explícito del catálogo ficticio cuando se activa `reconciliationFixture`, para mantener los cuatro identificadores esperados e impedir contaminación entre escenarios. Esto **solo** cambia el servidor de pruebas local, no datos ni funciones Supabase.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
