@@ -181,3 +181,22 @@ test("A6.2 prints thermal labels from one entry point without touching commercia
   assert.doesNotMatch(labels,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/);
   assert.match(inventory,/SUBTOTAL /);
 });
+
+test("A6.3 permits valid factory UPC-A, rejects checksum errors and totals sheet categories by currency", () => {
+  const labels=read("src/components/admin/inventory-label-print.ts");
+  const inventory=read("src/components/admin/inventory-admin.tsx");
+  assert.match(labels,/function printableBarcode\(/);
+  assert.match(labels,/\^\\d\{12\}\$/);
+  assert.match(labels,/validEan13\(`0\$\{value\}`\)/);
+  assert.match(labels,/visible: value, upcA: true/);
+  assert.match(labels,/visible\.slice\(1, 6\)/);
+  assert.match(labels,/visible\.slice\(6, 11\)/);
+  assert.match(labels,/const printable = printableBarcode\(barcode\)/);
+  assert.doesNotMatch(labels,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/);
+  assert.match(inventory,/SUBTOTALES POR CATEGORÍA/);
+  assert.match(inventory,/const categoryTotals=new Map/);
+  assert.match(inventory,/subtotal\.amounts\[currency\]\+=pieces\*Number\(r\.effective_price\)/);
+  assert.match(inventory,/sum\.priced\.MXN/);
+  assert.match(inventory,/sum\.priced\.USD/);
+  assert.match(inventory,/allCategoriesSelected\|\|selectedCategories\.includes/);
+});

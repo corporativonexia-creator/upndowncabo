@@ -148,10 +148,24 @@ export default function InventoryAdmin(){
   }).join("");
   const count=printRows.reduce((sum,r)=>sum+Number(r.stock||0),0);
   const footer='<div class="summary">Variantes: '+printRows.length+' · Piezas: '+count+(search.trim()?' · Filtro: '+esc(search.trim()):'')+'</div>';
-  const rows=format==="ticket"?details+footer:'<table><thead><tr><th>Producto</th><th>Variante</th><th>Color</th><th>Género</th><th>SKU</th><th>Código</th><th>Precio</th><th>Exist.</th></tr></thead><tbody>'+details+'</tbody></table>'+footer;
+  const categoryTotals=new Map<string,{products:Set<string>;variants:number;pieces:number;amounts:{MXN:number;USD:number};priced:{MXN:number;USD:number};missing:number}>();
+  for(const r of printRows){
+   const name=r.category_name||"Sin categoría";
+   if(!categoryTotals.has(name))categoryTotals.set(name,{products:new Set(),variants:0,pieces:0,amounts:{MXN:0,USD:0},priced:{MXN:0,USD:0},missing:0});
+   const subtotal=categoryTotals.get(name)!;
+   const pieces=Number(r.stock)||0;
+   subtotal.products.add(r.product_id);subtotal.variants++;subtotal.pieces+=pieces;
+   if(r.effective_price==null||!Number.isFinite(r.effective_price)){subtotal.missing++;continue;}
+   const currency=r.currency==="USD"?"USD":"MXN";
+   subtotal.amounts[currency]+=pieces*Number(r.effective_price);
+   subtotal.priced[currency]++;
+  }
+  const amount=(value:number,currency:"MXN"|"USD")=>new Intl.NumberFormat("es-MX",{style:"currency",currency}).format(value)+" "+currency;
+  const categorySummary='<section class="category-totals"><h2>SUBTOTALES POR CATEGORÍA</h2>'+[...categoryTotals.entries()].sort(([a],[b])=>a.localeCompare(b,"es")).map(([name,sum])=>'<div class="category-total"><h3>SUBTOTAL '+esc(name.toUpperCase())+'</h3><p>PRODUCTOS: '+sum.products.size+' · VARIANTES: '+sum.variants+' · PIEZAS: '+sum.pieces+'</p>'+(sum.priced.MXN?'<div>VALOR MXN: <b>'+esc(amount(sum.amounts.MXN,"MXN"))+'</b></div>':"")+(sum.priced.USD?'<div>VALOR USD: <b>'+esc(amount(sum.amounts.USD,"USD"))+'</b></div>':"")+(sum.missing?'<p>'+sum.missing+' variantes sin precio</p>':"")+'</div>').join("")+'</section>';
+  const rows='<table><thead><tr><th>Producto</th><th>Variante</th><th>Color</th><th>Género</th><th>SKU</th><th>Código</th><th>Precio</th><th>Exist.</th></tr></thead><tbody>'+details+'</tbody></table>'+footer+categorySummary;
   const css=format==="ticket"
    ? '@page{size:80mm auto;margin:2mm}body{width:72mm;margin:0 auto;font:10px/1.35 Arial,sans-serif}h1{font-size:15px;margin:0 0 3mm}.meta{font-size:10px}.item{padding:3mm 0;border-bottom:1px dashed #444;break-inside:avoid;overflow-wrap:anywhere}.item strong{font-size:12px}.figures{display:flex;justify-content:space-between;gap:5px;margin-top:2px}.summary{font-size:12px;font-weight:700;padding:3mm 0;border-top:2px solid #000}@media screen{body{border:1px solid #ddd;padding:4mm}}'
-   : '@page{size:A4 landscape;margin:10mm}body{font:10px/1.4 Arial,sans-serif;margin:0}h1{font-size:19px;margin:0 0 7px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left;overflow-wrap:anywhere}th{background:#f2f2f2}.right{text-align:right;white-space:nowrap}.summary{font-size:12px;display:flex;gap:16px;font-weight:700}';
+   : '@page{size:A4 landscape;margin:10mm}body{font:10px/1.4 Arial,sans-serif;margin:0}h1{font-size:19px;margin:0 0 7px}table{width:100%;border-collapse:collapse;margin:12px 0}th,td{border-bottom:1px solid #ddd;padding:5px 4px;text-align:left;overflow-wrap:anywhere}th{background:#f2f2f2}.right{text-align:right;white-space:nowrap}.summary{font-size:12px;display:flex;gap:16px;font-weight:700}.category-totals{margin-top:15px;border-top:2px solid #143e35;padding-top:8px}.category-totals h2{font-size:13px;color:#143e35}.category-total{display:inline-block;vertical-align:top;width:31%;min-width:190px;border:1px solid #ddd;border-radius:6px;padding:8px;margin:0 1% 9px 0;break-inside:avoid}.category-total h3{font-size:11px;margin:0 0 5px}.category-total p{margin:4px 0}.category-total div{display:flex;justify-content:space-between;gap:8px;margin-top:3px}';
   const date=esc(new Date().toLocaleString("es-MX",{dateStyle:"medium",timeStyle:"short"}));
   popup.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Inventario UP AND DOWN</title><style>'+css+'</style></head><body><header><h1>UP AND DOWN · INVENTARIO</h1><div class="meta">Fecha: '+date+'<br>Existencias por variante · '+(format==="ticket"?"Ticket 80 mm":"Hoja A4")+'</div></header>'+rows+'<script>window.onload=()=>setTimeout(()=>window.print(),350)<\/script></body></html>');
   popup.document.close();

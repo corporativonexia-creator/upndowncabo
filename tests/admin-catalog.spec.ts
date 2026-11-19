@@ -32,6 +32,77 @@ async function captureThermalLabel(page:Page,sku:string){
   return page.evaluate(()=>({html:(window as Window & {__qaLabelHtml?:string}).__qaLabelHtml||'',opens:(window as Window & {__qaLabelOpens?:number}).__qaLabelOpens||0}));
 }
 
+async function captureInventoryReport(page:Page,buttonName:RegExp){
+  await page.evaluate(()=>{
+    const testWindow=window as Window & {__qaReportHtml?:string;__qaReportOpens?:number};
+    testWindow.__qaReportHtml='';testWindow.__qaReportOpens=0;
+    Object.defineProperty(window,'open',{configurable:true,value:()=>{
+      testWindow.__qaReportOpens=(testWindow.__qaReportOpens||0)+1;
+      return {document:{write:(html:string)=>{testWindow.__qaReportHtml+=html;},close:()=>{}},addEventListener:()=>{},print:()=>{}};
+    }});
+  });
+  await page.getByRole('button',{name:buttonName}).click();
+  return page.evaluate(()=>({html:(window as Window & {__qaReportHtml?:string}).__qaReportHtml||'',opens:(window as Window & {__qaReportOpens?:number}).__qaReportOpens||0}));
+}
+
+test('A6.3 factory UPC-A prints 12 original digits with GS1-equivalent bars and no identifier writes',async({page,request})=>{
+  await login(page);await configure(request,{factoryUpcFixture:true});
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr').filter({hasText:'ROP-001-XS'})).toContainText('036000291452');
+  const label=await captureThermalLabel(page,'ROP-001-XS');
+  expect(label.opens).toBe(1);
+  expect(label.html).toContain('>36000</text>');
+  expect(label.html).toContain('>29145</text>');
+  expect(label.html).not.toContain('>0036000291452</text>');
+  expect(label.html).toContain('@page{size:50mm 30mm;margin:0}');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>['PATCH','PUT','DELETE'].includes(e.method)||e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
+test('A6.3 invalid UPC-A checksum blocks printing before any price query',async({page,request})=>{
+  await login(page);await configure(request,{badUpcFixture:true});
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr').filter({hasText:'ROP-001-XS'})).toContainText('036000291453');
+  let warning='';
+  page.once('dialog',async dialog=>{warning=dialog.message();await dialog.accept();});
+  await page.locator('.inv-tablebox tbody tr').filter({hasText:'ROP-001-XS'}).getByRole('button',{name:'Imprimir'}).click();
+  expect(warning).toContain('verificador válido');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string,query:string})=>['/rest/v1/products','/rest/v1/product_variants'].includes(e.path)&&e.query.includes('id=eq.'))).toHaveLength(0);
+});
+
+test('A6.3 ticket 80 mm and sheet A4 keep category totals separate by MXN and USD',async({page,request})=>{
+  await login(page);await configure(request,{labelFixture:true});
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const ticket=await captureInventoryReport(page,/Ticket 80 mm/);
+  expect(ticket.opens).toBe(1);
+  expect(ticket.html).toContain('SUBTOTAL ROPA');
+  expect(ticket.html).toContain('SUBTOTAL PALOS');
+  expect(ticket.html).toContain('4,050.00');
+  expect(ticket.html).toContain('TOTAL USD');
+  expect(ticket.html).toContain('3,500.00');
+  const sheet=await captureInventoryReport(page,/Hoja \/ PDF/);
+  expect(sheet.opens).toBe(1);
+  expect(sheet.html).toContain('@page{size:A4 landscape;margin:10mm}');
+  expect(sheet.html).toContain('SUBTOTALES POR CATEGORÍA');
+  expect(sheet.html).toContain('SUBTOTAL ROPA');
+  expect(sheet.html).toContain('SUBTOTAL PALOS');
+  expect(sheet.html).toContain('USD');
+  expect(sheet.html).toContain('4,050.00');
+  expect(sheet.html).toContain('1,750.00');
+
+  await page.getByRole('button',{name:/Categorías:/}).click();
+  await page.locator('.inv-category-options label').filter({hasText:'Palos'}).locator('input').uncheck();
+  const selected=await captureInventoryReport(page,/Hoja \/ PDF/);
+  expect(selected.html).toContain('SUBTOTAL ROPA');
+  expect(selected.html).not.toContain('SUBTOTAL PALOS');
+  expect(selected.html).toContain('4,050.00');
+  expect(selected.html).not.toContain('3,500.00');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{method:string,path:string})=>['PATCH','PUT','DELETE'].includes(e.method)||e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
 test('A6.2 one thermal label printer uses current variant offer and exact 50 × 30 layout',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

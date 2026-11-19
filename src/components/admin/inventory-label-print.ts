@@ -28,8 +28,15 @@ function validEan13(value: string) {
   return (10 - sum % 10) % 10 === digits[12];
 }
 
-function ean13Svg(value: string) {
-  const digits = value.split("").map(Number), parity = PARITY[digits[0]];
+function printableBarcode(value: string) {
+  // A GTIN-12 is encoded with an implied leading zero, never persisted with it.
+  if (/^\d{12}$/.test(value)) return validEan13(`0${value}`) ? { encoded: `0${value}`, visible: value, upcA: true } : null;
+  if (/^\d{13}$/.test(value)) return validEan13(value) ? { encoded: value, visible: value, upcA: false } : null;
+  return null;
+}
+
+function barcodeSvg(code: NonNullable<ReturnType<typeof printableBarcode>>) {
+  const digits = code.encoded.split("").map(Number), parity = PARITY[digits[0]];
   let bits = "101";
   for (let index = 1; index <= 6; index++) bits += (parity[index - 1] === "L" ? L : G)[digits[index]];
   bits += "01010";
@@ -42,7 +49,10 @@ function ean13Svg(value: string) {
     const guard = index < 3 || (index >= 45 && index < 50) || index >= 92;
     bars += `<rect x="${left + index * barWidth}" y="1" width="${barWidth + .02}" height="${guard ? 14.4 : 12.5}"/>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 18.5"><rect width="100%" height="100%" fill="white"/><g fill="black">${bars}</g><text x="${width / 2}" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="3" letter-spacing=".42">${value}</text></svg>`;
+  const digitsText = code.upcA
+    ? `<text x="2.3" y="16.7" text-anchor="middle" font-family="Arial,sans-serif" font-size="3">${code.visible[0]}</text><text x="14" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="3" letter-spacing=".42">${code.visible.slice(1, 6)}</text><text x="34" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="3" letter-spacing=".42">${code.visible.slice(6, 11)}</text><text x="${width - 2.3}" y="16.7" text-anchor="middle" font-family="Arial,sans-serif" font-size="3">${code.visible[11]}</text>`
+    : `<text x="${width / 2}" y="18" text-anchor="middle" font-family="Arial,sans-serif" font-size="3" letter-spacing=".42">${code.visible}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 18.5"><rect width="100%" height="100%" fill="white"/><g fill="black">${bars}</g>${digitsText}</svg>`;
 }
 
 function money(value: number, currency: string) {
@@ -53,8 +63,9 @@ function money(value: number, currency: string) {
 /** One entry point for 50 × 30 mm thermal labels; price is always re-read before printing. */
 export async function printInventoryLabels(row: InventoryLabelRow) {
   const barcode = String(row.barcode || "").trim();
-  if (!validEan13(barcode)) {
-    alert("Este SKU necesita un código EAN-13 válido antes de imprimir.");
+  const printable = printableBarcode(barcode);
+  if (!printable) {
+    alert("Este producto necesita un código UPC-A de 12 o EAN-13 de 13 dígitos con verificador válido para imprimir.");
     return;
   }
 
@@ -87,8 +98,8 @@ export async function printInventoryLabels(row: InventoryLabelRow) {
   const color = String(attributes.color || attributes.colour || titleParts.slice(1).join(" / ") || "").trim();
   const lowerLine = [row.product_name, color].filter(Boolean).join(" · ");
   const currency = product.currency === "USD" ? "USD" : "MXN";
-  const barcodeSvg = ean13Svg(barcode);
-  const labels = Array.from({ length: quantity }, () => `<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(size)}</div><div class="price">${esc(money(price, currency))}</div></div><div class="variant">${esc(lowerLine)}</div><div class="barcode">${barcodeSvg}</div></section>`).join("");
+  const symbolSvg = barcodeSvg(printable);
+  const labels = Array.from({ length: quantity }, () => `<section class="label"><div class="brand">UP AND DOWN</div><div class="product-line"><div class="name">${esc(size)}</div><div class="price">${esc(money(price, currency))}</div></div><div class="variant">${esc(lowerLine)}</div><div class="barcode">${symbolSvg}</div></section>`).join("");
   const popup = window.open("", "_blank", "width=700,height=700");
   if (!popup) {
     alert("Permite ventanas emergentes para imprimir etiquetas.");
