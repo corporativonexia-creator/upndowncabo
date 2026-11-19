@@ -6,26 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 export default function InventoryLiveEnhancer() {
   useEffect(() => {
     const db = createClient();
-    let stopped = false;
-
-    async function syncDisplayedStock() {
-      // Inventory table rows represent variants, not parent products.
-      // Parent barcode can equal a variant barcode, so never use parent stock here.
-      const { data, error } = await db
-        .from("product_variants")
-        .select("sku,barcode,stock");
-      if (error || stopped) return;
-
-      const bySku = new Map((data || []).map(v => [String(v.sku || "").trim().toLowerCase(), Number(v.stock || 0)]));
-      document.querySelectorAll<HTMLTableRowElement>(".inv-tablebox tbody tr").forEach(tr => {
-        const cells = tr.querySelectorAll<HTMLTableCellElement>("td");
-        if (cells.length < 5) return;
-        const sku = String(cells[2]?.textContent || "").trim().toLowerCase();
-        const stock = bySku.get(sku);
-        if (stock === undefined) return;
-        if (cells[4] && cells[4].textContent !== String(stock)) cells[4].textContent = String(stock);
-      });
-    }
 
     function installMovementSearch() {
       const select = document.querySelector<HTMLSelectElement>('.inv-form select[name="variant"]');
@@ -60,21 +40,20 @@ export default function InventoryLiveEnhancer() {
       search.addEventListener("input", render);
     }
 
-    syncDisplayedStock();
     installMovementSearch();
-    const observer = new MutationObserver(() => {
-      installMovementSearch();
-      syncDisplayedStock();
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+    // React owns inventory quantities and metrics. Only watch for a newly
+    // mounted movement form; never query stock on each DOM mutation.
+    const observer = new MutationObserver(installMovementSearch);
+    observer.observe(document.querySelector(".inv-page") || document.body, { childList: true, subtree: true });
 
     const channel = db
       .channel("admin-inventory-live-variants")
-      .on("postgres_changes", { event: "*", schema: "public", table: "product_variants" }, () => syncDisplayedStock())
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_variants" }, () => {
+        window.dispatchEvent(new Event("updown-inventory-stock-changed"));
+      })
       .subscribe();
 
     return () => {
-      stopped = true;
       observer.disconnect();
       db.removeChannel(channel);
     };

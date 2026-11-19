@@ -17,6 +17,51 @@ async function ready(page:Page){
 }
 const card=(page:Page,id:string)=>page.locator(`#udList .u-item[data-product-id="${id}"]`);
 
+test('A6.1 inventory loads the movement log only when requested and keeps movement search',async({page,request})=>{
+  await login(page);
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const initial=await (await request.get(`${fixture}/__events`)).json();
+  expect(initial.filter((e:{path:string})=>e.path==='/rest/v1/rpc/admin_inventory_catalog')).toHaveLength(1);
+  expect(initial.filter((e:{path:string})=>e.path==='/rest/v1/rpc/admin_inventory_movement_log')).toHaveLength(0);
+  expect(initial.filter((e:{path:string,query:string})=>e.path==='/rest/v1/product_variants'&&e.query.includes('stock'))).toHaveLength(0);
+
+  await page.getByRole('button',{name:'Entradas y salidas'}).click();
+  const movementSearch=page.locator('.inv-form input[type=search]');
+  await expect(movementSearch).toBeVisible();
+  await movementSearch.fill('Polo');
+  await expect(page.locator('.inv-form select[name=variant] option')).toHaveCount(4);
+  await movementSearch.fill('XXL');
+  await expect(page.locator('.inv-form select[name=variant] option')).toHaveCount(2);
+
+  await page.getByRole('button',{name:'Bitácora'}).click();
+  await expect(page.locator('.inv-tablebox')).toContainText('Recepción de prueba');
+  const after=await (await request.get(`${fixture}/__events`)).json();
+  expect(after.filter((e:{path:string})=>e.path==='/rest/v1/rpc/admin_inventory_movement_log')).toHaveLength(1);
+  expect(after.filter((e:{path:string,method:string})=>e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
+test('A6.1 realtime stock signal refreshes catalog and metrics once per burst without DOM stock queries',async({page,request})=>{
+  await login(page);
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  await expect(page.locator('.inv-metrics')).toContainText('20');
+  await configure(request,{zeroStock:true});
+  await page.evaluate(()=>{
+    window.dispatchEvent(new Event('updown-inventory-stock-changed'));
+    window.dispatchEvent(new Event('updown-inventory-stock-changed'));
+    window.dispatchEvent(new Event('updown-inventory-stock-changed'));
+  });
+  await expect(page.locator('.inv-metrics')).toContainText('15');
+  const row=page.locator('.inv-tablebox tbody tr').filter({hasText:'ROP-001-XS'});
+  await expect(row.locator('td.stock')).toHaveText('0');
+  await expect(row).toContainText('Agotado');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string})=>e.path==='/rest/v1/rpc/admin_inventory_catalog')).toHaveLength(2);
+  expect(events.filter((e:{path:string,query:string})=>e.path==='/rest/v1/product_variants'&&e.query.includes('stock'))).toHaveLength(0);
+  expect(events.filter((e:{method:string,path:string})=>e.method==='PATCH'||e.method==='DELETE'||e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
 
 test('Premium White admin shell mounts original buttons in an expandable sidebar',async({page})=>{
   await login(page);await ready(page);

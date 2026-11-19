@@ -142,3 +142,23 @@ test("A5.3 retirement SQL is an isolated test contract, never an installed mutat
   assert.match(workflow,/A5\.3 retirement contract against disposable PostgreSQL only/);
   assert.doesNotMatch(runtime,/qa_retire_product_contract/);
 });
+
+test("A6.1 moves inventory log reads behind its tab and keeps realtime stock in React state", () => {
+  const inventory=read("src/components/admin/inventory-admin.tsx");
+  const enhancer=read("src/components/admin/inventory-live-enhancer.tsx");
+  const labels=read("src/components/admin/inventory-label-enhancer.tsx");
+  const initial=inventory.split("const load=useCallback(async()=>{")[1]?.split("const loadMovements=async()=>{")[0];
+  assert.ok(initial,"Catalog loader must remain independent from movements");
+  assert.match(initial,/admin_inventory_catalog/);
+  assert.doesNotMatch(initial,/admin_inventory_movement_log/);
+  assert.match(inventory,/if\(k==="log"\)void loadMovements\(\)/);
+  assert.match(inventory,/p_limit:300/);
+  assert.match(inventory,/updown-inventory-stock-changed/);
+  assert.match(enhancer,/dispatchEvent\(new Event\("updown-inventory-stock-changed"\)\)/);
+  assert.doesNotMatch(enhancer,/syncDisplayedStock|\.select\("sku,barcode,stock"\)|cells\[4\]\.textContent/);
+  assert.match(enhancer,/installMovementSearch/);
+  assert.match(labels,/class="price"|class=\\"price\\"|<div class="price">/);
+  assert.match(inventory,/SUBTOTAL /);
+  assert.match(inventory,/admin_inventory_adjust/);
+  assert.doesNotMatch(enhancer,/\.insert\(|\.update\(|\.delete\(/);
+});

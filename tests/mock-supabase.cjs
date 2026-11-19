@@ -35,6 +35,20 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/auth/v1/logout')return send({});
   if(url.pathname==='/rest/v1/profiles')return send({id:user.id,role:'admin',is_active:true,full_name:'Fixture Admin'});
   if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1,is_active:true,variant_schema:['talla','color']},{id:'c2',name:'Palos',sort_order:2,is_active:true,variant_schema:['mano','loft','flex']},{id:'c3',name:'Calzado',sort_order:3,is_active:true,variant_schema:['talla']}]);
+  if(url.pathname==='/rest/v1/rpc/admin_inventory_catalog')return send({rows:variants.map(v=>{
+    const product=products.find(p=>p.id===v.product_id);
+    return {product_id:v.product_id,product_name:product?.name||'Producto',variant_id:v.id,
+      variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:v.stock,
+      low_stock_threshold:v.low_stock_threshold,is_default:false,attributes:v.attributes};
+  })});
+  if(url.pathname==='/rest/v1/rpc/admin_inventory_movement_log'){
+    if(options.movementLogDelay)await new Promise(r=>setTimeout(r,options.movementLogDelay));
+    if(options.movementLogError)return send({code:'FIXTURE',message:'Bitácora no disponible'},503);
+    return send({rows:[{id:'movement-qa-1',created_at:'2026-11-18T12:00:00Z',movement_type:'restock',
+      quantity_change:3,stock_before:2,stock_after:5,note:'Recepción de prueba',
+      product_name:'Polo clásico',variant_title:'XS rojo',sku:'ROP-001-XS',barcode:'2000000000046',
+      order_id:null,pos_sale_id:null}]});
+  }
   if(url.pathname==='/rest/v1/rpc/pos_is_session_active')return send(true);
   if(url.pathname==='/rest/v1/rpc/pos_get_my_access')return send({employee_id:'employee-qa',employee_number:'QA01',full_name:'QA Cashier',employee_role:'pos_admin',employee_status:'active',terminal_id:'terminal-qa',terminal_name:'QA Terminal',terminal_authorized:true,open_shift_id:'shift-qa',opening_cash:500});
   if(url.pathname==='/rest/v1/rpc/pos_get_current_shift_sales')return send({sales:[],cash_movements:[],cash_in:0,cash_out:0,cash_refunds:0,expected_cash:500});
