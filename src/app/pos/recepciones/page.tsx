@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
-  buildReceptionPdf, receptionDate, receptionFileName, receptionFolio,
+  buildReceptionPdf, normalizeReceptionFolioInput, receptionDate, receptionFileName, receptionFolio,
   type ServiceReception,
 } from "@/lib/pos/reception-receipt";
 import styles from "./receptions.module.css";
@@ -130,7 +130,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
 
   async function readHistory(query: string, sequence: number) {
     const { data, error: historyError } = await db.rpc("pos_reception_recent", {
-      p_device_token: token, p_search: query,
+      p_device_token: token, p_search: normalizeReceptionFolioInput(query),
     });
     if (sequence !== historySequence.current) return;
     if (historyError) throw historyError;

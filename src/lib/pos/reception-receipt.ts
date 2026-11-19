@@ -25,6 +25,14 @@ export function receptionFolio(number: number) {
   return "SR-" + String(number).padStart(6, "0");
 }
 
+// Some USB scanners emulate a US keyboard while the POS uses a Spanish layout,
+// converting the Code39 hyphen key into an apostrophe. Only normalize a strict
+// SR folio so product codes and free text are never silently rewritten.
+export function normalizeReceptionFolioInput(value: string) {
+  const code = value.trim().toUpperCase();
+  return code.replace(/^SR['’´`‐‑–—−](?=[0-9]{1,12}$)/, "SR-");
+}
+
 export function receptionFileName(reception: ServiceReception) {
   return "UPNDOWN-Recepcion-" + receptionFolio(reception.receipt_number) + ".pdf";
 }
