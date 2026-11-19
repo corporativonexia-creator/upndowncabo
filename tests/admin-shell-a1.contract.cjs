@@ -64,3 +64,17 @@ test("A10.1 replaces polling inventory navigation with the existing Premium Whit
     "updown-pos-pin-v2.js", "updown-h63-order-comms.js", "updown-inventory-v2.js",
     "updown-product-tabs-v1.js"])assert.ok(parity.includes(required));
 });
+
+test("A10.2 audits automatic legacy variant writes without altering the operational runtime", () => {
+  const heic = read("public/updown-product-heic-inventory-hotfix.js");
+  const fixture = read("tests/mock-supabase.cjs");
+  assert.match(heic,/function boot\(\)\{installHeicInput\(\);installProductSync\(\);syncMissingInventoryVariants\(\);\}boot\(\)/);
+  assert.match(heic,/setTimeout\(syncMissingInventoryVariants,1800\);setTimeout\(syncMissingInventoryVariants,4200\)/);
+  assert.match(heic,/db\.from\("products"\)\.select\("id,name,sku,stock,price,sale_price,status"\)/);
+  assert.match(heic,/db\.from\("product_variants"\)\.select\("id,product_id"\)/);
+  assert.match(heic,/db\.rpc\("admin_inventory_save_variant",\{p_product_id:product\.id,p_variant_id:null/);
+  assert.match(heic,/if\(variantId&&stock!==0\)\{const \{error:moveError\}=await db\.rpc\("admin_inventory_adjust"/);
+  assert.match(heic,/p_quantity_change:stock,p_reason:"Existencia inicial migrada desde alta de producto"/);
+  assert.match(fixture,/if\(options\.orphanStartupFixture&&url\.searchParams\.get\('select'\)==='id,name,sku,stock,price,sale_price,status'\)/);
+  assert.match(fixture,/if\(url\.pathname==='\/rest\/v1\/rpc\/admin_inventory_adjust'\)return send\(\{message:'Stock writes forbidden in catalog tests'\},403\)/);
+});

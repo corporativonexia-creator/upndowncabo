@@ -347,5 +347,11 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **No candidatos a retiro todavía:** los otros nueve scripts contienen lógica necesaria o dependencias con efectos comerciales. El hotfix HEIC, en particular, sincroniza variantes con RPC de escritura **automáticamente al inicio**; A9.1 ya mostró que también puede afectar pruebas de catálogo sintético. Se dejó completamente intacto. No se modificaron SKU/UPC, stock, permisos, Supabase, comisiones, pedidos ni producción. QA A10.1 exige navegador con menú y botones originales, 9 scripts y cero escrituras en el flujo de navegación. A10.2 debe estudiar escrituras de inicialización antes de cualquier retiro adicional.
 
+### A10.2 · Evidencia de escrituras automáticas con un huérfano ficticio
+
+**Resultado de auditoría, sin corrección comercial aplicada:** el `boot()` del script HEIC llama a `syncMissingInventoryVariants()` al abrir ADMIN y dos veces más (1.8/4.2 segundos) después del `submit` del formulario heredado. Lee todas las filas de `products` y `product_variants`; si falta una variante, invoca `admin_inventory_save_variant` con SKU/UPC internos por generar y luego `admin_inventory_adjust` si `products.stock` no es cero. No solicita confirmación por artículo ni coteja su historial comercial. El detalle y su propuesta de aislamiento están en `docs/ADMIN-A10-SCRIPTS.md`.
+
+**QA exclusivamente ficticio:** se añadió una proyección de un producto huérfano *solo para la consulta del sincronizador*, sin contaminar el catálogo normal. La prueba registra las peticiones automáticas tras el inicio, incluida la tentativa de ajuste de +3 unidades, mientras el servidor simulado deniega el ajuste con HTTP 403 y conserva su stock en cero. Las funciones reales, tablas, permisos, migraciones, POS y script operativo permanecen intactos. La etapa A10.2 documenta el riesgo, **no concede autorización para cambiar ni ejecutar la sincronización en datos reales**.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

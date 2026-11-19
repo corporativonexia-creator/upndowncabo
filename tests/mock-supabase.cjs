@@ -193,6 +193,13 @@ http.createServer(async(req,res)=>{
       ?[...products,{...structuredClone(baseProducts[2]),id:'p-service',name:'Servicio de ajuste',sku:'SR-QA',
         barcode:null,stock:0,status:'active',pos_visible:true,is_service:true}]
       :products;
+    // A10.2 audit fixture: expose one orphan ONLY to the historical HEIC
+    // synchronizer's precise SELECT. Catalog and product-entry tests remain
+    // unchanged; the mock forbids stock adjustments below.
+    if(options.orphanStartupFixture&&url.searchParams.get('select')==='id,name,sku,stock,price,sale_price,status'){
+      return send([...projection,{id:'p-orphan',name:'Producto huérfano sintético',sku:'QA-ORPHAN-0001',
+        stock:3,price:123,sale_price:null,status:'active'}]);
+    }
     return send(url.searchParams.get("pos_visible")==="eq.true"?projection.filter(p=>p.pos_visible):projection);
   }
   if(url.pathname==='/rest/v1/product_images'){
