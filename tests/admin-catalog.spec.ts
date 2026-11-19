@@ -558,6 +558,7 @@ test('A11.2 nested inventory, categories and POS promotions retain the Premium W
   await side.getByRole('link',{name:'Promociones y servicios POS'}).click();
   await expect(page).toHaveURL(/\/admin\/pos\/promociones$/);
   await expect(side.getByRole('link',{name:'Promociones y servicios POS'})).toHaveAttribute('aria-current','page');
+  await side.getByText('Productos e inventario').click();
   await side.getByRole('link',{name:'Productos',exact:true}).click();
   await ready(page);
   await expect(page.locator('#updown-admin .u-admin-nav')).toHaveAttribute('data-premium-sidebar','ready');
