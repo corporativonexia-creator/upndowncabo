@@ -11,8 +11,8 @@ const baseVariants = [
   {id:'v3',product_id:'p2',title:'M azul',sku:'ROP-0010-M',barcode:'2000000000060',attributes:{talla:'M'}},
   {id:'v4',product_id:'p3',title:'Única',sku:'PAL-001-U',barcode:'2000000000077',attributes:{}},
 ].map(v=>({...v,stock:5,price:null,sale_price:null,is_active:true,low_stock_threshold:2,created_at:'2026-01-01T00:00:00Z'}));
-let products,variants,gallery,events,options,uploadedPaths;
-function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};uploadedPaths=new Set();}reset();
+let products,variants,gallery,events,options,uploadedPaths,sellerReads,commissionReads;
+function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};uploadedPaths=new Set();sellerReads=0;commissionReads=0;}reset();
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.test',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 function token(){const enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');return `${enc({alg:'HS256',typ:'JWT'})}.${enc({sub:user.id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)})}.${Buffer.from('fixture-signature').toString('base64url')}`;}
 http.createServer(async(req,res)=>{
@@ -48,6 +48,25 @@ http.createServer(async(req,res)=>{
         created_at:'2026-11-18T12:05:00Z'}],
       affiliate_seller:{id:'seller-qa',code:'AFF-QA',name:'Vendedor ficticio',email:'vendedor@example.test'}
     }]);
+  }
+  if(url.pathname==='/rest/v1/affiliate_sellers'&&options.sellersRaceFixture){
+    if(req.method!=='GET')return send({code:'42501',message:'Vendedores simulados: solo lectura'},403);
+    const read=++sellerReads;
+    if(read===1){
+      await new Promise(resolve=>setTimeout(resolve,700));
+      events.push({path:'/__qa_sellers_old_completed',method:'GET'});
+    }
+    return send([{id:'seller-qa',code:'AFF-QA',name:read===1?'Vendedor anterior':'Vendedor actualizado',
+      email:'vendedor@example.test',phone:null,commission_rate:10,is_active:true,created_at:'2026-11-18T12:00:00Z'}]);
+  }
+  if(url.pathname==='/rest/v1/affiliate_commissions'&&options.sellersRaceFixture){
+    if(req.method!=='GET')return send({code:'42501',message:'Comisiones simuladas: solo lectura'},403);
+    const read=++commissionReads;
+    if(read===1)await new Promise(resolve=>setTimeout(resolve,700));
+    return send([{id:'commission-qa',order_id:'order-qa',seller_id:'seller-qa',seller_code:'AFF-QA',
+      currency:'MXN',order_total:read===1?100:200,commission_rate:10,commission_amount:read===1?10:20,
+      status:'pending',created_at:'2026-11-18T12:05:00Z',affiliate_sellers:{name:read===1?'Vendedor anterior':'Vendedor actualizado',code:'AFF-QA'},
+      orders:{order_number:73,created_at:'2026-11-18T12:00:00Z'}}]);
   }
   if(url.pathname==='/rest/v1/rpc/admin_inventory_catalog')return send({rows:variants.map(v=>{
     const product=products.find(p=>p.id===v.product_id);

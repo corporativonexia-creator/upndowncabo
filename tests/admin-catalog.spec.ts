@@ -229,6 +229,39 @@ test('A9.1 orders and seller notes load only when opened without observer reload
   expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
+test('A9.2 vendors and commissions ignore old responses after leaving and reopening the section',async({page,request})=>{
+  await login(page);await ready(page);
+  await configure(request,{sellersRaceFixture:true});
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  const readCount=async(table:string)=>(await events()).filter(e=>e.method==='GET'&&e.path===`/rest/v1/${table}`).length;
+  await page.locator('[data-sidebar-section="commercial"] summary').click();
+  await page.locator('#udv2SellersTab').click();
+  await expect.poll(()=>readCount('affiliate_sellers')).toBe(1);
+  await expect.poll(()=>readCount('affiliate_commissions')).toBe(1);
+  await expect(page.locator('#udv2SellerList')).toHaveAttribute('aria-busy','true');
+
+  await page.locator('[data-sidebar-section="website"] summary').click();
+  await page.locator('#udv2ContentTab').click();
+  await page.locator('[data-sidebar-section="commercial"] summary').click();
+  await page.locator('#udv2SellersTab').click();
+  await expect(page.locator('#udv2SellerList')).toContainText('Vendedor actualizado');
+  await expect(page.locator('#udv2CommissionList')).toContainText('Vendedor actualizado');
+  await expect(page.locator('#udv2PendingCommission')).toContainText('20');
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/__qa_sellers_old_completed')).toBe(true);
+  await expect(page.locator('#udv2SellerList')).not.toContainText('Vendedor anterior');
+  await expect(page.locator('#udv2CommissionList')).not.toContainText('Vendedor anterior');
+  await expect(page.locator('#udv2SellerList')).not.toHaveAttribute('aria-busy','true');
+  expect(await readCount('affiliate_sellers')).toBe(2);
+  expect(await readCount('affiliate_commissions')).toBe(2);
+
+  await page.locator('#udv2SellersTab').click();
+  expect(await readCount('affiliate_sellers')).toBe(2); // Re-clicking the active tab is not another read.
+  await page.locator('#udv2SellerRefresh').click();
+  await expect.poll(()=>readCount('affiliate_sellers')).toBe(3);
+  await expect.poll(()=>readCount('affiliate_commissions')).toBe(3);
+  expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

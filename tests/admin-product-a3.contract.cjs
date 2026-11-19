@@ -319,3 +319,20 @@ test("A9.1 orders are lazy and seller-note observer cannot refresh itself", () =
   assert.match(comms,/client\.rpc\("acknowledge_order_note", \{/);
   assert.match(legacy,/\.update\(\{order_status:newStatus\}\)/);
 });
+
+test("A9.2 seller and commission reads reject stale responses without changing commercial writes", () => {
+  const admin=read("public/updown-admin-v2.js");
+  const fixture=read("tests/mock-supabase.cjs");
+  assert.match(admin,/sellerLoadVersion: 0/);
+  assert.match(admin,/if\(state\.activeView==="sellers"&&view!=="sellers"\)invalidateSellerReads\(\)/);
+  assert.match(admin,/if\(view==="sellers"&&!wasSellers\) loadSellers\(\)/);
+  assert.match(admin,/const version=\+\+state\.sellerLoadVersion/);
+  assert.match(admin,/if\(!isCurrent\(\)\)return;\s*if\(s\.error\)/);
+  assert.match(admin,/if\(isCurrent\(\)\)toast\(e\.message/);
+  assert.match(admin,/\.removeAttribute\("aria-busy"\)/);
+  assert.match(admin,/db\.from\("affiliate_sellers"\)\.select\("id,code,name,email,phone,commission_rate,is_active,created_at"\)/);
+  assert.match(admin,/db\.from\("affiliate_commissions"\)\.select\("id,order_id,seller_id,seller_code,currency,order_total,commission_rate,commission_amount,status,created_at,affiliate_sellers\(name,code\),orders\(order_number,created_at\)"\)/);
+  assert.match(admin,/\.update\(\{commission_rate:rate,is_active:active\}\)/);
+  assert.match(admin,/\.update\(\{status\}\)/);
+  assert.match(fixture,/if\(url\.pathname==='\/rest\/v1\/affiliate_commissions'&&options\.sellersRaceFixture\)/);
+});

@@ -25,6 +25,7 @@
     articles: [],
     sellers: [],
     commissions: [],
+    sellerLoadVersion: 0,
     commissionFilter: "all",
     commissionSearch: "",
     lessonLeads: [],
@@ -601,6 +602,8 @@
 
   function hideV2Views(){
     if(state.activeView==="pos")invalidatePosReports();
+    if(state.activeView==="sellers")invalidateSellerReads();
+    state.activeView="products";
     $("udv2ContentView")?.classList.add("udv2-hidden");
     $("udv2SellersView")?.classList.add("udv2-hidden");
     $("udv2LessonsView")?.classList.add("udv2-hidden");
@@ -613,6 +616,8 @@
 
   function switchView(view){
     if(state.activeView==="pos"&&view!=="pos")invalidatePosReports();
+    if(state.activeView==="sellers"&&view!=="sellers")invalidateSellerReads();
+    const wasSellers=state.activeView==="sellers";
     state.activeView=view;
     const productView=$("udProductsView"),orderView=$("udOrdersView");
     if(productView) productView.classList.add("u-hidden");
@@ -628,7 +633,7 @@
     $(tabId)?.classList.add("is-active");
 
     if(view==="content") loadContent();
-    if(view==="sellers") loadSellers();
+    if(view==="sellers"&&!wasSellers) loadSellers();
     if(view==="lessons") loadLessons();
     if(view==="pos") loadPosAdmin();
   }
@@ -2775,7 +2780,7 @@
 
   function bindShell(){
     $("udv2ContentRefresh")?.addEventListener("click",loadContent);
-    $("udv2SellerRefresh")?.addEventListener("click",loadSellers);
+    $("udv2SellerRefresh")?.addEventListener("click",()=>loadSellers());
 
     qa("[data-content-type]",$("udv2ContentView")).forEach(btn=>{
       btn.addEventListener("click",()=>{
@@ -3264,18 +3269,43 @@
     await loadContent();
   }
 
+  function invalidateSellerReads(){
+    state.sellerLoadVersion++;
+    $("udv2SellerList")?.removeAttribute("aria-busy");
+    $("udv2CommissionList")?.removeAttribute("aria-busy");
+    const refresh=$("udv2SellerRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadSellers(){
+    const version=++state.sellerLoadVersion;
+    const isCurrent=()=>version===state.sellerLoadVersion&&state.activeView==="sellers"
+      &&!$("udv2SellersView")?.classList.contains("udv2-hidden");
+    $("udv2SellerList")?.setAttribute("aria-busy","true");
+    $("udv2CommissionList")?.setAttribute("aria-busy","true");
+    const refresh=$("udv2SellerRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
       const [s,c]=await Promise.all([
         db.from("affiliate_sellers").select("id,code,name,email,phone,commission_rate,is_active,created_at").order("created_at",{ascending:false}),
         db.from("affiliate_commissions").select("id,order_id,seller_id,seller_code,currency,order_total,commission_rate,commission_amount,status,created_at,affiliate_sellers(name,code),orders(order_number,created_at)").order("created_at",{ascending:false})
       ]);
+      if(!isCurrent())return;
       if(s.error) throw s.error;if(c.error) throw c.error;
       state.sellers=s.data||[];state.commissions=c.data||[];
       renderSellerMetrics();renderSellers();renderCommissions();
-    }catch(e){ toast(e.message||"No se pudieron cargar vendedores.",true); }
+    }catch(e){ if(isCurrent())toast(e.message||"No se pudieron cargar vendedores.",true); }
+    finally{
+      if(version===state.sellerLoadVersion){
+        $("udv2SellerList")?.removeAttribute("aria-busy");
+        $("udv2CommissionList")?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
+    }
   }
 
   function renderSellerMetrics(){
