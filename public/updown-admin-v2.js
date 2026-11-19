@@ -20,6 +20,8 @@
     mounted: false,
     activeView: "products",
     contentType: "courses",
+    contentLoadVersion: 0,
+    contentLoaded: { courses: false, instructors: false, articles: false },
     courses: [],
     instructors: [],
     articles: [],
@@ -603,6 +605,7 @@
   function hideV2Views(){
     if(state.activeView==="pos")invalidatePosReports();
     if(state.activeView==="sellers")invalidateSellerReads();
+    if(state.activeView==="content")invalidateContentReads();
     state.activeView="products";
     $("udv2ContentView")?.classList.add("udv2-hidden");
     $("udv2SellersView")?.classList.add("udv2-hidden");
@@ -617,7 +620,9 @@
   function switchView(view){
     if(state.activeView==="pos"&&view!=="pos")invalidatePosReports();
     if(state.activeView==="sellers"&&view!=="sellers")invalidateSellerReads();
+    if(state.activeView==="content"&&view!=="content")invalidateContentReads();
     const wasSellers=state.activeView==="sellers";
+    const wasContent=state.activeView==="content";
     state.activeView=view;
     const productView=$("udProductsView"),orderView=$("udOrdersView");
     if(productView) productView.classList.add("u-hidden");
@@ -632,7 +637,7 @@
     const tabId=view==="content"?"udv2ContentTab":view==="sellers"?"udv2SellersTab":view==="lessons"?"udv2LessonsTab":"udv2PosTab";
     $(tabId)?.classList.add("is-active");
 
-    if(view==="content") loadContent();
+    if(view==="content"&&!wasContent) loadContent();
     if(view==="sellers"&&!wasSellers) loadSellers();
     if(view==="lessons") loadLessons();
     if(view==="pos") loadPosAdmin();
@@ -2779,14 +2784,16 @@
 
 
   function bindShell(){
-    $("udv2ContentRefresh")?.addEventListener("click",loadContent);
+    $("udv2ContentRefresh")?.addEventListener("click",()=>loadContent());
     $("udv2SellerRefresh")?.addEventListener("click",()=>loadSellers());
 
     qa("[data-content-type]",$("udv2ContentView")).forEach(btn=>{
       btn.addEventListener("click",()=>{
+        if(state.contentType===btn.dataset.contentType)return;
         state.contentType=btn.dataset.contentType;
         qa("[data-content-type]",$("udv2ContentView")).forEach(x=>x.classList.toggle("is-active",x===btn));
-        renderContentSection();
+        if(state.contentLoaded[state.contentType])renderContentSection();
+        loadContent();
       });
     });
 
@@ -2970,18 +2977,33 @@
     return data.publicUrl;
   }
 
+  function invalidateContentReads(){
+    state.contentLoadVersion++;
+    $("udv2ContentBody")?.removeAttribute("aria-busy");
+    const refresh=$("udv2ContentRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadContent(){
+    const type=state.contentType;
+    const version=++state.contentLoadVersion;
+    const isCurrent=()=>version===state.contentLoadVersion&&state.activeView==="content"
+      &&state.contentType===type&&!$("udv2ContentView")?.classList.contains("udv2-hidden");
+    const body=$("udv2ContentBody");
+    if(!state.contentLoaded[type]&&body)body.innerHTML='<div class="udv2-empty">Cargando contenido…</div>';
+    body?.setAttribute("aria-busy","true");
+    const refresh=$("udv2ContentRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
 
-      // Load each source independently. A failure in Journal must never make
-      // Courses and Instructors appear as "0", and vice versa.
-      const [coursesResult,instructorsResult,articlesResult]=await Promise.all([
-        db.from("golf_courses").select("*"),
-        db.from("golf_instructors").select("*"),
-        db.from("journal_articles").select("*")
-      ]);
+      // Each tab retains its existing SELECT; hidden content never queries.
+      const table={courses:"golf_courses",instructors:"golf_instructors",articles:"journal_articles"}[type];
+      const result=await db.from(table).select("*");
+      if(!isCurrent())return;
 
       const sortByOrder=(rows=[])=>[...rows].sort((a,b)=>{
         const ao=Number(a.sort_order||0),bo=Number(b.sort_order||0);
@@ -2989,36 +3011,29 @@
         return String(a.created_at||"").localeCompare(String(b.created_at||""));
       });
 
-      if(coursesResult.error){
-        console.error("golf_courses admin load",coursesResult.error);
-        toast(`Campos: ${coursesResult.error.message}`,true);
-      }else{
-        state.courses=sortByOrder(coursesResult.data||[]);
-      }
-
-      if(instructorsResult.error){
-        console.error("golf_instructors admin load",instructorsResult.error);
-        toast(`Profesores: ${instructorsResult.error.message}`,true);
-      }else{
-        state.instructors=sortByOrder(instructorsResult.data||[]);
-      }
-
-      if(articlesResult.error){
-        console.error("journal_articles admin load",articlesResult.error);
-        toast(`Journal: ${articlesResult.error.message}`,true);
-      }else{
-        state.articles=[...(articlesResult.data||[])].sort((a,b)=>{
+      if(result.error)throw result.error;
+      if(type==="articles"){
+        state.articles=[...(result.data||[])].sort((a,b)=>{
           const ao=Number(a.sort_order||0),bo=Number(b.sort_order||0);
           if(ao!==bo)return ao-bo;
           return String(b.published_at||b.created_at||"").localeCompare(String(a.published_at||a.created_at||""));
         });
-      }
+      }else state[type]=sortByOrder(result.data||[]);
 
+      state.contentLoaded[type]=true;
       renderContentSection();
     }catch(e){
-      console.error("Managed admin content load",e);
-      toast(e.message||"No se pudo cargar contenido.",true);
-      renderContentSection();
+      if(isCurrent()){
+        console.error("Managed admin content load",e);
+        toast(`${{courses:"Campos",instructors:"Profesores",articles:"Journal"}[type]}: ${e.message||"No se pudo cargar contenido."}`,true);
+        if(state.contentLoaded[type])renderContentSection();
+        else if(body)body.innerHTML=`<div class="udv2-empty">No se pudo cargar contenido. ${escapeHtml(e.message||"Intenta actualizar.")}</div>`;
+      }
+    }finally{
+      if(version===state.contentLoadVersion){
+        body?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
     }
   }
 

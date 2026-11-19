@@ -336,3 +336,20 @@ test("A9.2 seller and commission reads reject stale responses without changing c
   assert.match(admin,/\.update\(\{status\}\)/);
   assert.match(fixture,/if\(url\.pathname==='\/rest\/v1\/affiliate_commissions'&&options\.sellersRaceFixture\)/);
 });
+
+test("A9.3 site content reads only its active type and ignores obsolete results", () => {
+  const admin=read("public/updown-admin-v2.js");
+  const fixture=read("tests/mock-supabase.cjs");
+  assert.match(admin,/contentLoaded: \{ courses: false, instructors: false, articles: false \}/);
+  assert.match(admin,/if\(state\.activeView==="content"&&view!=="content"\)invalidateContentReads\(\)/);
+  assert.match(admin,/if\(view==="content"&&!wasContent\) loadContent\(\)/);
+  assert.match(admin,/const version=\+\+state\.contentLoadVersion/);
+  assert.match(admin,/const table=\{courses:"golf_courses",instructors:"golf_instructors",articles:"journal_articles"\}\[type\]/);
+  assert.match(admin,/const result=await db\.from\(table\)\.select\("\*"\)/);
+  assert.match(admin,/if\(!isCurrent\(\)\)return;\s*const sortByOrder/);
+  assert.match(admin,/if\(result\.error\)throw result\.error/);
+  assert.match(admin,/if\(state\.contentLoaded\[type\]\)renderContentSection\(\)/);
+  assert.match(admin,/\.insert\(payload\)/);
+  assert.match(admin,/\.update\(payload\)\.eq\("id",editingId\)/);
+  assert.match(fixture,/if\(options\.contentRaceFixture&&\[/);
+});

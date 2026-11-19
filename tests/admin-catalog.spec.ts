@@ -262,6 +262,40 @@ test('A9.2 vendors and commissions ignore old responses after leaving and reopen
   expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
+test('A9.3 site content reads only the selected tab and ignores older results',async({page,request})=>{
+  await login(page);await ready(page);
+  await configure(request,{contentRaceFixture:true});
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  const count=async(table:string)=>(await events()).filter(e=>e.path===`/rest/v1/${table}`&&e.method==='GET').length;
+  await page.locator('[data-sidebar-section="website"] summary').click();
+  await page.locator('#udv2ContentTab').click();
+  await expect.poll(()=>count('golf_courses')).toBe(1);
+  expect(await count('golf_instructors')).toBe(0);
+  expect(await count('journal_articles')).toBe(0);
+  await expect(page.locator('#udv2ContentBody')).toHaveAttribute('aria-busy','true');
+
+  await page.locator('[data-content-type="instructors"]').click();
+  await expect(page.locator('#udv2ContentBody')).toContainText('Profesor de prueba');
+  await expect.poll(()=>count('golf_instructors')).toBe(1);
+  await page.locator('[data-content-type="courses"]').click();
+  await expect(page.locator('#udv2ContentBody')).toContainText('Campo actualizado');
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/__qa_content_old_completed')).toBe(true);
+  await expect(page.locator('#udv2ContentBody')).not.toContainText('Campo anterior');
+  await expect(page.locator('#udv2ContentBody')).not.toHaveAttribute('aria-busy','true');
+  expect(await count('golf_courses')).toBe(2);
+
+  await page.locator('[data-content-type="articles"]').click();
+  await expect(page.locator('#udv2ContentBody')).toContainText('Noticia sintética');
+  expect(await count('journal_articles')).toBe(1);
+  await page.locator('#udv2ContentTab').click();
+  expect(await count('journal_articles')).toBe(1); // No reread on repeated active navigation.
+  await page.locator('#udv2ContentRefresh').click();
+  await expect.poll(()=>count('journal_articles')).toBe(2);
+  expect(await count('golf_courses')).toBe(2);
+  expect(await count('golf_instructors')).toBe(1);
+  expect((await events()).filter(e=>['POST','PATCH','PUT','DELETE'].includes(e.method)&&e.path.startsWith('/rest/v1/golf_'))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
