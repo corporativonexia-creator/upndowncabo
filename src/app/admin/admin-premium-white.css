@@ -1,5 +1,6 @@
 /* ADMIN Premium White · A0-A2. UI only; fully scoped to /admin. */
 .ud-admin-boot { min-height: 100vh; background: #f9fafb; }
+.ud-admin-root-slot[hidden] { display: none !important; }
 .ud-admin-boot .ud-admin-legacy[data-admin-ready="false"] {
   visibility: hidden; height: 0; overflow: hidden; pointer-events: none;
 }

@@ -1,15 +1,29 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import AdminParity from "./admin-parity";
 import AdminSectionNav from "./admin-section-nav";
 
-/** Nested admin routes keep their original modules; only navigation is shared. */
+/** Keep the legacy document-scoped runtime mounted while visiting nested admin routes. */
 export default function AdminRouteShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
-  // The /admin landing page owns legacy DOM-bound actions and its A2 sidebar.
-  if (pathname === "/admin") return <>{children}</>;
-  return <NestedAdminShell pathname={pathname} key={pathname}>{children}</NestedAdminShell>;
+  const searchParams = useSearchParams();
+  const isRoot = pathname === "/admin";
+  const [hasOpenedRoot, setHasOpenedRoot] = useState(isRoot);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Mount once on the first visit and retain document-bound listeners.
+    if (isRoot) setHasOpenedRoot(true);
+  }, [isRoot]);
+
+  return (
+    <>
+      <div className="ud-admin-root-slot" hidden={!isRoot}>
+        {(hasOpenedRoot || isRoot) && <AdminParity active={isRoot} section={searchParams.get("section") || ""} />}
+      </div>
+      {!isRoot && <NestedAdminShell pathname={pathname}>{children}</NestedAdminShell>}
+    </>
+  );
 }
 
 function NestedAdminShell({ pathname, children }: Readonly<{ pathname: string; children: React.ReactNode }>) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { adminLegacyMarkup } from "./admin-legacy-markup";
 import { installAdminSidebar } from "./install-admin-sidebar";
@@ -25,8 +26,10 @@ const ADMIN_MARKUP = { __html: adminLegacyMarkup };
  * A0/A1: render the legacy DOM for existing business logic, but do not reveal
  * its unenhanced state. Retire only scripts with demonstrated functional parity.
  */
-export default function AdminParity() {
+export default function AdminParity({ active, section }: { active: boolean; section: string }) {
+  const router = useRouter();
   const startup = useRef<Promise<void> | null>(null);
+  const routeSelection = useRef({ initialized: false, active: false, section: "" });
   const [bootState, setBootState] = useState<BootState>("loading");
   const [bootError, setBootError] = useState("");
   const [productHost, setProductHost] = useState<HTMLElement | null>(null);
@@ -85,7 +88,7 @@ export default function AdminParity() {
         }
         if (!prepared) throw new Error("Algunos módulos tardaron demasiado en iniciar.");
         // Move original nodes, preserving legacy event listeners.
-        installAdminSidebar();
+        installAdminSidebar(href => router.push(href));
         if (document.querySelector("#updown-admin .u-admin-nav")?.getAttribute("data-premium-sidebar") !== "ready" ||
             !document.getElementById("udInventoryMainNav")) {
           throw new Error("No se pudo preparar el menú administrativo.");
@@ -105,7 +108,27 @@ export default function AdminParity() {
       },
     );
     return () => { attached = false; };
-  }, []);
+  }, [router]);
+
+  useEffect(() => {
+    if (bootState !== "ready") return;
+    const last = routeSelection.current;
+    if (!active) { last.active = false; return; }
+    // The initial script boot already consumed the bookmarked query parameter.
+    // On later visits, select the original button without reloading its scripts.
+    if (last.initialized && (!last.active || last.section !== section)) {
+      const id: Record<string, string> = {
+        orders: "udOrdersTab", pos: "udv2PosTab",
+        vendedores: "udv2SellersTab", sellers: "udv2SellersTab",
+        clases: "udv2LessonsTab", classes: "udv2LessonsTab",
+        contenido: "udv2ContentTab", content: "udv2ContentTab",
+      };
+      document.getElementById(id[section] || "udProductsTab")?.click();
+    }
+    last.initialized = true;
+    last.active = true;
+    last.section = section;
+  }, [active, bootState, section]);
 
   useEffect(() => {
     if (bootState !== "ready") return;

@@ -7,6 +7,7 @@ import { jsPDF } from "jspdf";
 import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
 import { receptionFolio, type ServiceReception } from "@/lib/pos/reception-receipt";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
+import ServiceRecepcionesPage from "./recepciones/page";
 
 type Access = {
   employee_id: string;
@@ -104,6 +105,9 @@ type CashMovement = {
 
 
 const DEVICE_KEY = "updown-pos-device-token-v1";
+const initialWorkspaceTab = (): "pos" | "reception" =>
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "recepciones"
+    ? "reception" : "pos";
 const INACTIVITY_MS = 30 * 60 * 1000;
 const ACCESS_REVALIDATE_MS = 10 * 1000;
 
@@ -394,6 +398,8 @@ export default function PosPage() {
   );
 
   const [ready, setReady] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<"pos" | "reception">(initialWorkspaceTab);
+  const [receptionVisited, setReceptionVisited] = useState(() => initialWorkspaceTab() === "reception");
   const [deviceToken, setDeviceToken] = useState("");
   const [access, setAccess] = useState<Access | null>(null);
   const [message, setMessage] = useState("");
@@ -1773,6 +1779,12 @@ export default function PosPage() {
           ? "Administrador POS"
           : access?.employee_role || "—";
 
+  function selectWorkspaceTab(tab: "pos" | "reception") {
+    if (tab === "reception") setReceptionVisited(true);
+    setWorkspaceTab(tab);
+    window.history.replaceState(window.history.state, "", tab === "reception" ? "/pos?tab=recepciones" : "/pos");
+  }
+
   if (!ready) {
     return <main className="pos-shell"><section className="pos-card">Cargando POS…</section></main>;
   }
@@ -1799,6 +1811,11 @@ export default function PosPage() {
         .pos-btn{min-height:50px;padding:12px 18px;border:0;border-radius:999px;background:#143e35;color:#fff;font-weight:800;cursor:pointer}
         .pos-btn.secondary{background:#fff;color:#143e35;border:1px solid rgba(20,62,53,.16)}
         .pos-btn:disabled{opacity:.5;cursor:not-allowed}
+        .pos-workspace-tabs{display:flex;gap:5px;margin-bottom:16px;padding:6px;border-radius:16px;background:#eaf1ed;border:1px solid #d2dfd5}
+        .pos-workspace-tabs button{flex:1;min-height:48px;border:0;background:transparent;color:#355a49;font:800 14px Inter,Arial,sans-serif;border-radius:11px;cursor:pointer}
+        .pos-workspace-tabs button[aria-selected="true"]{background:#143e35;color:#fff;box-shadow:0 4px 12px #143e3526}
+        .pos-workspace-tabs button:focus-visible{outline:2px solid #b7de45;outline-offset:2px}
+        .pos-workspace-panel[hidden]{display:none!important}
         .pos-message{margin-top:14px;padding:12px;border-radius:12px;background:#f3efe7;color:#143e35;font-size:12px;line-height:1.5}
         .pos-kicker{font-size:10px;color:#2f6f5b;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
         .pos-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
@@ -1903,6 +1920,14 @@ export default function PosPage() {
           <span>PUNTO DE VENTA · LOS CABOS</span>
         </header>
 
+        {access && (
+          <div className="pos-workspace-tabs" role="tablist" aria-label="Módulos del punto de venta">
+            <button type="button" role="tab" id="posWorkspaceTab" aria-controls="posWorkspacePanel"
+              aria-selected={workspaceTab === "pos"} onClick={() => selectWorkspaceTab("pos")}>🛒 POS</button>
+            <button type="button" role="tab" id="receptionWorkspaceTab" aria-controls="receptionWorkspacePanel"
+              aria-selected={workspaceTab === "reception"} onClick={() => selectWorkspaceTab("reception")}>🔧 Recepción de equipos</button>
+          </div>
+        )}
         {!access ? (
           <div className="pos-grid">
             <section className="pos-card">
@@ -1928,6 +1953,8 @@ export default function PosPage() {
             </section>
           </div>
         ) : (
+          <>
+          <div className="pos-workspace-panel" id="posWorkspacePanel" role="tabpanel" aria-labelledby="posWorkspaceTab" hidden={workspaceTab !== "pos"}>
           <section className="pos-card">
             <div className="pos-kicker">Sesión de empleado</div>
             <h1>Hola, {access.full_name}</h1>
@@ -1938,10 +1965,10 @@ export default function PosPage() {
             </div>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
-              <a className="pos-btn secondary" href="/pos/recepciones"
+              <button type="button" className="pos-btn secondary" onClick={() => selectWorkspaceTab("reception")}
                 style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                 🔧 Recibir equipo para servicio
-              </a>
+              </button>
               <span className="pos-muted" style={{ alignSelf: "center" }}>
                 Disponible sin abrir turno de caja · Comprobante cliente y taller
               </span>
@@ -2950,6 +2977,13 @@ export default function PosPage() {
 
             <button className="pos-btn secondary" style={{marginTop:16}} onClick={()=>logout()} type="button">Cerrar sesión</button>
           </section>
+          </div>
+          <div className="pos-workspace-panel" id="receptionWorkspacePanel" role="tabpanel" aria-labelledby="receptionWorkspaceTab" hidden={workspaceTab !== "reception"}>
+            {receptionVisited && <ServiceRecepcionesPage embedded
+              onReturnToPos={() => selectWorkspaceTab("pos")}
+              onCheckoutFolio={folio => { selectWorkspaceTab("pos"); void openReceptionByFolio(folio); }} />}
+          </div>
+          </>
         )}
 
         {message && <div className="pos-message" role="status">{message}</div>}
