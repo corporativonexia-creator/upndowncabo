@@ -117,6 +117,7 @@ before(async()=>{
  // The disposable fixture predates real auth.sessions; only local tests use this stub.
  await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as 'select auth.uid() is not null'");
  await migrate('20261114215000_pos_service_receptions');
+ await migrate('20261119214913_pos22_allow_service_with_synthetic_variants');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
@@ -239,6 +240,19 @@ test('free-price service sale, void and refund do not mutate physical inventory'
  assert.equal((await one('select count(*)::int n from inventory_movements where pos_sale_id=$1',[second.sale_id])).n,0);
  assert.equal((await one('select stock from products where id=$1',[id])).stock,0);
 });
+test('synthetic service variants never block a service sale or weaken physical variant protection',async()=>{
+ const service=(await one("select public.pos22_admin_create_service('QA Servicio con Única',$1) result",[category])).result;
+ await sql("insert into product_variants(id,product_id,sku,title,attributes,price,stock,is_default) values($1,$2,$3,'Única','{}'::jsonb,0,0,true)",
+  [randomUUID(),service.id,'QA22-SVC-'+randomUUID().slice(0,8)]);
+ const sold=await sell(items(service.id,{service_unit_price:385}),385);
+ assert.equal(money(sold.total),385);
+ assert.equal((await one('select count(*)::int n from inventory_movements where pos_sale_id=$1',[sold.sale_id])).n,0);
+ const physical=await fixtureProduct({price:120,stock:1});
+ await sql("insert into product_variants(id,product_id,sku,title,attributes,price,stock,is_default) values($1,$2,$3,'Única','{}'::jsonb,120,1,true)",
+  [randomUUID(),physical,'QA22-PHY-'+randomUUID().slice(0,8)]);
+ await assert.rejects(sell(items(physical),120),/VARIANT_REQUIRED/);
+ await assert.rejects(sell(items(service.id,{variant_id:randomUUID(),service_unit_price:385}),385),/VARIANT_NOT_AVAILABLE|SERVICE_VARIANT_NOT_ALLOWED/);
+});
 test('invalid price override, underpayment and lack of stock are atomic',async()=>{
  const id=await fixtureProduct({price:100,stock:1});
  await assert.rejects(sell(items(id,{service_unit_price:1}),1),/PRICE_OVERRIDE_NOT_ALLOWED/);
@@ -323,6 +337,8 @@ test('POS Taller: cashier can receive without a shift, repeat safely, and never 
 
 test('POS Taller: ready -> priced checkout -> delivered is atomic and can be charged only once',async()=>{
  const service=(await one("select public.pos22_admin_create_service('QA Taller entrega',$1) result",[category])).result;
+ await sql("insert into product_variants(id,product_id,sku,title,attributes,price,stock,is_default) values($1,$2,$3,'Única','{}'::jsonb,0,0,true)",
+  [randomUUID(),service.id,'QA22-REC-'+randomUUID().slice(0,8)]);
  const receive=async()=> (await one(
   'select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
   [token,randomUUID(),'Cliente Taller QA','6241234567','Putter en servicio QA',service.id,

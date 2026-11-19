@@ -132,7 +132,7 @@ function BarcodeCamera({ onCode, onClose }: { onCode: (code: string) => void; on
   return <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="scanner-title"><section className={styles.camera}><header><h2 id="scanner-title">Escanear código</h2><button type="button" autoFocus onClick={onClose} aria-label="Cerrar cámara">✕</button></header><video ref={video} muted playsInline autoPlay /><p role={error ? "alert" : undefined}>{error || "Centra el código en la cámara. Se capturará automáticamente."}</p><button type="button" onClick={onClose}>Escribir código manualmente</button></section></div>;
 }
 
-export default function QuickProductEntry({ embedded = false }: { embedded?: boolean }) {
+export default function QuickProductEntry({ embedded = false, galleryOnly = false }: { embedded?: boolean; galleryOnly?: boolean }) {
   const db = useMemo(() => createClient(), []);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ready, setReady] = useState(false);
@@ -149,6 +149,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const [photoQuery, setPhotoQuery] = useState("");
   const [photoCandidates, setPhotoCandidates] = useState<PhotoCandidate[]>([]);
   const [selectedPhotoProduct, setSelectedPhotoProduct] = useState<PhotoCandidate | null>(null);
+  const [galleryCount, setGalleryCount] = useState<number | null>(null);
   const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
   const [photoSearchError, setPhotoSearchError] = useState("");
   const photoSearchVersion = useRef(0);
@@ -169,6 +170,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const locked = busy || processing || pending;
   const photoTarget = match ? { productId: match.product_id, productName: match.product_name, label: `UPC ${barcode}` } :
     selectedPhotoProduct ? { productId: selectedPhotoProduct.id, productName: selectedPhotoProduct.name, label: `SKU ${selectedPhotoProduct.sku || "sin SKU"}` } : null;
+  const galleryProductId = galleryOnly ? photoTarget?.productId : null;
   const updateAdvanced = <K extends keyof AdvancedDraft>(field: K, value: AdvancedDraft[K]) => setAdvanced(current => ({ ...current, [field]: value }));
   const advancedCount = Object.values(advanced).filter(value => value !== "" && value !== undefined).length;
 
@@ -196,6 +198,17 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   useEffect(() => { photosRef.current = photos; }, [photos]);
   useEffect(() => { variantsRef.current = variants; }, [variants]);
   useEffect(() => { existingPhotosRef.current = existingPhotos; }, [existingPhotos]);
+  useEffect(() => {
+    if (!galleryProductId) return;
+    let alive = true;
+    db.from("product_images").select("id").eq("product_id", galleryProductId)
+      .then(({ data, error }) => {
+        if (!alive) return;
+        if (error) setError(friendly(error));
+        else setGalleryCount(data?.length || 0);
+      });
+    return () => { alive = false; };
+  }, [db, galleryProductId]);
   useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
   useEffect(() => () => { ++photoSearchVersion.current; if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current); }, []);
   useEffect(() => {
@@ -224,6 +237,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current);
     setPhotoQuery(""); setPhotoCandidates([]); setPhotoSearchBusy(false); setPhotoSearchError("");
     setSelectedPhotoProduct(null);
+    setGalleryCount(null);
     setBarcode(value); setMatch(null); setMatches([]); setChecking(false);
     photoRequestRef.current = null;
     existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url));
@@ -239,7 +253,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     photoSearchTimer.current = setTimeout(async () => {
       try {
         const { data, error } = await db.from("products").select("id,name,sku,barcode,status")
-          .or(`name.ilike.%${term}%,barcode.ilike.%${term}%`)
+          .or(`name.ilike.%${term}%,barcode.ilike.%${term}%,sku.ilike.%${term}%`)
           .order("name").limit(10);
         if (error) throw error;
         if (version === photoSearchVersion.current) setPhotoCandidates(data || []);
@@ -297,7 +311,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
     processingRef.current = true; setProcessing(true); setError("");
     const added: Photo[] = [];
     try {
-      const available = 10 - existingPhotosRef.current.length;
+      const available = 10 - (galleryOnly ? galleryCount || 0 : 0) - existingPhotosRef.current.length;
       for (const file of files.slice(0, available)) {
         try { const normalized = await preparePhoto(file); added.push({ id: crypto.randomUUID(), file: normalized, url: URL.createObjectURL(normalized) }); }
         catch (e) { setError(friendly(e)); }
@@ -344,6 +358,7 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
       }
       existingPhotosRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
       existingPhotosRef.current = []; setExistingPhotos([]); photoRequestRef.current = null; setPending(false);
+      if (galleryOnly) setGalleryCount((gallery?.length || 0) + inserts.length);
       setSuccess(`✓ ${request.photos.length} fotografía(s) asociadas a ${photoTarget.productName} · ${photoTarget.label}. Sin cambios en precio ni existencias.`);
       window.dispatchEvent(new Event("updown:admin-products-refresh"));
     } catch (e) { setError(friendly(e)); }
@@ -470,14 +485,41 @@ export default function QuickProductEntry({ embedded = false }: { embedded?: boo
   const photoUploadSection = embedded && photoTarget && <section className={styles.upcPhotos} aria-label="Fotografías por UPC">
     <h3>Agregar fotos a este producto</h3>
     <p>Las imágenes se asociarán a {photoTarget.productName} ({photoTarget.label}), sin modificar precio, SKU ni inventario. Si se escaneó una variante, se guardarán en la galería del producto padre.</p>
+    {galleryOnly && <p role="status">{galleryCount === null ? "Consultando espacio de la galería…" : `${galleryCount} de 10 fotos guardadas · ${Math.max(0, 10 - galleryCount - existingPhotos.length)} espacios disponibles`}</p>}
     <div className={styles.tools}>
-      <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={addExistingPhotos} /></label>
-      <label className={styles.fileButton}>＋ Elegir fotos<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked} onChange={addExistingPhotos} /></label>
+      <label className={styles.fileButton}>{galleryOnly ? "📷 Tomar foto" : "▣ Tomar foto"}<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked || (galleryOnly && (galleryCount === null || galleryCount + existingPhotos.length >= 10))} onChange={addExistingPhotos} /></label>
+      <label className={styles.fileButton}>{galleryOnly ? "＋ Agregar foto" : "＋ Elegir fotos"}<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked || (galleryOnly && (galleryCount === null || galleryCount + existingPhotos.length >= 10))} onChange={addExistingPhotos} /></label>
     </div>
     {!!existingPhotos.length && <div className={styles.photos}>{existingPhotos.map((photo, index) => <div key={photo.id}><Image src={photo.url} width={110} height={110} unoptimized alt={`Nueva foto ${index + 1}`} /><button type="button" disabled={locked} aria-label={`Quitar nueva foto ${index + 1}`} onClick={() => { URL.revokeObjectURL(photo.url); setExistingPhotos(previous => previous.filter(p => p.id !== photo.id)); }}>✕</button></div>)}</div>}
-    <button type="button" className={styles.primary} disabled={busy || processing || !existingPhotos.length} onClick={() => void attachExistingPhotos()}>{busy ? "Guardando fotografías…" : pending ? "Reintentar fotos" : `Guardar ${existingPhotos.length} fotografía(s) en este ${match ? "UPC" : "producto"}`}</button>
+    <button type="button" className={styles.primary} disabled={busy || processing || !existingPhotos.length || (galleryOnly && galleryCount === null)} onClick={() => void attachExistingPhotos()}>{busy ? (galleryOnly ? "Subiendo fotografías…" : "Guardando fotografías…") : pending ? (galleryOnly ? "REINTENTAR SUBIDA" : "Reintentar fotos") : galleryOnly ? "SUBIR A LA GALERÍA" : `Guardar ${existingPhotos.length} fotografía(s) en este ${match ? "UPC" : "producto"}`}</button>
     {pending && !busy && <small>Si hubo un error, reintenta para confirmar sin duplicar archivos en la galería.</small>}
   </section>;
+
+  if (galleryOnly) return <main className={`${styles.page} ${styles.embedded}`}><div className={styles.wrap}>
+    <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / GALERÍA</div><h1>Subir fotos</h1><p>Busca un producto por nombre, SKU o UPC, o escanea la etiqueta con la cámara de tu celular. Selecciona la ficha antes de agregar imágenes.</p></section>
+    {success && <div className={styles.success} role="status">{success}</div>}
+    {error && <div className={styles.error} role="alert">{error}</div>}
+    <section className={styles.card}>
+      <label className={styles.label} htmlFor="gallery-product-search">Buscar o escanear producto</label>
+      <div className={styles.codeRow}>
+        <input id="gallery-product-search" type="search" value={photoQuery} disabled={locked} autoComplete="off" placeholder="UPC, SKU o nombre del producto" onChange={event => { if (locked) return; changeCode(""); searchPhotoProducts(event.target.value); }} onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); const code = photoQuery.trim(); if (code) void lookup(code).catch(() => {}); } }} />
+        <button type="button" disabled={locked} aria-label="Escanear UPC con cámara" title="Escanear UPC con cámara" onClick={() => setScanner("gallery")}>📷 Escanear</button>
+      </div>
+      <small>El lector acepta códigos de barras de productos y sus variantes. Puedes escribir el código si no tienes cámara.</small>
+      {(checking || photoSearchBusy) && <p role="status">Buscando productos…</p>}
+      {photoSearchError && <p role="alert">{photoSearchError}</p>}
+      {!photoSearchBusy && photoSearchTerm(photoQuery).length >= 2 && !photoSearchError && <div className={styles.photoResults}>
+        {photoCandidates.length ? <ul aria-label="Resultados de productos">{photoCandidates.map(candidate => <li key={candidate.id}><button type="button" disabled={locked} onClick={() => selectPhotoProduct(candidate)} aria-label={`Seleccionar ${candidate.name} · ${candidate.sku || "Sin SKU"}`}><span>{candidate.name}</span><small>SKU {candidate.sku || "sin SKU"} · UPC {candidate.barcode || "sin UPC"}</small></button></li>)}</ul> : !match && !checking && <p>No hay coincidencias. Prueba otro nombre o escanea el UPC.</p>}
+      </div>}
+      {matches.length > 1 && <label className={styles.label}>Variantes encontradas<select disabled={locked} value={match?.variant_id || ""} onChange={event => setMatch(matches.find(item => item.variant_id === event.target.value) || null)}><option value="">Elegir variante…</option>{matches.map((item,index) => <option key={item.variant_id || index} value={item.variant_id || ""}>{item.product_name} · {item.variant_title}</option>)}</select></label>}
+      {photoTarget && <div className={styles.found}>
+        <div className={styles.eyebrow}>PRODUCTO SELECCIONADO</div><h2>{photoTarget.productName}</h2><p>{photoTarget.label} · Las fotos se guardarán únicamente en esta ficha.</p>
+        <button type="button" disabled={locked} onClick={() => changeCode("")}>Cambiar producto</button>
+        {photoUploadSection}
+      </div>}
+    </section>
+    {scanner && <BarcodeCamera onClose={() => setScanner(null)} onCode={code => { changeCode(code); searchPhotoProducts(code); void lookup(code).catch(() => {}); setScanner(null); }} />}
+  </div></main>;
 
   return <main className={`${styles.page}${embedded ? ` ${styles.embedded}` : ""}`}><div className={styles.wrap}>
     {!embedded && <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>}
