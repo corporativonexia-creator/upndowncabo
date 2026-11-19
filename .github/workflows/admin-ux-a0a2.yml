@@ -35,6 +35,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: fixture-publishable-key
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # A11 compares the candidate to its protected main base.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -42,7 +44,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
       - name: A0-A3 guard contracts
-        run: node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs
+        run: node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs tests/admin-release-a11.contract.cjs
       - name: A3.4 SKU allocation against isolated PostgreSQL
         run: node --test tests/admin-sku-a34.pg.cjs
       - name: A3.6 SKU locking with independent PostgreSQL transactions

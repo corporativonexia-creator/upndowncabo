@@ -1,0 +1,35 @@
+{
+  "base_main_sha": "cff541a03dff8fc98437e1176dc3aef057c25562",
+  "audited_runtime_sha": "d2a8976d594b10280f1cd7aa55ee81efc5cfb7e6",
+  "release_status": "NO_GO_PENDING_EXPLICIT_APPROVAL_AND_STAGING_QA",
+  "runtime_paths": [
+    "public/updown-admin-legacy-runtime.js",
+    "public/updown-admin-v2.js",
+    "public/updown-h63-order-comms.js",
+    "public/updown-product-heic-inventory-hotfix.js",
+    "public/updown-product-smart-entry-v1.js",
+    "public/updown-product-tabs-v1.js",
+    "src/app/admin/admin-premium-white.css",
+    "src/app/admin/inventario/page.tsx",
+    "src/app/admin/page.tsx",
+    "src/app/admin/productos/alta-rapida/page.tsx",
+    "src/app/pos/recepciones/page.tsx",
+    "src/app/pos/recepciones/receptions.module.css",
+    "src/components/admin/admin-parity.tsx",
+    "src/components/admin/admin-section-nav.tsx",
+    "src/components/admin/install-admin-sidebar.ts",
+    "src/components/admin/inventory-admin.tsx",
+    "src/components/admin/inventory-label-enhancer.tsx",
+    "src/components/admin/inventory-label-print.ts",
+    "src/components/admin/inventory-live-enhancer.tsx",
+    "src/components/admin/inventory-reconciliation.tsx",
+    "src/components/admin/quick-product-entry.module.css",
+    "src/components/admin/quick-product-entry.tsx",
+    "src/lib/admin/inventory-reconciliation.ts"
+  ],
+  "forbidden_in_release": [
+    "vercel.json",
+    "supabase/migrations/20261118202020_admin_sku_collision_safe_allocator.sql"
+  ],
+  "notes": "Only a candidate release inventory. No merge, push to main, production deploy or hosted Supabase write is authorized. The SKU rule requires independent approval and staged verification."
+}

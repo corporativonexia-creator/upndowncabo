@@ -361,5 +361,11 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **Límites de A10.3:** pruebas solo con simulaciones, conservación de captura HEIC y ficha unificada; no se toca ningún SKU/UPC/stock/relación comercial preexistente, ni ventas, POS, base real, migraciones, `main` o producción. Se mantiene `vercel.json` temporal bloqueando despliegue de la candidata. Evidencias técnicas en `docs/ADMIN-A10-SCRIPTS.md`.
 
+### A11 · Preparación de puesta en marcha (sin integración)
+
+La candidata cuenta con QA integral A10.3 [GitHub Actions #44463636405](https://github.com/corporativonexia-creator/upndowncabo/actions/runs/44463636405): **62/62 Chromium, 29/29 contratos**, PGlite y PostgreSQL aislado aprobados, build/TypeScript/9 scripts correctos y ESLint con cero errores/ocho advertencias existentes. Tras la solicitud de acelerar la puesta en operación se auditó la diferencia de **38 archivos** contra `main`: existen **23 rutas de ejecución** que deben integrarse selectivamente y dos exclusiones críticas (`vercel.json` temporal y la migración SKU propuesta aún no autorizada). Se crea un manifiesto verificable y un contrato de release, sin cambiar funcionalidades comerciales ni ejecutar acciones sobre Supabase o Vercel.
+
+**NO GO vigente:** la unicidad de SKU propuesta no está validada/aplicada en Supabase alojado; los permisos RLS/Storage y HEIC verdadero en iPhone necesitan un entorno aislado. No fusionar a `main`, activar producción ni ejecutar SQL real con esta preparación. Plan y puertas explícitas: `docs/ADMIN-A11-PUESTA-EN-MARCHA.md` y `docs/ADMIN-A11-RELEASE-MANIFEST.json`.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.
