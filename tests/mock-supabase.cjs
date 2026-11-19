@@ -24,7 +24,7 @@ http.createServer(async(req,res)=>{
   const send=(value,status=200)=>{res.writeHead(status,{'Content-Type':'application/json'});res.end(JSON.stringify(value));};
   if(url.pathname==='/__reset'){reset();options=body;return send({ok:true});}
   if(url.pathname==='/__events')return send(events);
-  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.labelFixture){variants[1].price=475;variants[1].sale_price=420;products[0].sale_price=390;products[0].currency='USD';}if(body.zeroPriceFixture)variants[0].sale_price=0;if(body.invalidLabelBarcode)variants[0].barcode='1234567890123';if(body.factoryUpcFixture)variants[0].barcode='036000291452';if(body.badUpcFixture)variants[0].barcode='036000291453';if(body.retirementArchivedProduct)Object.assign(products[1],{status:'archived',online_visible:false,pos_visible:false,featured:false,new_arrival_enabled:false});if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
+  if(url.pathname==='/__options'){Object.assign(options,body);if(body.zeroStock)variants[0].stock=0;if(body.posFixture){variants[1].price=475;variants[1].attributes.image_url='http://127.0.0.1:4319/variant.png';}if(body.labelFixture){variants[1].price=475;variants[1].sale_price=420;products[0].sale_price=390;products[0].currency='USD';}if(body.zeroPriceFixture)variants[0].sale_price=0;if(body.invalidLabelBarcode)variants[0].barcode='1234567890123';if(body.factoryUpcFixture)variants[0].barcode='036000291452';if(body.badUpcFixture)variants[0].barcode='036000291453';if(body.reconciliationFixture){variants[1].is_active=false;products.push({...structuredClone(products[2]),id:'p-service',name:'Servicio de ajuste',sku:'SR-QA',barcode:null,stock:0,status:'active',pos_visible:true,is_service:true});}if(body.retirementArchivedProduct)Object.assign(products[1],{status:'archived',online_visible:false,pos_visible:false,featured:false,new_arrival_enabled:false});if(body.existingPhoto){const old={id:'img-old',product_id:'p1',image_url:'https://fixture.test/old-photo.jpg',sort_order:1,is_primary:true};gallery.push(old);products[0].product_images=[old];}if(body.fullGallery){const rows=Array.from({length:10},(_,i)=>({id:`full-${i}`,product_id:'p1',image_url:`https://fixture.test/full-${i}.jpg`,sort_order:i+1,is_primary:i===0}));gallery.push(...rows);products[0].product_images=rows;}return send({ok:true});}
   events.push({path:url.pathname,method:req.method,body,query:url.search,authorized:!!req.headers.authorization,
     storageUpsert:url.pathname.startsWith('/storage/v1/object/')?String(req.headers['x-upsert']||''):undefined});
   if(url.pathname==='/auth/v1/token'){
@@ -38,7 +38,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/rest/v1/rpc/admin_inventory_catalog')return send({rows:variants.map(v=>{
     const product=products.find(p=>p.id===v.product_id);
     return {product_id:v.product_id,product_name:product?.name||'Producto',variant_id:v.id,
-      variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:v.stock,
+      variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:options.reconciliationStockSkew&&v.id==='v1'?7:v.stock,
       low_stock_threshold:v.low_stock_threshold,is_default:false,attributes:v.attributes};
   })});
   if(url.pathname==='/rest/v1/rpc/admin_inventory_movement_log'){
@@ -58,6 +58,7 @@ http.createServer(async(req,res)=>{
     return send({ok:true,sale_id:'sale-qa',sale_number:1,total:body.p_payments[0].amount});
   }
   if(url.pathname==='/rest/v1/products'){
+    if(options.reconciliationDenied&&url.searchParams.get('select')?.includes('is_service'))return send({code:'42501',message:'Lectura de conciliación restringida por RLS'},403);
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
     if(req.method==='PATCH'){if(options.metadataError&&body.brand)return send({message:'Fixture metadata save failure',code:'FIXTURE'},503);const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}

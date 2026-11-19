@@ -45,6 +45,50 @@ async function captureInventoryReport(page:Page,buttonName:RegExp){
   return page.evaluate(()=>({html:(window as Window & {__qaReportHtml?:string}).__qaReportHtml||'',opens:(window as Window & {__qaReportOpens?:number}).__qaReportOpens||0}));
 }
 
+test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
+  await login(page);await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const before=await (await request.get(`${fixture}/__events`)).json();
+  expect(before.filter((e:{path:string,query:string})=>e.path==='/rest/v1/product_variants'&&e.query.includes('is_active'))).toHaveLength(0);
+  const region=page.getByRole('region',{name:'Conciliación de inventario y POS'});
+  await region.getByRole('button',{name:'Conciliar con POS'}).click();
+  await expect(region.locator('.inv-reconcile-stats')).toContainText('Variantes en inventario');
+  await expect(region.locator('.inv-reconcile-stats')).toContainText('Artículos POS proyectados');
+  await expect(region.locator('.inv-reconcile-stats').locator('b')).toHaveText(['4','3','3','2','3']);
+  await region.getByText('Solo en inventario (1)').click();
+  await expect(region).toContainText('Producto oculto en POS');
+  await expect(region).toContainText('Driver');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string,query:string})=>e.path==='/rest/v1/product_variants'&&e.query.includes('is_active'))).toHaveLength(1);
+  expect(events.filter((e:{method:string,path:string})=>['PATCH','PUT','DELETE'].includes(e.method)||e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
+test('A6.4 reconciliation identifies inactive variants, standalone POS services and stock differences',async({page,request})=>{
+  await login(page);await configure(request,{reconciliationFixture:true,reconciliationStockSkew:true});
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const region=page.getByRole('region',{name:'Conciliación de inventario y POS'});
+  await region.getByRole('button',{name:'Conciliar con POS'}).click();
+  await expect(region.locator('.inv-reconcile-stats').locator('b')).toHaveText(['4','3','3','3','2']);
+  await region.getByText('Solo en inventario (2)').click();
+  await expect(region).toContainText('Variante inactiva para POS');
+  await expect(region).toContainText('Producto oculto en POS');
+  await region.getByText('Solo en proyección POS (1)').click();
+  await expect(region).toContainText('Servicio de ajuste');
+  await region.getByText('Existencias diferentes (1)').click();
+  await expect(region).toContainText('Inventario 7 · POS 5');
+});
+
+test('A6.4 restricted reconciliation reports an error instead of treating hidden rows as absent',async({page,request})=>{
+  await login(page);await configure(request,{reconciliationDenied:true});
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const region=page.getByRole('region',{name:'Conciliación de inventario y POS'});
+  await region.getByRole('button',{name:'Conciliar con POS'}).click();
+  await expect(region.getByRole('alert')).toContainText('Lectura de conciliación restringida por RLS');
+  await expect(region.locator('.inv-reconcile-stats')).toHaveCount(0);
+});
+
 test('A6.3 factory UPC-A prints 12 original digits with GS1-equivalent bars and no identifier writes',async({page,request})=>{
   await login(page);await configure(request,{factoryUpcFixture:true});
   await page.goto('/admin/inventario');

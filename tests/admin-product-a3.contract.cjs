@@ -200,3 +200,46 @@ test("A6.3 permits valid factory UPC-A, rejects checksum errors and totals sheet
   assert.match(inventory,/sum\.priced\.USD/);
   assert.match(inventory,/allCategoriesSelected\|\|selectedCategories\.includes/);
 });
+
+test("A6.4 reconciles POS visibility and stock in read-only snapshots, not by equating counts", () => {
+  const ts=require("typescript");
+  const compile=name=>ts.transpileModule(read(name),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+  const catalogModule={exports:{}};
+  new Function("exports","require",compile("src/lib/pos/catalog.ts"))(catalogModule.exports,require);
+  const reportModule={exports:{}};
+  new Function("exports","require",compile("src/lib/admin/inventory-reconciliation.ts"))(reportModule.exports,name=>name==="@/lib/pos/catalog"?catalogModule.exports:require(name));
+  const reconcile=reportModule.exports.reconcileInventoryPos;
+  const parents=[
+    {id:"a",name:"Ropa",status:"active",pos_visible:true},
+    {id:"h",name:"Oculto",status:"active",pos_visible:false},
+    {id:"s",name:"Servicio",status:"active",pos_visible:true,is_service:true},
+    {id:"n",name:"Sin visibilidad",status:"active",pos_visible:null},
+  ];
+  const variants=[
+    {id:"v1",product_id:"a",sku:"A1",title:"Rojo",stock:5,is_active:true,attributes:{}},
+    {id:"v2",product_id:"a",sku:"A2",title:"Azul",stock:2,is_active:false,attributes:{}},
+    {id:"v3",product_id:"h",sku:"H1",title:"Principal",stock:1,is_active:true,attributes:{}},
+  ];
+  const inventory=[
+    {variant_id:"v1",product_id:"a",product_name:"Ropa",variant_title:"Rojo",sku:"A1",stock:7},
+    {variant_id:"v2",product_id:"a",product_name:"Ropa",variant_title:"Azul",sku:"A2",stock:2},
+    {variant_id:"v3",product_id:"h",product_name:"Oculto",variant_title:"Principal",sku:"H1",stock:1},
+  ];
+  const result=reconcile(inventory,parents,variants);
+  assert.equal(result.inventoryVariants,3);
+  assert.equal(result.projectedPosItems,2);
+  assert.equal(result.matchingVariants,1);
+  assert.equal(result.onlyInventory.length,2);
+  assert.match(result.onlyInventory.map(x=>x.reason).join(" "),/Variante inactiva para POS/);
+  assert.match(result.onlyInventory.map(x=>x.reason).join(" "),/Producto oculto en POS/);
+  assert.equal(result.onlyPos.length,1);
+  assert.match(result.onlyPos[0].reason,/sin variantes/);
+  assert.deepEqual(result.stockDifferences.map(x=>[x.inventoryStock,x.posStock]),[[7,5]]);
+  const client=read("src/components/admin/inventory-reconciliation.tsx");
+  assert.match(client,/readAllPages<PosProduct>/);
+  assert.match(client,/readAllPages<PosVariant>/);
+  assert.match(client,/admin_inventory_catalog/);
+  assert.match(client,/Conciliar con POS/);
+  assert.doesNotMatch(client,/\.update\(|\.delete\(|\.insert\(|\.upsert\(|admin_inventory_adjust/);
+  assert.doesNotMatch(read("src/lib/admin/inventory-reconciliation.ts"),/\.update\(|\.delete\(|\.insert\(/);
+});
