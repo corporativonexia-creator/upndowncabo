@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth/require-role";
-import AdminParity from "@/components/admin/admin-parity";
 
 export default async function AdminPage() {
   await requireRole("admin", "/admin");
-  return <AdminParity />;
+  // The shared layout owns the legacy DOM so route changes do not restart it.
+  return null;
 }

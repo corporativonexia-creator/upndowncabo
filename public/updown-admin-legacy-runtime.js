@@ -15,7 +15,9 @@
   const el=id=>document.getElementById(id);
   let products=[];
   let orders=[];
+  let ordersRequest=0;
   let productGalleryState=[];
+  let productGalleryInitialSignature="";
   let currentProductSpecifications={};
 
   const slugify=v=>String(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
@@ -69,7 +71,8 @@
     el("udDashboard").classList.remove("u-hidden");
     el("udLogout").classList.remove("u-hidden");
     el("udSessionLabel").textContent=`Sesión activa: ${email}`;
-    await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
+    // A9.1: orders and their historical activity are only needed in Pedidos.
+    await Promise.all([loadCategories(),loadProducts()]);
   }
 
   // Server-side requireRole("admin") has already verified the user before
@@ -81,7 +84,7 @@
     el("udLogout").classList.remove("u-hidden");
     el("udSessionLabel").textContent="Sesión de administrador";
     try{
-      await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
+      await Promise.all([loadCategories(),loadProducts()]);
     }catch(error){
       console.error("Error cargando panel administrativo",error);
       showToast("No se pudieron cargar algunos datos. Actualiza la página.",true);
@@ -289,6 +292,7 @@
   }
 
   async function loadOrders(){
+    const request=++ordersRequest;
     el("udOrdersList").innerHTML='<div class="u-empty">Cargando pedidos…</div>';
 
     const {data,error}=await db
@@ -342,6 +346,7 @@
       `)
       .order("created_at",{ascending:false});
 
+    if(request!==ordersRequest)return;
     if(error){
       el("udOrdersList").innerHTML=`<div class="u-empty">${escapeHtml(error.message)}</div>`;
       return;
@@ -1433,6 +1438,9 @@
     return gallery.slice(0,10);
   }
   function activeGalleryItems(){return productGalleryState.filter(item=>!item.removed)}
+  function gallerySignature(){
+    return JSON.stringify(activeGalleryItems().map(item=>[item.source,item.id,item.url,Boolean(item.is_primary)]));
+  }
   function ensureGalleryPrimary(){
     const active=activeGalleryItems();
     if(!active.length)return;
@@ -1699,7 +1707,7 @@
         <div class="u-item-actions">
           <button class="u-btn u-secondary u-small ud-edit" type="button">Editar</button>
           <button class="u-btn u-secondary u-small ud-variants" type="button">Ver / editar variantes</button>
-          <button class="u-btn u-danger u-small ud-delete" type="button">Eliminar</button>
+          <button class="u-btn u-secondary u-small ud-delete" type="button">Revisar baja</button>
         </div>`;
       const variantPanel=document.createElement("section");
       variantPanel.className="u-variant-panel";variantPanel.hidden=true;
@@ -1712,7 +1720,7 @@
         if(!variantPanel.hidden)await openProductVariants(product.id,variantPanel);
       };
       item.querySelector(".ud-edit").onclick=()=>editProduct(product.id);
-      item.querySelector(".ud-delete").onclick=()=>deleteProduct(product.id);
+      item.querySelector(".ud-delete").onclick=()=>inspectProductRetirement(product,item);
       el("udList").appendChild(item);
     });
   }
@@ -1811,12 +1819,25 @@
     el("udImage").value="";
     productGalleryState=normalizedProductGallery(p);
     renderGalleryEditor();
+    productGalleryInitialSignature=gallerySignature();
 
     el("udFormTitle").textContent="Editar producto";
     el("udSave").textContent="Actualizar producto";
     el("udCancel").classList.remove("u-hidden");
     window.scrollTo({top:0,behavior:"smooth"});
   }
+
+  // A3: the single creation form can also open an existing item for editing.
+  // This event only selects the original editor; it does not save anything.
+  window.addEventListener("updown:admin-product-edit-request",async event=>{
+    const productId=event.detail?.productId;
+    if(typeof productId!=="string"||!productId)return;
+    if(!products.some(product=>product.id===productId))await loadProducts();
+    const product=products.find(item=>item.id===productId);
+    if(!product){showToast("No se encontró la ficha en el catálogo. Actualiza e inténtalo de nuevo.",true);return;}
+    editProduct(productId);
+    window.dispatchEvent(new CustomEvent("updown:admin-product-editor-opened",{detail:{productId}}));
+  });
 
   function resetForm(){
     el("udProductForm").reset();
@@ -1837,6 +1858,7 @@
     currentProductSpecifications={};
     fillGolfSpecifications({});
     productGalleryState=[];
+    productGalleryInitialSignature="";
     renderGalleryEditor();
     el("udPreview").removeAttribute("src");
     el("udPreview").classList.remove("u-show");
@@ -1871,6 +1893,10 @@
     setMessage(el("udFormMessage"));
 
     const id=el("udProductId").value;
+    if(!id){
+      setMessage(el("udFormMessage"),"Para crear productos utiliza Nueva ficha. Este editor conserva únicamente la edición de artículos existentes.",true);
+      return;
+    }
     const name=el("udName").value.trim();
     const slug=slugify(name);
     const previousImage=el("udExistingImage").value;
@@ -1885,6 +1911,9 @@
 
     try{
       const activeGallery=activeGalleryItems();
+      // A metadata-only edit must never delete/reinsert historical images or
+      // overwrite a photo appended concurrently through UPC capture.
+      const galleryChanged=gallerySignature()!==productGalleryInitialSignature;
       for(const item of activeGallery){
         if(item.source==="new"&&item.file){
           item.uploaded_url=await uploadImage(item.file,slug);
@@ -1947,7 +1976,7 @@
       // No photograph is required to save or edit a product.
       // If editing without any active images, preserve existing gallery records.
       // Do not insert an empty row set into Supabase.
-      if(galleryForSave.length){
+      if(galleryChanged&&galleryForSave.length){
         const {error:deleteError}=await db.from("product_images").delete().eq("product_id",saved.id);
         if(deleteError) throw deleteError;
         const galleryRows=galleryForSave.slice(0,10).map((item,index)=>({
@@ -1972,20 +2001,74 @@
     }
   });
 
-  async function deleteProduct(id){
-    const product=products.find(item=>item.id===id);
-    if(!product||!confirm(`¿Eliminar "${product.name}"?`)) return;
-    const {error}=await db.from("products").delete().eq("id",id);
-    if(error){
-      const message=error.code==="23503"?"No se puede eliminar: el producto tiene movimientos o ventas vinculadas. Conserva su historial y márcalo como borrador.":error.message;
-      showToast(message,true);return;
-    }
-    showToast("Producto eliminado.");
-    resetForm();
-    await loadProducts();
+  // A5.1-A5.2: advisory only. Browser-visible rows cannot establish whether a
+  // product is unreferenced: RLS may hide sale, order or movement records.
+  // Never execute an archive UPDATE or a physical DELETE from this inspection.
+  async function inspectProductRetirement(product,item){
+    const previous=item.querySelector(".ud-a5-inspector");
+    if(previous){previous.remove();return;}
+    const panel=document.createElement("section");
+    panel.className="ud-a5-inspector";
+    panel.setAttribute("role","region");
+    panel.setAttribute("aria-label",`Auditoría de baja de ${product.name}`);
+    const visibility=value=>value===true?"Visible":value===false?"Oculto":"Sin verificar";
+    const activation=value=>value===true?"Activado":value===false?"Desactivado":"Sin verificar";
+    const previewRows=[
+      ["Estado",escapeHtml(product.status||"Sin verificar"),"archived"],
+      ["Tienda online",visibility(product.online_visible),"Oculto"],
+      ["POS",visibility(product.pos_visible),"Oculto"],
+      ["Destacado",activation(product.featured),"Desactivado"],
+      ["Novedades",activation(product.new_arrival_enabled),"Desactivado"]
+    ];
+    const appearsArchived=product.status==="archived"&&product.online_visible===false&&product.pos_visible===false;
+    panel.innerHTML=`<h4>Revisión previa a la baja</h4>
+      <p><strong>${escapeHtml(product.name)}</strong> · UPC ${escapeHtml(product.barcode||"Sin UPC")}</p>
+      <p>Estado: ${escapeHtml(product.status||"Sin estado")} · Existencia registrada: <strong>${product.stock==null?"No informada":escapeHtml(String(product.stock))}</strong>.</p>
+      <p class="ud-a5-pending" role="status">Comprobando referencias visibles…</p>
+      <ul class="ud-a5-checks"></ul>
+      <div class="ud-a52-preview" role="group" aria-label="Vista previa de retiro sin guardar">
+        <strong>Vista previa de retiro · sin guardar</strong>
+        <p>${appearsArchived?"El catálogo ya muestra este artículo retirado; el servidor deberá verificarlo.":"Cambios propuestos para una futura operación autorizada:"}</p>
+        <table><thead><tr><th>Campo</th><th>Actual</th><th>Objetivo</th></tr></thead><tbody>
+          ${previewRows.map(([label,current,target])=>`<tr><th scope="row">${label}</th><td>${current}</td><td>${target}</td></tr>`).join("")}
+        </tbody></table>
+        <p><strong>Intactos:</strong> SKU, UPC, precios, descuentos, costos, existencias, variantes, fotografías, ventas, reservas e historial.</p>
+        <p>Los valores actuales provienen del catálogo cargado y pueden haber cambiado. Antes de habilitar el retiro, el servidor deberá revalidar identidad, permisos y estado dentro de una transacción.</p>
+      </div>
+      <p><strong>Retirar de tienda y POS:</strong> requiere una operación separada que preserve el artículo y sus movimientos históricos. No ejecutable aquí.</p>
+      <p><strong>Eliminar definitivamente:</strong> solo tras una auditoría transaccional con acceso a todas las relaciones, políticas y restricciones. No disponible desde el navegador.</p>
+      <strong class="ud-a5-warning">Ninguna baja se ejecutó. Las lecturas del navegador no autorizan una eliminación definitiva.</strong>
+      <button type="button" class="u-btn u-secondary u-small ud-a5-close">Cerrar revisión</button>`;
+    panel.querySelector(".ud-a5-close").onclick=()=>panel.remove();
+    item.appendChild(panel);
+    const checks=[
+      ["Variantes","product_variants","product_id"],
+      ["Movimientos de inventario","inventory_movements","product_id"],
+      ["Ventas POS","pos_sale_items","product_id"],
+      ["Pedidos web","order_items","product_id"],
+      ["Reservas de checkout","checkout_v2_items","product_id"],
+      ["Recepciones de taller","pos_service_receptions","service_product_id"]
+    ];
+    const results=await Promise.all(checks.map(async([name,table,column])=>{
+      try{
+        const {data,error}=await db.from(table).select("id").eq(column,product.id).limit(1);
+        if(error)return {name,result:"No verificable (acceso o consulta restringidos)"};
+        return {name,result:data?.length?"Referencia detectada":"Sin referencias visibles (no concluyente)"};
+      }catch(_){return {name,result:"No verificable (consulta fallida)"};}
+    }));
+    if(!panel.isConnected)return;
+    panel.querySelector(".ud-a5-pending")?.remove();
+    const list=panel.querySelector(".ud-a5-checks");
+    results.forEach(({name,result})=>{
+      const row=document.createElement("li");
+      row.textContent=`${name}: ${result}`;
+      list.appendChild(row);
+    });
   }
 
   el("udProductsTab").onclick=()=>switchAdminView("products");
+  // A3: refresh the legacy catalog only after the shared capture confirms a save.
+  window.addEventListener("updown:admin-products-refresh",loadProducts);
   el("udOrdersTab").onclick=()=>switchAdminView("orders");
   el("udRefreshOrders").onclick=loadOrders;
   el("udOrderSearch").addEventListener("input",renderOrders);

@@ -1,8 +1,8 @@
 import { requireRole } from "@/lib/auth/require-role";
-import QuickProductEntry from "@/components/admin/quick-product-entry";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Alta rápida móvil | UP AND DOWN" };
-export default async function QuickProductPage() {
+// A3.5: preserve saved links but expose only the unified product-creation flow.
+export default async function LegacyProductEntryRedirect() {
   await requireRole("admin", "/admin/productos/alta-rapida");
-  return <QuickProductEntry />;
+  redirect("/admin?producto=nuevo");
 }

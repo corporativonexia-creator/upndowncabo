@@ -8,14 +8,57 @@ import styles from "./quick-product-entry.module.css";
 
 type Category = { id: string; name: string; variant_schema: string[] };
 type Match = { product_id: string; product_name: string; variant_id: string | null; variant_title: string; sku: string; barcode: string; stock: number; price: number; status: string };
+type PhotoCandidate = { id: string; name: string; sku: string | null; barcode: string | null; status: string | null };
 type Photo = { id: string; file: File; url: string; uploaded?: string };
 type Variant = { id: string; title: string; barcode: string; quantity: string; attributes: Record<string, string>; photo?: Photo | null };
-type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[] };
+type AdvancedDraft = Partial<{
+  brand: string; model: string; condition: "new" | "preowned" | "demo"; salePrice: string;
+  shortDescription: string; description: string; shortDescriptionEn: string; descriptionEn: string;
+  featured: boolean; newArrival: boolean;
+  specHand: string; specLoft: string; specFlex: string; specShaft: string;
+  specGrip: string; specConditionScore: string; specPlayerProfile: string; specNotes: string;
+}>;
+type Capture = { request: string; name: string; category: string; price: number; currency: "MXN" | "USD"; barcode: string; quantity: number; onlineVisible: boolean; posVisible: boolean; photos: Photo[]; variants: Variant[]; advanced: AdvancedDraft };
 const labels: Record<string, string> = { talla: "Talla", color: "Color", genero: "Género", mano: "Mano", loft: "Loft", flex: "Flex", longitud: "Longitud" };
 const money = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+// PostgREST .or() accepts filter expressions, not a parameterized query AST.
+// Restrict the free-text fragment to ordinary letters/numbers before building it.
+const photoSearchTerm = (value: string) => value.trim().replace(/[^\p{L}\p{N}\s-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 70);
 const freshVariant = (): Variant => ({ id: crypto.randomUUID(), title: "", barcode: "", quantity: "0", attributes: {} });
 const apparelSizes = ["XS", "S", "M", "L", "XL", "XXL", "Unitalla", ...Array.from({ length: 51 }, (_, index) => String(index))];
 const genderOptions = ["Niño", "Niña", "Hombre", "Mujer", "Unisex"] as const;
+const hasGolfCategory = (name: string) => /(driver|hierro|iron|wedge|putter|hibrid|hybrid|madera|wood|palo|club)/.test(name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase());
+function productMetadata(advanced: AdvancedDraft, currency: "MXN" | "USD", onlineVisible: boolean, posVisible: boolean, categoryName: string) {
+  const metadata: Record<string, string | number | boolean | Record<string, string>> = { currency, online_visible: onlineVisible, pos_visible: posVisible };
+  const strings: Record<string, keyof AdvancedDraft> = {
+    brand: "brand", model: "model", item_condition: "condition",
+    short_description: "shortDescription", description: "description",
+    short_description_en: "shortDescriptionEn", description_en: "descriptionEn",
+  };
+  for (const [column, field] of Object.entries(strings)) {
+    const value = advanced[field];
+    if (typeof value === "string" && value.trim()) metadata[column] = value.trim();
+  }
+  if (advanced.salePrice !== undefined && advanced.salePrice !== "") metadata.sale_price = Number(advanced.salePrice);
+  if (typeof advanced.featured === "boolean") metadata.featured = advanced.featured;
+  if (typeof advanced.newArrival === "boolean") metadata.new_arrival_enabled = advanced.newArrival;
+  if (advanced.shortDescription?.trim()) metadata.seo_description = advanced.shortDescription.trim();
+  const specifications: Record<string, string> = {};
+  const clubs = hasGolfCategory(categoryName);
+  const specFields: Array<[keyof AdvancedDraft, string, boolean]> = [
+    ["specHand", "hand", true], ["specLoft", "loft", true], ["specFlex", "flex", true],
+    ["specShaft", "shaft", true], ["specGrip", "grip", true],
+    ["specConditionScore", "condition_score", false], ["specPlayerProfile", "player_profile", false],
+    ["specNotes", "observations", false],
+  ];
+  for (const [field, column, clubOnly] of specFields) {
+    const value = advanced[field];
+    if (typeof value === "string" && value.trim() && (!clubOnly || clubs) &&
+      (column !== "condition_score" || advanced.condition !== "new")) specifications[column] = value.trim();
+  }
+  if (Object.keys(specifications).length) metadata.specifications = specifications;
+  return metadata;
+}
 // Available choices only: selecting a category never creates a size range.
 const shoeSizes = Array.from({ length: 21 }, (_, index) => String(22 + index * 0.5));
 function categorySizeType(name: string): "apparel" | "shoes" | null {
@@ -89,7 +132,7 @@ function BarcodeCamera({ onCode, onClose }: { onCode: (code: string) => void; on
   return <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="scanner-title"><section className={styles.camera}><header><h2 id="scanner-title">Escanear código</h2><button type="button" autoFocus onClick={onClose} aria-label="Cerrar cámara">✕</button></header><video ref={video} muted playsInline autoPlay /><p role={error ? "alert" : undefined}>{error || "Centra el código en la cámara. Se capturará automáticamente."}</p><button type="button" onClick={onClose}>Escribir código manualmente</button></section></div>;
 }
 
-export default function QuickProductEntry() {
+export default function QuickProductEntry({ embedded = false }: { embedded?: boolean }) {
   const db = useMemo(() => createClient(), []);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ready, setReady] = useState(false);
@@ -97,8 +140,19 @@ export default function QuickProductEntry() {
   const [price, setPrice] = useState(""); const [currency, setCurrency] = useState<"MXN" | "USD">("MXN"); const [salesChannel, setSalesChannel] = useState<"both" | "physical" | "online">("both"); const [barcode, setBarcode] = useState(""); const [quantity, setQuantity] = useState("0");
   const [photos, setPhotos] = useState<Photo[]>([]); const photosRef = useRef<Photo[]>([]);
   const [hasVariants, setHasVariants] = useState(false); const [variants, setVariants] = useState<Variant[]>([]);
+  const [advanced, setAdvanced] = useState<AdvancedDraft>({});
+  const [existingPhotos, setExistingPhotos] = useState<Photo[]>([]);
+  const existingPhotosRef = useRef<Photo[]>([]);
+  const photoRequestRef = useRef<{ request: string; productId: string; photos: Photo[] } | null>(null);
   const variantsRef = useRef<Variant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]); const [match, setMatch] = useState<Match | null>(null);
+  const [photoQuery, setPhotoQuery] = useState("");
+  const [photoCandidates, setPhotoCandidates] = useState<PhotoCandidate[]>([]);
+  const [selectedPhotoProduct, setSelectedPhotoProduct] = useState<PhotoCandidate | null>(null);
+  const [photoSearchBusy, setPhotoSearchBusy] = useState(false);
+  const [photoSearchError, setPhotoSearchError] = useState("");
+  const photoSearchVersion = useRef(0);
+  const photoSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [receiving, setReceiving] = useState("1"); const [reason, setReason] = useState("Entrada desde alta rápida móvil");
   const [busy, setBusy] = useState(false); const [processing, setProcessing] = useState(false); const [checking, setChecking] = useState(false);
   const [error, setError] = useState(""); const [success, setSuccess] = useState(""); const [count, setCount] = useState(0);
@@ -113,6 +167,16 @@ export default function QuickProductEntry() {
   const sizeType = categorySizeType(selectedCategory?.name || "");
   const variantFields = sizeType && !fields.includes("talla") ? ["talla", ...fields] : fields;
   const locked = busy || processing || pending;
+  const photoTarget = match ? { productId: match.product_id, productName: match.product_name, label: `UPC ${barcode}` } :
+    selectedPhotoProduct ? { productId: selectedPhotoProduct.id, productName: selectedPhotoProduct.name, label: `SKU ${selectedPhotoProduct.sku || "sin SKU"}` } : null;
+  const updateAdvanced = <K extends keyof AdvancedDraft>(field: K, value: AdvancedDraft[K]) => setAdvanced(current => ({ ...current, [field]: value }));
+  const advancedCount = Object.values(advanced).filter(value => value !== "" && value !== undefined).length;
+
+  function openEditor(productId: string) {
+    window.dispatchEvent(new CustomEvent("updown:admin-product-edit-request", {
+      detail: { productId },
+    }));
+  }
 
   const refreshCounts = useCallback(async () => {
     const results = await Promise.all([db.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"), db.from("products").select("id", { count: "exact", head: true }).eq("status", "active")]);
@@ -131,9 +195,11 @@ export default function QuickProductEntry() {
   }, [db, refreshCounts]);
   useEffect(() => { photosRef.current = photos; }, [photos]);
   useEffect(() => { variantsRef.current = variants; }, [variants]);
-  useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
+  useEffect(() => { existingPhotosRef.current = existingPhotos; }, [existingPhotos]);
+  useEffect(() => () => { photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url)); variantsRef.current.forEach(v => { if(v.photo) URL.revokeObjectURL(v.photo.url); }); }, []);
+  useEffect(() => () => { ++photoSearchVersion.current; if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current); }, []);
   useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || captureRef.current || receiveRef.current) { e.preventDefault(); e.returnValue = ""; } };
+    const handler = (e: BeforeUnloadEvent) => { if (name || photosRef.current.length || existingPhotosRef.current.length || captureRef.current || photoRequestRef.current || receiveRef.current) { e.preventDefault(); e.returnValue = ""; } };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [name]);
@@ -152,7 +218,54 @@ export default function QuickProductEntry() {
     } catch (e) { if (version === lookupVersion.current) setError(friendly(e)); throw e; }
     finally { if (version === lookupVersion.current) setChecking(false); }
   }
-  function changeCode(value: string) { ++lookupVersion.current; setBarcode(value); setMatch(null); setMatches([]); setChecking(false); }
+  function changeCode(value: string) {
+    ++lookupVersion.current;
+    ++photoSearchVersion.current;
+    if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current);
+    setPhotoQuery(""); setPhotoCandidates([]); setPhotoSearchBusy(false); setPhotoSearchError("");
+    setSelectedPhotoProduct(null);
+    setBarcode(value); setMatch(null); setMatches([]); setChecking(false);
+    photoRequestRef.current = null;
+    existingPhotosRef.current.forEach(p => URL.revokeObjectURL(p.url));
+    existingPhotosRef.current = []; setExistingPhotos([]);
+  }
+  function searchPhotoProducts(value: string) {
+    setPhotoQuery(value); setPhotoCandidates([]); setPhotoSearchError("");
+    const version = ++photoSearchVersion.current;
+    if (photoSearchTimer.current) clearTimeout(photoSearchTimer.current);
+    const term = photoSearchTerm(value);
+    if (term.length < 2) { setPhotoSearchBusy(false); return; }
+    setPhotoSearchBusy(true);
+    photoSearchTimer.current = setTimeout(async () => {
+      try {
+        const { data, error } = await db.from("products").select("id,name,sku,barcode,status")
+          .or(`name.ilike.%${term}%,barcode.ilike.%${term}%`)
+          .order("name").limit(10);
+        if (error) throw error;
+        if (version === photoSearchVersion.current) setPhotoCandidates(data || []);
+      } catch (e) {
+        if (version === photoSearchVersion.current) setPhotoSearchError(friendly(e));
+      } finally { if (version === photoSearchVersion.current) setPhotoSearchBusy(false); }
+    }, 280);
+  }
+  function selectPhotoProduct(candidate: PhotoCandidate) {
+    if (locked) return;
+    changeCode("");
+    setSelectedPhotoProduct(candidate);
+  }
+  async function uploadOwnedPhoto(path: string, file: File) {
+    const storage = db.storage.from("product-media");
+    // Only request-owned UUID paths. Never ask Storage to replace an object;
+    // public buckets with INSERT-only policies must be able to accept photos.
+    const { error } = await storage.upload(path, file, { contentType: "image/jpeg", upsert: false });
+    if (error) {
+      // The server may have stored the file before the response was lost.
+      // A 409 on our previously chosen UUID path is a safe idempotent replay.
+      const duplicate = String(error.statusCode) === "409" && /already exists|duplicate/i.test(error.message);
+      if (!duplicate) throw error;
+    }
+    return storage.getPublicUrl(path).data.publicUrl;
+  }
   async function generateCode(target?: string) {
     if (busyRef.current || processingRef.current) return;
     busyRef.current = true; setBusy(true); setError("");
@@ -177,6 +290,64 @@ export default function QuickProductEntry() {
       setPhotos(old => [...old, ...added]);
       if (files.length > available) setError("Se pueden agregar hasta 10 fotos por producto.");
     } finally { processingRef.current = false; setProcessing(false); }
+  }
+  async function addExistingPhotos(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files || [])]; event.target.value = "";
+    if (!files.length || !photoTarget || busyRef.current || processingRef.current || pending) return;
+    processingRef.current = true; setProcessing(true); setError("");
+    const added: Photo[] = [];
+    try {
+      const available = 10 - existingPhotosRef.current.length;
+      for (const file of files.slice(0, available)) {
+        try { const normalized = await preparePhoto(file); added.push({ id: crypto.randomUUID(), file: normalized, url: URL.createObjectURL(normalized) }); }
+        catch (e) { setError(friendly(e)); }
+      }
+      setExistingPhotos(previous => [...previous, ...added]);
+      if (files.length > available) setError("Selecciona máximo diez fotos; se comprobará el espacio disponible en la galería antes de subirlas.");
+    } finally { processingRef.current = false; setProcessing(false); }
+  }
+  async function attachExistingPhotos() {
+    if (!photoTarget || !existingPhotos.length || busyRef.current || processingRef.current) return;
+    busyRef.current = true; setBusy(true); setError(""); setSuccess("");
+    try {
+      const productId = photoRequestRef.current?.productId || photoTarget.productId;
+      const { data: gallery, error: galleryError } = await db.from("product_images")
+        .select("id,image_url,sort_order,is_primary")
+        .eq("product_id", productId).order("sort_order");
+      if (galleryError) throw galleryError;
+      // Validate the available slots before freezing a retry snapshot. If the
+      // gallery is full, the operator can still remove local photos and retry.
+      if (!photoRequestRef.current && (gallery?.length || 0) + existingPhotos.length > 10) {
+        throw new Error("La galería admite diez fotografías en total. Reduce tu selección o retira imágenes antiguas desde el editor.");
+      }
+      if (!photoRequestRef.current) {
+        photoRequestRef.current = { request: crypto.randomUUID(), productId: photoTarget.productId, photos: existingPhotos.map(p => ({ ...p })) };
+        setPending(true);
+      }
+      const request = photoRequestRef.current;
+      const recorded = new Set((gallery || []).map(row => row.image_url));
+      const missing = request.photos.filter(photo => !photo.uploaded || !recorded.has(photo.uploaded));
+      if ((gallery?.length || 0) + missing.length > 10) throw new Error("La galería admite diez fotografías en total. Retira imágenes antiguas desde el editor antes de agregar más.");
+      for (const photo of missing) {
+        if (photo.uploaded) continue;
+        const path = `products/upc/${request.productId}/${request.request}/${photo.id}.jpg`;
+        photo.uploaded = await uploadOwnedPhoto(path, photo.file);
+      }
+      const inserts = missing.filter(photo => !recorded.has(photo.uploaded)).map((photo, index) => ({
+        product_id: request.productId, image_url: photo.uploaded!, alt_text: `${photoTarget.productName} · fotografía de catálogo`,
+        sort_order: Math.max(0, ...(gallery || []).map(row => Number(row.sort_order) || 0)) + index + 1,
+        is_primary: (gallery?.length || 0) === 0 && index === 0,
+      }));
+      if (inserts.length) {
+        const { error: insertError } = await db.from("product_images").insert(inserts);
+        if (insertError) throw insertError;
+      }
+      existingPhotosRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
+      existingPhotosRef.current = []; setExistingPhotos([]); photoRequestRef.current = null; setPending(false);
+      setSuccess(`✓ ${request.photos.length} fotografía(s) asociadas a ${photoTarget.productName} · ${photoTarget.label}. Sin cambios en precio ni existencias.`);
+      window.dispatchEvent(new Event("updown:admin-products-refresh"));
+    } catch (e) { setError(friendly(e)); }
+    finally { busyRef.current = false; setBusy(false); }
   }
   async function setVariantPhoto(id: string, event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0];
@@ -205,7 +376,7 @@ export default function QuickProductEntry() {
     photosRef.current.forEach(p => URL.revokeObjectURL(p.url)); setPhotos([]); photosRef.current = [];
     variantsRef.current.forEach(v => { if (v.photo) URL.revokeObjectURL(v.photo.url); });
     variantsRef.current = [];
-    setName(""); setBarcode(""); setQuantity("0"); setVariants([]); setHasVariants(false);
+    setName(""); setBarcode(""); setQuantity("0"); setVariants([]); setHasVariants(false); setAdvanced({});
     setMatches([]); setMatch(null); setPending(false); captureRef.current = null;
     // Keep category and price for consecutive captures from the same batch.
     requestAnimationFrame(() => nameInput.current?.focus());
@@ -219,17 +390,23 @@ export default function QuickProductEntry() {
         if (!Number.isInteger(Number(quantity)) || Number(quantity) < 0) throw new Error("La cantidad debe ser un número entero positivo o cero.");
         if (hasVariants && !variants.length) throw new Error("Agrega al menos una variante.");
         if (variants.some(v => !Number.isInteger(Number(v.quantity)) || Number(v.quantity) < 0)) throw new Error("Revisa las cantidades de las variantes.");
-        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v, attributes: { ...v.attributes }, photo: v.photo ? { ...v.photo } : null })) : [] };
+        const codes = [barcode, ...(hasVariants ? variants.map(v => v.barcode) : [])]
+          .map(value => value.trim().toLowerCase()).filter(Boolean);
+        if (new Set(codes).size !== codes.length) throw new Error("Cada código de barras de esta ficha debe ser diferente. Revisa el producto y sus variantes.");
+        if (advanced.salePrice !== undefined && advanced.salePrice !== "" && (
+          !Number.isFinite(Number(advanced.salePrice)) || Number(advanced.salePrice) < 0 ||
+          Number(advanced.salePrice) > Number(price)
+        )) throw new Error("El precio de oferta debe estar entre cero y el precio normal.");
+        captureRef.current = { request: crypto.randomUUID(), name: name.trim(), category, price: Number(price), currency, barcode: barcode.trim(), quantity: Number(quantity), onlineVisible: salesChannel !== "physical", posVisible: salesChannel !== "online", photos: photos.map(p => ({ ...p })), variants: hasVariants ? variants.map(v => ({ ...v, attributes: { ...v.attributes }, photo: v.photo ? { ...v.photo } : null })) : [], advanced: { ...advanced } };
         setPending(true);
       }
       const capture = captureRef.current;
       for (const photo of capture.photos) {
         if (photo.uploaded) continue;
         const path = `products/quick/${capture.request}/${photo.id}.jpg`;
-        const { error } = await db.storage.from("product-media").upload(path, photo.file, { contentType: "image/jpeg", upsert: true });
-        if (error) throw error;
+        const uploaded = await uploadOwnedPhoto(path, photo.file);
         // eslint-disable-next-line react-hooks/immutability -- Private retry snapshot cloned from state; not a React state mutation.
-        photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+        photo.uploaded = uploaded;
       }
       // Each variant photo lives in its own storage object and metadata.
       // Reuse uploaded URLs when retrying the same request to avoid duplicates.
@@ -237,11 +414,7 @@ export default function QuickProductEntry() {
         if (!variant.photo) continue;
         if (!variant.photo.uploaded) {
           const path = `products/quick/${capture.request}/variants/${variant.id}.jpg`;
-          const { error: uploadError } = await db.storage.from("product-media").upload(
-            path, variant.photo.file, { contentType: "image/jpeg", upsert: true }
-          );
-          if (uploadError) throw uploadError;
-          variant.photo.uploaded = db.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+          variant.photo.uploaded = await uploadOwnedPhoto(path, variant.photo.file);
         }
       }
       const { data, error } = await db.rpc("admin_quick_product_create", {
@@ -255,14 +428,18 @@ export default function QuickProductEntry() {
         if (error.code && !error.code.startsWith("PGRST") && error.code !== "") { captureRef.current = null; setPending(false); }
         throw error;
       }
-      // Retry-safe: the create RPC returns the same product_id for repeated request IDs.
-      // Keep the capture pending if the visibility update fails so it can be retried.
-      const { error: visibilityError } = await db.from("products")
-        .update({ currency: capture.currency, online_visible: capture.onlineVisible, pos_visible: capture.posVisible })
+      // One user action saves the complete ficha. The idempotent RPC owns SKU,
+      // barcode, variants and opening stock; a retry-safe metadata-only PATCH
+      // adds descriptive fields without touching their commercial identifiers.
+      // The draft remains pending if either network operation fails.
+      const categoryName = categories.find(c => c.id === capture.category)?.name || "";
+      const { error: metadataError } = await db.from("products")
+        .update(productMetadata(capture.advanced, capture.currency, capture.onlineVisible, capture.posVisible, categoryName))
         .eq("id", data.product_id)
         .select("id").single();
-      if (visibilityError) throw visibilityError;
-      setSuccess(`✓ ${data.name} registrado como borrador · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
+      if (metadataError) throw metadataError;
+      setSuccess(`✓ Ficha completa guardada como borrador: ${data.name} · SKU ${data.sku}${capture.variants.length ? ` · ${capture.variants.length} variantes` : ` · ${capture.quantity} piezas`} · código ${data.barcode}`);
+      window.dispatchEvent(new Event("updown:admin-products-refresh"));
       setCount(n => n + 1); clearProduct(); void refreshCounts();
     } catch (e) { setError(friendly(e)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -277,6 +454,7 @@ export default function QuickProductEntry() {
       const { data, error } = await db.rpc("admin_quick_inventory_receive", { p_request_id: request.request, p_variant_id: request.variant, p_quantity: request.quantity, p_reason: request.reason });
       if (error) { if (error.code && !error.code.startsWith("PGRST")) { receiveRef.current = null; setPending(false); } throw error; }
       setSuccess(`✓ Entrada registrada: ${match.product_name} · ${match.variant_title} · ${data.stock_before} → ${data.stock_after} piezas.`);
+      window.dispatchEvent(new Event("updown:admin-products-refresh"));
       receiveRef.current = null; setPending(false); changeCode(""); setReceiving("1"); requestAnimationFrame(() => codeInput.current?.focus());
     } catch (e) { setError(friendly(e)); }
     finally { busyRef.current = false; setBusy(false); }
@@ -288,10 +466,23 @@ export default function QuickProductEntry() {
     setVariants(previous => previous.length ? previous : [freshVariant()]);
   }
 
-  return <main className={styles.page}><div className={styles.wrap}>
-    <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>
-    <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / CAPTURA MÓVIL</div><h1>Alta rápida</h1><p>Captura mercancía y continúa con el siguiente artículo.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
-    <div className={styles.notice}><b>Borrador por default</b><span>Disponible en Productos e Inventario. Completa la ficha desde el catálogo para publicarlo.</span></div>
+  // UPC and catalog selection share exactly one photo uploader and one retry state.
+  const photoUploadSection = embedded && photoTarget && <section className={styles.upcPhotos} aria-label="Fotografías por UPC">
+    <h3>Agregar fotos a este producto</h3>
+    <p>Las imágenes se asociarán a {photoTarget.productName} ({photoTarget.label}), sin modificar precio, SKU ni inventario. Si se escaneó una variante, se guardarán en la galería del producto padre.</p>
+    <div className={styles.tools}>
+      <label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" disabled={locked} onChange={addExistingPhotos} /></label>
+      <label className={styles.fileButton}>＋ Elegir fotos<input type="file" accept="image/*,.heic,.heif" multiple disabled={locked} onChange={addExistingPhotos} /></label>
+    </div>
+    {!!existingPhotos.length && <div className={styles.photos}>{existingPhotos.map((photo, index) => <div key={photo.id}><Image src={photo.url} width={110} height={110} unoptimized alt={`Nueva foto ${index + 1}`} /><button type="button" disabled={locked} aria-label={`Quitar nueva foto ${index + 1}`} onClick={() => { URL.revokeObjectURL(photo.url); setExistingPhotos(previous => previous.filter(p => p.id !== photo.id)); }}>✕</button></div>)}</div>}
+    <button type="button" className={styles.primary} disabled={busy || processing || !existingPhotos.length} onClick={() => void attachExistingPhotos()}>{busy ? "Guardando fotografías…" : pending ? "Reintentar fotos" : `Guardar ${existingPhotos.length} fotografía(s) en este ${match ? "UPC" : "producto"}`}</button>
+    {pending && !busy && <small>Si hubo un error, reintenta para confirmar sin duplicar archivos en la galería.</small>}
+  </section>;
+
+  return <main className={`${styles.page}${embedded ? ` ${styles.embedded}` : ""}`}><div className={styles.wrap}>
+    {!embedded && <header className={styles.header}><Link href="/admin" className={styles.brand}>UP AND DOWN</Link><Link href="/admin/inventario">Inventario ↗</Link></header>}
+    <section className={styles.hero}><div className={styles.eyebrow}>PRODUCTOS / FICHA ÚNICA</div><h1>{embedded ? "Nueva ficha de producto" : "Alta rápida"}</h1><p>Un solo formulario para código de barras, fotografías, variantes, datos comerciales y descripciones.</p><div className={styles.stats}><span>{active} activos</span><span className={styles.badge}>{drafts} borradores por completar</span><span>{count} capturados en esta sesión</span></div></section>
+    <div className={styles.notice}><b>Guardado único y seguro</b><span>La ficha, sus variantes, fotografías y datos avanzados se guardan en una sola acción. El nuevo artículo queda como borrador para publicación posterior.</span></div>
     {success && <div className={styles.success} role="status">{success}</div>}
     {error && <div className={styles.error} role="alert">{error}</div>}
     {pending && !busy && <p className={styles.notice}>La captura quedó pendiente. Reintenta el mismo guardado para confirmar el resultado sin duplicarlo.</p>}
@@ -300,17 +491,68 @@ export default function QuickProductEntry() {
       <div className={styles.codeRow}><input id="quick-barcode" ref={codeInput} value={barcode} maxLength={80} disabled={locked} placeholder="Escanea, escribe o genera un código" autoComplete="off" onChange={e => changeCode(e.target.value)} onBlur={() => { if (!locked) void lookup(barcode).catch(() => {}); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void lookup(barcode).catch(() => {}); } }} /><button type="button" disabled={locked} onClick={() => void lookup(barcode).catch(() => {})}>Buscar</button></div>
       <div className={styles.tools}><button type="button" disabled={locked} onClick={() => setScanner("main")}>▣ Escanear con cámara</button><button type="button" disabled={locked} onClick={() => void generateCode()}>＋ Generar código</button></div><small>Si lo dejas vacío, generaremos un EAN-13 interno al guardar. También puedes usar un lector USB o Bluetooth.</small>
       {checking && <p role="status">Buscando código…</p>}
+      {embedded && <div className={styles.photoLookup}>
+        <label className={styles.label} htmlFor="photo-product-search">Buscar producto existente para fotografías</label>
+        <input id="photo-product-search" type="search" disabled={locked} value={photoQuery} onChange={e => searchPhotoProducts(e.target.value)} autoComplete="off" placeholder="Nombre del producto o UPC" />
+        <small>Escribe al menos dos caracteres y selecciona el artículo correcto. Esta búsqueda no crea ni modifica productos.</small>
+        {photoSearchBusy && <p role="status">Buscando productos…</p>}
+        {photoSearchError && <p role="alert">{photoSearchError}</p>}
+        {!photoSearchBusy && photoSearchTerm(photoQuery).length >= 2 && !photoSearchError && <div className={styles.photoResults}>
+          {photoCandidates.length ? <ul aria-label="Resultados de productos">{photoCandidates.map(candidate => <li key={candidate.id}>
+            <button type="button" disabled={locked} onClick={() => selectPhotoProduct(candidate)} aria-label={`Seleccionar ${candidate.name} · ${candidate.sku || "Sin SKU"}`}>
+              <span>{candidate.name}</span><small>SKU {candidate.sku || "sin SKU"} · UPC {candidate.barcode || "sin UPC"} · {candidate.status || "sin estado"}</small>
+            </button>
+          </li>)}</ul> : <p>No se encontraron productos. Puedes escanear el UPC o crear una ficha nueva.</p>}
+        </div>}
+      </div>}
       {matches.length > 1 && <label className={styles.label}>Selecciona la variante<select disabled={locked} value={match?.variant_id || ""} onChange={e => setMatch(matches.find(m => m.variant_id === e.target.value) || null)}><option value="">Elegir variante…</option>{matches.map((m, i) => <option key={m.variant_id || i} value={m.variant_id || ""}>{m.product_name} · {m.variant_title} · {m.sku}</option>)}</select></label>}
       {match && <div className={styles.found}><div className={styles.eyebrow}>CÓDIGO YA REGISTRADO</div><h2>{match.product_name}</h2><p>{match.variant_title} · {match.sku} · {money(match.price)}</p><strong>Existencia actual: {match.stock}</strong>
+        {embedded && <button type="button" disabled={locked} onClick={() => openEditor(match.product_id)}>Abrir ficha completa de este producto</button>}
+        {photoUploadSection}
         {match.variant_id ? <form onSubmit={receive}><fieldset disabled={locked}><label>Cantidad recibida<input type="number" min="1" step="1" required value={receiving} onChange={e => setReceiving(e.target.value)} /></label><label>Referencia<input required minLength={3} value={reason} onChange={e => setReason(e.target.value)} /></label><p>Nueva existencia estimada: <b>{Number(match.stock) + Number(receiving || 0)}</b></p></fieldset><button className={styles.primary} disabled={busy || processing} type="submit">{busy ? "Registrando…" : pending ? "Reintentar entrada" : "Registrar entrada de inventario"}</button></form> : <p>Este producto necesita una variante de inventario. Complétala desde <Link href="/admin">Productos</Link>.</p>}
       </div>}
+      {selectedPhotoProduct && !match && <div className={styles.found}><div className={styles.eyebrow}>PRODUCTO ELEGIDO PARA FOTOGRAFÍAS</div><h2>{selectedPhotoProduct.name}</h2><p>SKU {selectedPhotoProduct.sku || "sin SKU"} · UPC {selectedPhotoProduct.barcode || "sin UPC"}</p>
+        <div className={styles.tools}><button type="button" disabled={locked} onClick={() => changeCode("")}>Cambiar producto</button><button type="button" disabled={locked} onClick={() => openEditor(selectedPhotoProduct.id)}>Abrir ficha completa de este producto</button></div>
+        {photoUploadSection}
+      </div>}
     </section>
-    {!matches.length && <form onSubmit={saveProduct} className={styles.card}>
+    {!matches.length && !selectedPhotoProduct && <form onSubmit={saveProduct} className={styles.card}>
       <fieldset disabled={locked}>
         <label>Nombre del producto<input ref={nameInput} value={name} onChange={e => setName(e.target.value)} required minLength={2} maxLength={180} placeholder="Ej. Polo Nike Dri-FIT" /></label>
         <div className={styles.grid}><label>Categoría<select value={category} onChange={e => setCategory(e.target.value)} required><option value="">Seleccionar…</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>Precio de venta · {currency}<input type="number" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} min="0.01" max="99999999" step="0.01" required placeholder="0.00" /></label></div>
         <label>Moneda del precio<select value={currency} onChange={e => setCurrency(e.target.value as "MXN" | "USD")}><option value="MXN">MXN · Pesos mexicanos</option><option value="USD">USD · Dólares estadounidenses</option></select></label>
         <label>Canal de venta<select value={salesChannel} onChange={e => setSalesChannel(e.target.value as "both" | "physical" | "online")}><option value="both">Tienda física y online</option><option value="physical">Solo tienda física (POS)</option><option value="online">Solo tienda online</option></select></label>
+        {embedded && <details className={styles.advanced} open>
+          <summary>Información avanzada <span>{advancedCount ? `${advancedCount} campos preparados` : "Opcional · marca, descripción, golf y promociones"}</span></summary>
+          <p>Completa los datos que correspondan al artículo. Todos los campos se guardan con el mismo botón de la ficha; no hay una segunda alta.</p>
+          <div className={styles.grid}>
+            <label>Marca<input value={advanced.brand || ""} maxLength={140} onChange={e => updateAdvanced("brand", e.target.value)} /></label>
+            <label>Modelo<input value={advanced.model || ""} maxLength={140} onChange={e => updateAdvanced("model", e.target.value)} /></label>
+            <label>Condición<select value={advanced.condition || ""} onChange={e => updateAdvanced("condition", e.target.value as AdvancedDraft["condition"])}><option value="">Conservar condición inicial (nuevo)</option><option value="new">Nuevo</option><option value="preowned">Seminuevo</option><option value="demo">Demo</option></select></label>
+            <label>Precio de oferta · {currency}<input type="number" min="0" max={price || "99999999"} step="0.01" value={advanced.salePrice || ""} onChange={e => updateAdvanced("salePrice", e.target.value)} placeholder="Sin oferta" /></label>
+          </div>
+          <label>Descripción corta · Español<textarea value={advanced.shortDescription || ""} onChange={e => updateAdvanced("shortDescription", e.target.value)} /></label>
+          <label>Descripción completa · Español<textarea value={advanced.description || ""} onChange={e => updateAdvanced("description", e.target.value)} /></label>
+          <label>Descripción corta · Inglés<textarea lang="en" value={advanced.shortDescriptionEn || ""} onChange={e => updateAdvanced("shortDescriptionEn", e.target.value)} /></label>
+          <label>Descripción completa · Inglés<textarea lang="en" value={advanced.descriptionEn || ""} onChange={e => updateAdvanced("descriptionEn", e.target.value)} /></label>
+          <div className={styles.grid}>
+            <label className={styles.toggle}><input type="checkbox" checked={advanced.featured || false} onChange={e => updateAdvanced("featured", e.target.checked)} />Producto destacado</label>
+            <label className={styles.toggle}><input type="checkbox" checked={advanced.newArrival !== false} onChange={e => updateAdvanced("newArrival", e.target.checked)} />Mostrar en Novedades al publicar</label>
+          </div>
+          <details className={styles.advancedSpecs}><summary>Características de golf y observaciones</summary>
+            <div className={styles.grid}>
+              <label>Mano<select value={advanced.specHand || ""} onChange={e => updateAdvanced("specHand", e.target.value)}><option value="">No especificada</option><option value="Right">Diestro (RH)</option><option value="Left">Zurdo (LH)</option></select></label>
+              <label>Loft<input value={advanced.specLoft || ""} onChange={e => updateAdvanced("specLoft", e.target.value)} /></label>
+              <label>Flex<select value={advanced.specFlex || ""} onChange={e => updateAdvanced("specFlex", e.target.value)}><option value="">No especificado</option>{["Ladies", "Senior", "Wedge", "Regular", "Stiff", "X-Stiff", "Xstiff", "Junior"].map(option => <option key={option} value={option}>{option}</option>)}</select></label>
+              <label>Shaft / varilla<input value={advanced.specShaft || ""} onChange={e => updateAdvanced("specShaft", e.target.value)} /></label>
+              <label>Grip<input value={advanced.specGrip || ""} onChange={e => updateAdvanced("specGrip", e.target.value)} /></label>
+              <label>Condición / calificación<input value={advanced.specConditionScore || ""} onChange={e => updateAdvanced("specConditionScore", e.target.value)} /></label>
+              <label>Ideal para<input value={advanced.specPlayerProfile || ""} onChange={e => updateAdvanced("specPlayerProfile", e.target.value)} /></label>
+            </div>
+            <label>Observaciones del equipo<textarea value={advanced.specNotes || ""} onChange={e => updateAdvanced("specNotes", e.target.value)} /></label>
+            <small>Los campos técnicos de palos se aplicarán solo si la categoría corresponde; el editor actual conserva esta validación.</small>
+          </details>
+        </details>}
         <div className={styles.photoHead}><label>Fotografías del producto padre <small>{photos.length} / 10 · opcionales</small></label></div>
         <div className={styles.tools}><label className={styles.fileButton}>▣ Tomar foto<input type="file" accept="image/*,.heic,.heif" capture="environment" onChange={addPhotos} /></label><label className={styles.fileButton}>＋ Elegir de galería<input type="file" accept="image/*,.heic,.heif" multiple onChange={addPhotos} /></label></div>
         {processing && <p role="status">Preparando fotos…</p>}
@@ -329,9 +571,9 @@ export default function QuickProductEntry() {
             </div>}
           </div><div className={styles.tools}><button type="button" onClick={() => setScanner(v.id)}>Escanear</button><button type="button" onClick={() => void generateCode(v.id)}>Generar</button></div><label>Cantidad inicial<input type="number" min="0" step="1" required value={v.quantity} onChange={e => updateVariant(v.id, { quantity: e.target.value })} /></label></section>)}<button type="button" disabled={variants.length >= 50} onClick={() => setVariants(rows => [...rows, freshVariant()])}>＋ Agregar variante</button></div>}
       </fieldset>
-      <div className={styles.saveBar}><span>Estado al guardar: <b>BORRADOR</b></span><button className={styles.primary} type="submit" disabled={busy || processing || checking || !ready}>{busy ? "Guardando…" : pending ? "Reintentar guardado" : "Guardar + siguiente producto"}</button><small>Conservamos categoría y precio para la siguiente captura.</small></div>
+      <div className={styles.saveBar}><span>Estado al guardar: <b>BORRADOR</b></span><button className={styles.primary} type="submit" disabled={busy || processing || checking || !ready}>{busy ? "Guardando…" : pending ? "Reintentar guardado" : "Guardar ficha completa"}</button><small>Conservamos categoría y precio para la siguiente captura.</small></div>
     </form>}
-    <footer className={styles.footer}><Link href="/admin">← Volver al catálogo / Alta completa</Link></footer>
+    {!embedded && <footer className={styles.footer}><Link href="/admin">← Volver al catálogo / Alta completa</Link></footer>}
     {scanner && <BarcodeCamera onClose={() => setScanner(null)} onCode={code => { if (scanner === "main") { changeCode(code); void lookup(code).catch(() => {}); } else updateVariant(scanner, { barcode: code }); setScanner(null); }} />}
   </div></main>;
 }

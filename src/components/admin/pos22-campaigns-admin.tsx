@@ -142,7 +142,7 @@ export default function Pos22CampaignsAdmin() {
     : c.target_type==="sku"?"SKU: "+c.target_value:"UPC: "+c.target_value;
   const status=(c:Campaign)=>!c.enabled?"Pausada":now<c.starts_on?"Programada":now>c.ends_on?"Terminada":"Activa";
 
-  return <main className={styles.page}>
+  return <main className={styles.page} data-admin-module="pos-promotions">
     <div className={styles.container}>
       <header className={styles.header}>
         <div>
@@ -151,7 +151,7 @@ export default function Pos22CampaignsAdmin() {
           <p>Configura campañas automáticas y servicios a precio libre, sin alterar el inventario.</p>
         </div>
         <div className={styles.links}>
-          <Link href="/admin">← Panel administrativo</Link>
+          <a href="/admin">← Panel administrativo</a>
           <Link href="/pos">Abrir POS ↗</Link>
         </div>
       </header>
