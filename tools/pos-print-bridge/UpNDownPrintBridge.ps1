@@ -1,6 +1,6 @@
 # Up & Down POS - Local ESC/POS Print Bridge
 # Windows PowerShell 5.1+
-param([string]$PrinterName='POS-80C',[int]$Port=18181,[switch]$TestReceipt,[switch]$TestDrawer)
+param([string]$PrinterName='POS-80C',[int]$Port=18181,[switch]$TestReceipt,[switch]$TestReception,[switch]$TestDrawer)
 $ErrorActionPreference='Stop'
 Add-Type @"
 using System; using System.Runtime.InteropServices;
@@ -136,6 +136,7 @@ function BuildReceptionBody($r,[string]$copy){
  AddBytes $b $INIT;AddLogo $b
  AddBytes $b $CENTER;AddBytes $b $BOLDON
  ReceptionLine $b 'RECEPCION DE EQUIPO'
+ if($r.is_test){ReceptionLine $b '*** PRUEBA - NO ES RECEPCION REAL ***'}
  ReceptionLine $b ('FOLIO '+$folio)
  AddReceptionBarcode $b $folio
  ReceptionLine $b ('COPIA '+$copy)
@@ -173,7 +174,23 @@ function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($P
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
 # Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
 # inventory changes or sale creation. The cash drawer is opt-in with -TestDrawer.
-if($TestDrawer -and -not $TestReceipt){throw '-TestDrawer requires -TestReceipt'}
+if($TestReceipt -and $TestReception){throw 'Selecciona solo una prueba: -TestReceipt o -TestReception'}
+if($TestDrawer -and (-not $TestReceipt -or $TestReception)){throw '-TestDrawer requires -TestReceipt, not -TestReception'}
+if($TestReception){
+ $sample=[pscustomobject]@{
+  is_test=$true;receipt_number=999999;received_at=[datetime]::Now
+  customer_name='CLIENTE DE PRUEBA - NO REAL';customer_phone='0000000000'
+  equipment_description='Putter ficticio de prueba';service_name='Cambio de grip (prueba)'
+  work_description='Revisar y cambiar grip de prueba';condition_notes='Equipo ficticio sin danos'
+  accessories='Sin accesorios';employee_number='0000';employee_name='OPERADOR QA';terminal_name='PRUEBA POS-80C'
+ }
+ Write-Host 'PRUEBA RECEPCION (NO REAL): 2 copias completas, 2 cortes, sin abrir cajon.' -ForegroundColor Cyan
+ SendRaw (BuildReceptionTicket $sample 'CLIENTE') 'QA RECEPCION CLIENTE'
+ Start-Sleep -Milliseconds 900
+ SendRaw (BuildReceptionTicket $sample 'TALLER') 'QA RECEPCION TALLER'
+ Write-Host 'Prueba enviada. Verifica campos, 2 cortes, y escanea el folio en un campo de texto.' -ForegroundColor Green
+ exit 0
+}
 if($TestReceipt){
  $testSale=[pscustomobject]@{
    is_test=$true; sale_number='QA22-NO-VENTA'; created_at=[datetime]::Now

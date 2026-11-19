@@ -45,3 +45,19 @@ test('scanner hyphen normalization is limited to workshop folios', () => {
   assert.match(block, /\[0-9\]\{1,12\}\$/);
   assert.match(block, /"SR-"/);
 });
+
+test('safe reception hardware check prints fictitious data, without server or cash drawer', () => {
+  const start = bridge.indexOf('if($TestReception){');
+  const end = bridge.indexOf('if($TestReceipt){', start);
+  const listener = bridge.indexOf('$l=New-Object Net.HttpListener;');
+  assert.ok(start > 0 && end > start && listener > end);
+  const sample = bridge.slice(start, end);
+  assert.match(sample, /receipt_number=999999/);
+  assert.match(sample, /customer_name='CLIENTE DE PRUEBA - NO REAL'/);
+  assert.match(sample, /equipment_description='Putter ficticio de prueba'/);
+  assert.match(sample, /service_name='Cambio de grip \(prueba\)'/);
+  assert.match(sample, /BuildReceptionTicket \$sample 'CLIENTE'/);
+  assert.match(sample, /BuildReceptionTicket \$sample 'TALLER'/);
+  assert.doesNotMatch(sample, /\$DRAWER|pos_reception_create|pos_create_sale/);
+  assert.match(bridge, /if\(\$r\.is_test\)\{ReceptionLine \$b '\*\*\* PRUEBA - NO ES RECEPCION REAL \*\*\*'\}/);
+});
