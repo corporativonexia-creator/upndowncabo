@@ -14,6 +14,7 @@
     "src/app/admin/layout.tsx",
     "src/app/admin/page.tsx",
     "src/app/admin/productos/alta-rapida/page.tsx",
+    "src/app/pos/page.tsx",
     "src/app/pos/recepciones/page.tsx",
     "src/app/pos/recepciones/receptions.module.css",
     "src/components/admin/admin-parity.tsx",
@@ -39,5 +40,5 @@
     "tests/sql/admin-gallery-upc-append-proposal.sql",
     "tests/sql/admin-retirement-a53-fixture.sql"
   ],
-  "notes": "Aldo authorized A11.2 UI navigation corrections in the release candidate: persistent nested-route sidebar, compact mobile menu, neutral Premium White background, direct orders/deep links, and full reload when returning to the document-scoped legacy runtime. No Supabase or POS business-logic changes. Release still requires exact-tree QA and post-migration checksum verification; historical SKU values must remain unchanged."
+  "notes": "Aldo authorized the controlled A11 release with A11.3 navigation updates: persistent ADMIN workspace, mobile menu, neutral Premium White background, direct section links, and POS/Reception tabs with the historical independent Reception route preserved. No POS commercial-logic changes. Release still requires exact-tree QA and post-migration checksum verification; historical SKU values must remain unchanged."
 }
