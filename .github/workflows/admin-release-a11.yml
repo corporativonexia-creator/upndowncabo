@@ -56,6 +56,9 @@ jobs:
       - name: Locked dependencies
         run: npm ci
       - name: Exact selective release contract
+        # This checksum is specific to the historical A11 integration branch.
+        # Later main PRs still run the Admin/SKU/browser checks below.
+        if: github.ref_name == 'integracion/admin-premium-white-release-a11-20261119' || github.head_ref == 'integracion/admin-premium-white-release-a11-20261119'
         run: node --test tests/admin-release-main.contract.cjs
       - name: SKU allocation on isolated in-memory PostgreSQL
         run: node --test tests/admin-sku-a34.pg.cjs

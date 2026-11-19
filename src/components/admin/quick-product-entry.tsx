@@ -358,7 +358,7 @@ export default function QuickProductEntry({ embedded = false, galleryOnly = fals
       }
       existingPhotosRef.current.forEach(photo => URL.revokeObjectURL(photo.url));
       existingPhotosRef.current = []; setExistingPhotos([]); photoRequestRef.current = null; setPending(false);
-      if (galleryOnly) setGalleryCount((gallery?.length || 0) + request.photos.length);
+      if (galleryOnly) setGalleryCount((gallery?.length || 0) + inserts.length);
       setSuccess(`✓ ${request.photos.length} fotografía(s) asociadas a ${photoTarget.productName} · ${photoTarget.label}. Sin cambios en precio ni existencias.`);
       window.dispatchEvent(new Event("updown:admin-products-refresh"));
     } catch (e) { setError(friendly(e)); }
