@@ -341,5 +341,11 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **Fronteras:** no se cambiaron datos de alumnos, eventos, fuentes, atribuciones, estados, WhatsApp, autorización, RLS, tablas, Supabase o los argumentos del guardado de estado. No se eliminó ninguna consulta necesaria para la vista. Las lecturas iniciadas no se cancelan en el servidor: el control evita solo una publicación obsoleta. QA aislado simula dos generaciones de solicitudes, navegación, búsqueda, detalle de eventos, fallo RLS y ausencia de escrituras comerciales durante la prueba.
 
+### A10.1 · Auditoría y primer retiro selectivo de navegación heredada
+
+**Auditoría trazable:** `docs/ADMIN-A10-SCRIPTS.md` clasifica los diez scripts de arranque, sus funciones y riesgos. Solo `updown-inventory-nav.js` era un segundo organizador del menú, con un temporizador repetitivo; su responsabilidad se cubre ahora en `installAdminSidebar.ts`. El menú Premium White crea Inventario si falta, oculta el CTA duplicado de alta y no ofrece un segundo enlace administrativo de afiliados si Vendedores ya existe. Los elementos originales y sus eventos siguen vivos. Se deja de inyectar el archivo del arranque (nueve runtimes activos), pero el archivo histórico **no se borra** para facilitar reversión. La preparación espera primero los módulos esenciales y después verifica el enlace Inventario. El ahorro comprobable es una solicitud de script y un temporizador; no se atribuye una mejora de latencia no medida.
+
+**No candidatos a retiro todavía:** los otros nueve scripts contienen lógica necesaria o dependencias con efectos comerciales. El hotfix HEIC, en particular, sincroniza variantes con RPC de escritura **automáticamente al inicio**; A9.1 ya mostró que también puede afectar pruebas de catálogo sintético. Se dejó completamente intacto. No se modificaron SKU/UPC, stock, permisos, Supabase, comisiones, pedidos ni producción. QA A10.1 exige navegador con menú y botones originales, 9 scripts y cero escrituras en el flujo de navegación. A10.2 debe estudiar escrituras de inicialización antes de cualquier retiro adicional.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

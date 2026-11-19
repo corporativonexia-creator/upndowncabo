@@ -13,8 +13,8 @@ test("A0 keeps candidate deployment disabled and public launch gate active", () 
 test("A1 waits for legacy admin and all mounted tabs before revealing it", () => {
   const file = read("src/components/admin/admin-parity.tsx");
   const sources = file.match(/"\/updown-[^"]+\.js\?[^"]+"/g) || [];
-  assert.equal(sources.length, 10);
-  for (const id of ["udProductsTab", "udOrdersTab", "udv2ContentTab", "udv2PosTab", "udProductWorkspaceTabs", "udInventoryMainNav"]) {
+  assert.equal(sources.length, 9);
+  for (const id of ["udProductsTab", "udOrdersTab", "udv2ContentTab", "udv2PosTab", "udv2SellersTab", "udProductWorkspaceTabs", "udInventoryMainNav"]) {
     assert.ok(file.includes('"' + id + '"'), "Missing readiness check: " + id);
   }
   assert.match(file, /data-admin-ready=\{bootState === "ready" \? "true" : "false"\}/);
@@ -47,4 +47,20 @@ test("A2 has authentic Premium White colors and responsive nav", () => {
   for (const token of ["#123d32", "#2f7058", "#b7de45", "#f6f8f6"]) assert.ok(css.includes(token));
   assert.match(css, /prefers-reduced-motion/);
   assert.match(css, /max-width: 1020px/);
+});
+
+test("A10.1 replaces polling inventory navigation with the existing Premium White sidebar", () => {
+  const parity = read("src/components/admin/admin-parity.tsx");
+  const sidebar = read("src/components/admin/install-admin-sidebar.ts");
+  assert.doesNotMatch(parity,/await load\("\/updown-inventory-nav\.js/);
+  assert.match(sidebar,/takeId\("udInventoryMainNav"\) \|\| quickLink\("Inventario", "\/admin\/inventario"\)/);
+  assert.match(sidebar,/inventoryLink\.id = "udInventoryMainNav"/);
+  assert.match(sidebar,/oldNew\.style\.display = "none"/);
+  assert.match(sidebar,/if \(hasSellerTab\) takeId\("udAffiliatesLink"\)/);
+  assert.match(sidebar,/hasSellerTab \? undefined : takeId\("udAffiliatesLink"\)/);
+  assert.match(parity,/!document\.getElementById\("udInventoryMainNav"\)/);
+  for (const required of ["updown-admin-legacy-runtime.js", "updown-product-heic-inventory-hotfix.js",
+    "updown-product-smart-entry-v1.js", "updown-product-condition-v1.js", "updown-admin-v2.js",
+    "updown-pos-pin-v2.js", "updown-h63-order-comms.js", "updown-inventory-v2.js",
+    "updown-product-tabs-v1.js"])assert.ok(parity.includes(required));
 });

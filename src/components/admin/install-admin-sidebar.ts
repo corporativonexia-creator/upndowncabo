@@ -29,6 +29,14 @@ export function installAdminSidebar(): void {
     a.textContent = label;
     return a;
   };
+  // A10.1: own the three navigation-only behaviors previously patched by
+  // updown-inventory-nav.js. No late DOM polling or runtime reordering.
+  const inventoryLink = takeId("udInventoryMainNav") || quickLink("Inventario", "/admin/inventario");
+  inventoryLink.id = "udInventoryMainNav";
+  const oldNew = root.querySelector<HTMLElement>("#udNew");
+  if (oldNew) oldNew.style.display = "none"; // Duplicates the unified product entry.
+  const hasSellerTab = originals.some((node) => node.id === "udv2SellersTab");
+  if (hasSellerTab) takeId("udAffiliatesLink"); // The seller tab already handles this route.
   const section = (key: string, label: string, nodes: Array<HTMLElement | undefined>) => {
     const details = document.createElement("details");
     details.className = "ud-side-group";
@@ -44,7 +52,7 @@ export function installAdminSidebar(): void {
 
   const sections = [
     section("products", "Productos e inventario", [
-      takeId("udProductsTab"), takeId("udInventoryMainNav"), takeHref("/admin/categorias"),
+      takeId("udProductsTab"), inventoryLink, takeHref("/admin/categorias"),
     ]),
     section("sales", "Ventas y POS", [
       takeId("udv2PosTab"), takeId("udOrdersTab"),
@@ -54,7 +62,7 @@ export function installAdminSidebar(): void {
     ]),
     section("commercial", "Comercial", [
       takeId("udv2SellersTab"), takeId("udv2LessonsTab"),
-      takeId("udSellerPortalLink"), takeId("udAffiliatesLink"),
+      takeId("udSellerPortalLink"), hasSellerTab ? undefined : takeId("udAffiliatesLink"),
     ]),
     section("website", "Sitio y contenidos", [
       takeId("udv2ContentTab"), takeId("udStoreLink"),

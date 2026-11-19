@@ -544,6 +544,27 @@ test('Premium White admin shell mounts original buttons in an expandable sidebar
   await expect(sales.locator('a[href="/admin/pos/promociones"]')).toBeVisible();
 });
 
+test('A10.1 inventory navigation works without the obsolete polling script',async({page,request})=>{
+  await login(page);await ready(page);
+  const nav=page.locator('#updown-admin .u-admin-nav');
+  await expect(nav.locator('[data-sidebar-section="products"] #udInventoryMainNav')).toHaveAttribute('href','/admin/inventario');
+  await expect(page.locator('#udNew')).toBeHidden();
+  await expect(page.locator('#udAffiliatesLink')).toHaveCount(0);
+  await expect(nav.locator('[data-sidebar-section="commercial"] #udv2SellersTab')).toHaveCount(1);
+  await expect(page.locator('script[data-updown-admin-src]')).toHaveCount(9);
+  await expect(page.locator('script[data-updown-admin-src*="updown-inventory-nav.js"]')).toHaveCount(0);
+  expect(await page.evaluate(()=>'__UPDOWN_ADMIN_NAV_V2__' in window)).toBe(false);
+  await nav.locator('[data-sidebar-section="commercial"] summary').click();
+  await nav.locator('#udv2SellersTab').click();
+  await expect(page.locator('#udv2SellersView')).toBeVisible();
+  await expect(page.locator('#udv2ContentView')).toBeHidden();
+  await nav.locator('[data-sidebar-section="products"] summary').click();
+  await nav.locator('#udProductsTab').click();
+  await expect(page.locator('#udProductsView')).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test.beforeEach(async({request,page})=>{
   await request.post(`${fixture}/__reset`,{data:{}});
   // All data traffic remains local. External fonts/images are irrelevant to these tests.

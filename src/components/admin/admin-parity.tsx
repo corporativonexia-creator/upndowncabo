@@ -17,13 +17,13 @@ declare global {
 }
 
 type BootState = "loading" | "ready" | "error";
-// Preserve the DOM mutated by the ten legacy runtimes across React state updates.
+// Preserve the DOM mutated by the active legacy runtimes across React state updates.
 const ADMIN_MARKUP = { __html: adminLegacyMarkup };
 
 
 /**
  * A0/A1: render the legacy DOM for existing business logic, but do not reveal
- * its unenhanced state. Preserve all ten scripts until later replacement.
+ * its unenhanced state. Retire only scripts with demonstrated functional parity.
  */
 export default function AdminParity() {
   const startup = useRef<Promise<void> | null>(null);
@@ -71,12 +71,11 @@ export default function AdminParity() {
         await load("/updown-h63-order-comms.js?v=h63");
         await load("/updown-inventory-v2.js?v=inventory-product-v4-20261002");
         await load("/updown-product-tabs-v1.js?v=catalog-stability-20261030");
-        await load("/updown-inventory-nav.js?v=inventory-nav-v2-sellers");
 
         // Script.onload does not guarantee asynchronously installed tabs exist.
         const critical = [
           "udProductsTab", "udOrdersTab", "udv2ContentTab",
-          "udv2PosTab", "udProductWorkspaceTabs", "udInventoryMainNav",
+          "udv2PosTab", "udv2SellersTab", "udProductWorkspaceTabs",
         ];
         let prepared = false;
         for (let attempt = 0; attempt < 240; attempt += 1) {
@@ -87,7 +86,8 @@ export default function AdminParity() {
         if (!prepared) throw new Error("Algunos módulos tardaron demasiado en iniciar.");
         // Move original nodes, preserving legacy event listeners.
         installAdminSidebar();
-        if (document.querySelector("#updown-admin .u-admin-nav")?.getAttribute("data-premium-sidebar") !== "ready") {
+        if (document.querySelector("#updown-admin .u-admin-nav")?.getAttribute("data-premium-sidebar") !== "ready" ||
+            !document.getElementById("udInventoryMainNav")) {
           throw new Error("No se pudo preparar el menú administrativo.");
         }
         performance.mark("updown-admin-ready");
