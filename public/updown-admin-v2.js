@@ -52,6 +52,7 @@
     posShiftTerminal: "all",
     posShiftStatus: "all",
     posAdminSection: "dashboard",
+    posAdminReady: false,
     posInventoryRows: [],
     posInventoryStock: [],
     posInventoryMovement: "all",
@@ -1726,6 +1727,21 @@
     popup.document.close();
   }
 
+  function loadPosActiveReport(section){
+    // A7.1: request only the visible report; report RPCs and their arguments
+    // remain unchanged. Terminal and employee tables come from loadPosAdmin.
+    const loaders={
+      dashboard:loadPosDashboard,
+      shifts:loadPosShifts,
+      summary:loadPosSummary,
+      inventory:loadPosInventory,
+      "employees-report":loadEmployeeReport,
+      "daily-close":loadDailyClose,
+      audit:loadPosAudit
+    };
+    return loaders[section]?.()||Promise.resolve();
+  }
+
   function setPosAdminSection(section){
     const allowed=new Set(["dashboard","terminals","employees","shifts","summary","inventory","employees-report","daily-close","audit"]);
     const next=allowed.has(section)?section:"dashboard";
@@ -1747,15 +1763,20 @@
       target.classList.add("active");
       target.setAttribute("aria-hidden","false");
     }
+    if(state.posAdminReady)void loadPosActiveReport(next);
   }
 
   function bindPosAdminTabs(){
     document.querySelectorAll("#updown-admin .udv2-pos-tab").forEach(btn=>{
+      if(btn.dataset.posTabBound==="true")return;
+      btn.dataset.posTabBound="true";
       btn.addEventListener("click",()=>{
         setPosAdminSection(String(btn.getAttribute("data-pos-section")||"terminals"));
       });
     });
     document.querySelectorAll("#updown-admin [data-print-report]").forEach(btn=>{
+      if(btn.dataset.posPrintBound==="true")return;
+      btn.dataset.posPrintBound="true";
       btn.addEventListener("click",()=>{
         printPosReport(String(btn.getAttribute("data-print-report")||""));
       });
@@ -2601,6 +2622,7 @@
   }
 
   async function loadPosAdmin(){
+    state.posAdminReady=false;
     try{
       await verifyAdmin();
       const db=await getDb();
@@ -2623,7 +2645,8 @@
       populateShiftFilters();
       populateEmployeeReportFilters();
       bindPosAdminTabs();
-      await Promise.all([loadPosAudit(),loadPosSummary(),loadPosShifts(),loadPosInventory(),loadEmployeeReport(),loadDailyClose(),loadPosDashboard()]);
+      state.posAdminReady=true;
+      await loadPosActiveReport(state.posAdminSection||"dashboard");
     }catch(error){
       console.error("POS admin load",error);
       $("udv2PosEmployeeList").innerHTML=`<div class="udv2-empty">No se pudo cargar POS.<br>${escapeHtml(error.message||"Error")}</div>`;
@@ -2737,7 +2760,6 @@
       populateShiftFilters();
       const select=$("udv2PosShiftEmployee");
       if(select)select.value=employeeId;
-      loadPosShifts();
       closeForceCloseModal();
     });
 

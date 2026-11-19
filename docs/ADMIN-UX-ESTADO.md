@@ -273,5 +273,13 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **QA con fixtures:** el motor puro compara productos activos/ocultos, variante inactiva, servicio sin variante, padre con visibilidad NULL, diferencias de stock y evita igualar variantes con productos padre. Playwright verifica ejecución bajo demanda, listas explicativas, errores simulados tipo RLS y ausencia de operaciones `INSERT/UPDATE/DELETE` o RPC de ajustes. Pruebas de bases PostgreSQL se siguen ejecutando únicamente sobre datos sintéticos.
 
+### A7.1 · Reportes POS administrativos bajo demanda
+
+**Causa auditada:** `public/updown-admin-v2.js` ejecutaba simultáneamente `loadPosAudit`, `loadPosSummary`, `loadPosShifts`, `loadPosInventory`, `loadEmployeeReport`, `loadDailyClose` y `loadPosDashboard` al entrar a POS administrativo. El navegador consultaba siete informes aunque solo estuviera abierto Dashboard, además de las tres listas operativas de empleados, terminales y turnos abiertos. Cada actualización volvía a registrar oyentes en los botones de las pestañas y de impresión, provocando consultas e impresiones repetidas.
+
+**A7.1 implementado solo en candidata:** ahora la apertura valida al administrador y carga las tres listas operativas anteriores, pero solo consulta el reporte de la sección activa. Al cambiar de pestaña se consulta el informe solicitado; «Actualizar» vuelve a cargar las listas y ese mismo informe, **no los otros seis**. Terminales y Empleados no tienen un RPC de informe separado. Los listeners de pestañas e impresión se instalan una sola vez por elemento, incluso después de múltiples actualizaciones. Se conserva la recarga de cada informe cuando el usuario cambia sus filtros y la navegación directa desde otras acciones del panel.
+
+**Fronteras y riesgos:** solo se cambió la política de *cuándo* leer reportes existentes; no se reescribió ninguna consulta RPC, argumento, fórmula de conciliación, autorización, operación de empleados, terminales ni motor comercial de caja. Volver a una pestaña vuelve a consultar su informe para evitar mostrar datos de caja obsoletos. Concurrencia entre cambios rápidos de filtros y respuestas tardías sigue siendo un posible lote futuro; no se alteró el protocolo comercial para ocultarla. QA sintético cubre que solo se invoque el informe visible, la actualización acotada y la ausencia de listeners multiplicados. Ninguna prueba usa datos reales.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

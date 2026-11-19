@@ -45,6 +45,33 @@ async function captureInventoryReport(page:Page,buttonName:RegExp){
   return page.evaluate(()=>({html:(window as Window & {__qaReportHtml?:string}).__qaReportHtml||'',opens:(window as Window & {__qaReportOpens?:number}).__qaReportOpens||0}));
 }
 
+test('A7.1 POS admin fetches only the visible report and binds tabs once after refresh',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.locator('[data-sidebar-section="sales"] summary').click();
+  await page.locator('#udv2PosTab').click();
+  const tabs=page.locator('#udv2PosView .udv2-pos-tabs');
+  const reportPaths=['admin_pos_audit_feed','admin_pos_sales_summary','admin_pos_shift_report',
+    'admin_pos_inventory_report','admin_pos_employee_report','admin_pos_daily_close_report'];
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  const count=async(name:string)=>(await events()).filter(e=>e.path===`/rest/v1/rpc/${name}`).length;
+  await expect.poll(()=>count('admin_pos_daily_close_report')).toBe(1);
+  expect((await events()).filter(e=>reportPaths.slice(0,-1).some(name=>e.path===`/rest/v1/rpc/${name}`))).toHaveLength(0);
+
+  await tabs.locator('[data-pos-section="summary"]').click();
+  await expect.poll(()=>count('admin_pos_sales_summary')).toBe(1);
+  expect((await events()).filter(e=>['admin_pos_shift_report','admin_pos_inventory_report',
+    'admin_pos_employee_report','admin_pos_audit_feed'].some(name=>e.path===`/rest/v1/rpc/${name}`))).toHaveLength(0);
+
+  await page.locator('#udv2PosRefresh').click();
+  await expect.poll(()=>count('admin_pos_sales_summary')).toBe(2);
+  await page.locator('#udv2PosRefresh').click();
+  await expect.poll(()=>count('admin_pos_sales_summary')).toBe(3);
+  await tabs.locator('[data-pos-section="audit"]').click();
+  await expect.poll(()=>count('admin_pos_audit_feed')).toBe(1);
+  expect(await count('admin_pos_daily_close_report')).toBe(1);
+  expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

@@ -243,3 +243,16 @@ test("A6.4 reconciles POS visibility and stock in read-only snapshots, not by eq
   assert.doesNotMatch(client,/\.update\(|\.delete\(|\.insert\(|\.upsert\(|admin_inventory_adjust/);
   assert.doesNotMatch(read("src/lib/admin/inventory-reconciliation.ts"),/\.update\(|\.delete\(|\.insert\(/);
 });
+
+test("A7.1 POS administrative reports load on navigation, not all seven at startup", () => {
+  const runtime=read("public/updown-admin-v2.js");
+  assert.match(runtime,/function loadPosActiveReport\(section\)/);
+  for(const [section,loader] of Object.entries({dashboard:"loadPosDashboard",shifts:"loadPosShifts",summary:"loadPosSummary",inventory:"loadPosInventory",'employees-report':"loadEmployeeReport",'daily-close':"loadDailyClose",audit:"loadPosAudit"})){
+    assert.ok(runtime.includes(`${section.includes('-')?'"':''}${section}${section.includes('-')?'"':''}:${loader}`),`Missing lazy loader for ${section}`);
+  }
+  assert.match(runtime,/if\(state\.posAdminReady\)void loadPosActiveReport\(next\)/);
+  assert.match(runtime,/await loadPosActiveReport\(state\.posAdminSection\|\|"dashboard"\)/);
+  assert.match(runtime,/if\(btn\.dataset\.posTabBound==="true"\)return/);
+  assert.match(runtime,/if\(btn\.dataset\.posPrintBound==="true"\)return/);
+  assert.doesNotMatch(runtime,/Promise\.all\(\[loadPosAudit\(\),loadPosSummary\(\),loadPosShifts\(\),loadPosInventory\(\),loadEmployeeReport\(\),loadDailyClose\(\),loadPosDashboard\(\)\]\)/);
+});
