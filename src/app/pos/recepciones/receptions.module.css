@@ -1,10 +1,11 @@
 .shell{min-height:100vh;background:#f6f8f6;padding:28px 16px 65px;font-family:Arial,Helvetica,sans-serif;color:#123d32}
+.embedded{min-height:0;padding:20px 0 40px;background:transparent}
 .wrap{max-width:1040px;margin:0 auto}
 .header{display:flex;justify-content:space-between;align-items:start;gap:20px;color:#123d32;margin-bottom:25px}
 .header h1{margin:4px 0 3px;font-size:clamp(25px,4vw,40px);letter-spacing:-.025em}
 .kicker{font-size:10px;letter-spacing:.15em;font-weight:900;text-transform:uppercase;opacity:.78}
 .header p{margin:8px 0 0;opacity:.8;font-size:13px}
-.back{display:inline-flex;align-items:center;text-decoration:none;color:#123d32;background:#fff;font-size:12px;font-weight:800;border:1px solid #cbdcd1;border-radius:20px;padding:11px 15px;white-space:nowrap}
+.back{display:inline-flex;align-items:center;text-decoration:none;color:#123d32;background:#fff;font-size:12px;font-weight:800;border:1px solid #cbdcd1;border-radius:20px;padding:11px 15px;white-space:nowrap;cursor:pointer}
 .grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.75fr);gap:18px;align-items:start}
 .panel{border:1px solid #dae2dc;background:#fff;border-radius:22px;padding:24px;box-shadow:0 13px 33px #12392c14}
 .panel h2{font-size:23px;margin:0 0 5px;letter-spacing:-.02em}

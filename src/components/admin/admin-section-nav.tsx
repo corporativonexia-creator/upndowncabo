@@ -12,7 +12,7 @@ const groups = [
     { label: "Administración POS", href: "/admin?section=pos" },
     { label: "Pedidos", href: "/admin?section=orders" },
     { label: "Abrir caja / POS ↗", href: "/pos" },
-    { label: "Recepción de equipos ↗", href: "/pos/recepciones" },
+    { label: "Recepción de equipos ↗", href: "/pos?tab=recepciones" },
     { label: "Promociones y servicios POS", href: "/admin/pos/promociones" },
   ] },
   { name: "Comercial", items: [
@@ -29,10 +29,10 @@ const groups = [
 export default function AdminSectionNav({ activePath, onNavigate }: { activePath: string; onNavigate?: () => void }) {
   return (
     <nav className="ud-admin-section-nav" aria-label="Áreas de administración de UpNDown Cabo">
-      <a href="/admin" onClick={onNavigate} className="ud-admin-section-brand">
+      <Link href="/admin" onClick={onNavigate} className="ud-admin-section-brand">
         <strong>UP AND DOWN</strong>
         <small>PANEL ADMINISTRATIVO</small>
-      </a>
+      </Link>
       {groups.map(group => (
         <details key={group.name} className="ud-admin-section-group" open={group.items.some(item => item.href === activePath)}>
           <summary>{group.name}</summary>
@@ -43,11 +43,7 @@ export default function AdminSectionNav({ activePath, onNavigate }: { activePath
                 "aria-current": item.href === activePath ? "page" as const : undefined,
                 className: item.href === activePath ? "is-active" : "",
               };
-              // The legacy /admin runtime is document-scoped and must boot fresh
-              // after returning from another Next route. A full navigation is required.
-              return item.href === "/admin" || item.href.startsWith("/admin?")
-                ? <a key={item.href} href={item.href} {...props}>{item.label}</a>
-                : <Link key={item.href} href={item.href} {...props}>{item.label}</Link>;
+              return <Link key={item.href} href={item.href} {...props}>{item.label}</Link>;
             })}
           </div>
         </details>

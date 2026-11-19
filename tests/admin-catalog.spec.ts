@@ -15,6 +15,16 @@ async function ready(page:Page){
   await expect(page.locator('#udCatalogSearch')).toBeVisible();
   await expect(page.locator('#udList .ud-category-group')).toHaveCount(2);
 }
+async function receptionSession(page: Page) {
+  await page.addInitScript(() => {
+    const user = { id: '00000000-0000-4000-8000-000000000001', aud: 'authenticated', role: 'authenticated', email: 'admin@example.test' };
+    const expires = Math.floor(Date.now() / 1000) + 3600;
+    const encode = (value: object) => btoa(JSON.stringify(value)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const access_token = [encode({ alg: 'HS256', typ: 'JWT' }), encode({ sub: user.id, aud: 'authenticated', role: 'authenticated', exp: expires }), 'fixture-signature'].join('.');
+    localStorage.setItem('updown-pos-device-token-v1', 'terminal-qa');
+    localStorage.setItem('updown-pos-auth-v1', JSON.stringify({ access_token, token_type: 'bearer', expires_at: expires, expires_in: 3600, refresh_token: 'fixture-refresh', user }));
+  });
+}
 const card=(page:Page,id:string)=>page.locator(`#udList .u-item[data-product-id="${id}"]`);
 
 async function captureThermalLabel(page:Page,sku:string){
@@ -112,7 +122,7 @@ test('A7.2 POS audit server filters refresh once after rapid changes',async({pag
 
 test('A8.1 workshop searches by name or folio as typed and ignores older responses',async({page,request})=>{
   await configure(request,{receptionFixture:true,receptionRaceFixture:true});
-  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await receptionSession(page);
   await page.goto('/pos/recepciones');
   const list=page.locator('aside');
   await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
@@ -138,7 +148,7 @@ test('A8.1 workshop searches by name or folio as typed and ignores older respons
 
 test('A8.1 denied workshop history reads retain previous visible records and show an error',async({page,request})=>{
   await configure(request,{receptionFixture:true,receptionHistoryDenied:true});
-  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await receptionSession(page);
   await page.goto('/pos/recepciones');
   const list=page.locator('aside');
   await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
@@ -150,7 +160,7 @@ test('A8.1 denied workshop history reads retain previous visible records and sho
 
 test('A8.2 filters reception status locally and keeps the selected workshop detail beside history',async({page,request})=>{
   await configure(request,{receptionFixture:true,receptionTrackingFixture:true});
-  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await receptionSession(page);
   await page.goto('/pos/recepciones');
   const list=page.locator('aside');
   const filters=list.getByRole('group',{name:'Filtrar por estado en resultados'});
@@ -184,7 +194,7 @@ test('A8.2 filters reception status locally and keeps the selected workshop deta
 
 test('A8.2 refreshes the selected receipt status from authorized history without a write',async({page,request})=>{
   await configure(request,{receptionFixture:true,receptionTrackingFixture:true});
-  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await receptionSession(page);
   await page.goto('/pos/recepciones');
   const list=page.locator('aside');
   await list.getByRole('button',{name:/Cliente Putter/}).click();
@@ -540,7 +550,7 @@ test('Premium White admin shell mounts original buttons in an expandable sidebar
   await sales.locator('summary').click();
   await expect(sales).toHaveAttribute('open','');
   await expect(products).not.toHaveAttribute('open','');
-  await expect(sales.locator('a[href="/pos/recepciones"]')).toBeVisible();
+  await expect(sales.locator('a[href="/pos?tab=recepciones"]')).toBeVisible();
   await expect(sales.locator('a[href="/admin/pos/promociones"]')).toBeVisible();
 });
 
@@ -598,6 +608,57 @@ test('A11.2 deep links open Pedidos and Clases without changing commercial data'
   await expect(page.locator('#udv2LessonsView')).toBeVisible();
   const events=await (await request.get(`${fixture}/__events`)).json() as Array<{method:string}>;
   expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A11.3 preserves the initialized ADMIN when opening Inventory and returning to Commercial',async({page,request})=>{
+  await login(page); await ready(page);
+  await page.evaluate(() => { (window as Window & { __qaOriginalAdmin?: Element | null }).__qaOriginalAdmin = document.getElementById('updown-admin'); });
+  await page.locator('#udInventoryMainNav').click();
+  await expect(page).toHaveURL(/\/admin\/inventario$/);
+  await expect(page.locator('.ud-admin-root-slot')).toBeHidden();
+  await expect(page.locator('.inv-page')).toBeVisible();
+  const sidebar = page.getByRole('navigation',{name:'Áreas de administración de UpNDown Cabo'});
+  await sidebar.getByText('Comercial').click();
+  await sidebar.getByRole('link',{name:'Vendedores'}).click();
+  await expect(page).toHaveURL(/\/admin\?section=vendedores$/);
+  await expect(page.locator('#udv2SellersView')).toBeVisible();
+  await expect(page.locator('.ud-admin-splash')).toHaveCount(0);
+  const persistence = await page.evaluate(() => ({
+    sameRoot: (window as Window & { __qaOriginalAdmin?: Element | null }).__qaOriginalAdmin === document.getElementById('updown-admin'),
+    scripts: document.querySelectorAll('script[data-updown-admin-src]').length,
+    boots: performance.getEntriesByName('updown-admin-bootstrap').length,
+  }));
+  expect(persistence).toEqual({sameRoot:true,scripts:9,boots:1});
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{method:string}>;
+  expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A11.3 switches POS/Recepción tabs without losing the mounted cashier session',async({page,request})=>{
+  await configure(request,{receptionFixture:true});
+  await receptionSession(page);
+  await page.goto('/pos');
+  const posTab = page.getByRole('tab',{name:/POS$/});
+  const receptionTab = page.getByRole('tab',{name:/Recepción de equipos/});
+  await expect(posTab).toHaveAttribute('aria-selected','true');
+  await receptionTab.click();
+  await expect(receptionTab).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('textbox',{name:'Buscar recepciones'})).toBeVisible();
+  await posTab.click();
+  await expect(posTab).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('heading',{name:/Hola, QA Cashier/})).toBeVisible();
+  await receptionTab.click();
+  await expect(page.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  const events = await (await request.get(`${fixture}/__events`)).json() as Array<{path:string}>;
+  expect(events.filter(e=>e.path==='/rest/v1/rpc/pos_reception_access')).toHaveLength(1);
+});
+
+test('A11.3 denies workshop RPCs without POS auth and offers a login path',async({page,request})=>{
+  await page.addInitScript(() => { localStorage.setItem('updown-pos-device-token-v1','terminal-qa'); });
+  await page.goto('/pos/recepciones');
+  await expect(page.getByRole('alert')).toContainText('Necesitas iniciar sesión como empleado');
+  await expect(page.getByRole('link',{name:/Iniciar sesión/})).toHaveAttribute('href','/pos');
+  const events = await (await request.get(`${fixture}/__events`)).json() as Array<{path:string}>;
+  expect(events.filter(e=>e.path==='/rest/v1/rpc/pos_reception_access')).toHaveLength(0);
 });
 
 test('A10.1 inventory navigation works without the obsolete polling script',async({page,request})=>{

@@ -28,7 +28,11 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export default function ServiceRecepcionesPage() {
+export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos, onCheckoutFolio }: {
+  embedded?: boolean;
+  onReturnToPos?: () => void;
+  onCheckoutFolio?: (folio: string) => void;
+} = {}) {
   const db = useMemo(() => createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -78,12 +82,17 @@ export default function ServiceRecepcionesPage() {
       return;
     }
     void Promise.resolve().then(() => { if (!cancelled) setToken(device); });
-    void Promise.all([
-      db.rpc("pos_reception_access", { p_device_token: device }),
-      db.from("products").select("id,name,sku").eq("is_service", true)
-        .eq("status", "active").eq("pos_visible", true).order("name"),
-      db.rpc("pos_reception_recent", { p_device_token: device, p_search: "" }),
-    ]).then(([who, svc, history]) => {
+    // Reception RPCs are granted only to authenticated employees. A deep link
+    // from ADMIN has a different auth session from the POS terminal.
+    void db.auth.getUser().then(({ data: { user }, error: sessionError }) => {
+      if (sessionError || !user) throw new Error("SESSION_REQUIRED");
+      return Promise.all([
+        db.rpc("pos_reception_access", { p_device_token: device }),
+        db.from("products").select("id,name,sku").eq("is_service", true)
+          .eq("status", "active").eq("pos_visible", true).order("name"),
+        db.rpc("pos_reception_recent", { p_device_token: device, p_search: "" }),
+      ]);
+    }).then(([who, svc, history]) => {
       if (who.error) throw who.error;
       if (svc.error) throw svc.error;
       if (history.error) throw history.error;
@@ -93,7 +102,9 @@ export default function ServiceRecepcionesPage() {
         setReceptions(Array.isArray(history.data) ? history.data as ServiceReception[] : []);
       }
     }).catch((e) => {
-      if (!cancelled) setError("Acceso a recepciones: " + errorText(e) + ". Regresa al POS e inicia sesión.");
+      if (!cancelled) setError(errorText(e) === "SESSION_REQUIRED"
+        ? "Necesitas iniciar sesión como empleado en esta terminal POS antes de abrir Recepción de equipos. El acceso de administrador no sustituye la sesión del POS."
+        : "No se pudo validar la recepción: " + errorText(e) + ". Comprueba la sesión de empleado y la activación de la terminal.");
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [db]);
@@ -255,7 +266,7 @@ export default function ServiceRecepcionesPage() {
   const visibleReceptions = useMemo(() => statusFilter === "all" ? receptions :
     receptions.filter(row => row.status === statusFilter), [receptions, statusFilter]);
   return (
-    <main className={styles.shell}>
+    <main className={`${styles.shell}${embedded ? ` ${styles.embedded}` : ""}`}>
       <div className={styles.wrap}>
         <header className={styles.header}>
           <div>
@@ -263,7 +274,9 @@ export default function ServiceRecepcionesPage() {
             <h1>Recepción de equipos</h1>
             <p>Recepción, preparación y entrega con cobro posterior desde el POS. Registrar no genera venta ni afecta existencias.</p>
           </div>
-          <a href="/pos" className={styles.back}>← Volver al POS</a>
+          {embedded && onReturnToPos
+            ? <button type="button" className={styles.back} onClick={onReturnToPos}>← Volver al POS</button>
+            : <a href="/pos" className={styles.back}>← Iniciar sesión / volver al POS</a>}
         </header>
         {loading && <div className={styles.success}>Validando sesión de empleado y terminal...</div>}
         {error && <div className={styles.alert} role="alert">{error}</div>}
@@ -369,11 +382,13 @@ export default function ServiceRecepcionesPage() {
                     {selected.status === "received" &&
                       <button type="button" className={styles.primary} disabled={busy}
                         onClick={() => void markReady(selected)}>✓ Listo para entregar</button>}
-                    {selected.status === "ready" &&
-                      <a href={"/pos?recepcion=" + encodeURIComponent(receptionFolio(selected.receipt_number))}
-                         className={styles.primary} style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>
-                        Escanear y cobrar en POS
-                      </a>}
+                    {selected.status === "ready" && (embedded && onCheckoutFolio
+                      ? <button type="button" className={styles.primary}
+                          onClick={() => onCheckoutFolio(receptionFolio(selected.receipt_number))}>Escanear y cobrar en POS</button>
+                      : <a href={"/pos?recepcion=" + encodeURIComponent(receptionFolio(selected.receipt_number))}
+                           className={styles.primary} style={{textDecoration:"none",display:"inline-flex",alignItems:"center"}}>
+                          Escanear y cobrar en POS
+                        </a>)}
                     <button type="button" className={styles.primary} disabled={printing} onClick={() => void printThermal(selected)}>
                       {printing ? "Enviando..." : "Imprimir 2 tickets térmicos"}
                     </button>

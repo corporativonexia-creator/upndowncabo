@@ -3,7 +3,7 @@
  * Moves original DOM nodes without cloning or replacing their event handlers.
  * No Supabase calls, mutations, product or POS business logic.
  */
-export function installAdminSidebar(): void {
+export function installAdminSidebar(onAdminRoute?: (href: string) => void): void {
   const root = document.getElementById("updown-admin");
   const nav = root?.querySelector<HTMLElement>(".u-admin-nav");
   if (!root || !nav || nav.dataset.premiumSidebar === "ready") return;
@@ -57,7 +57,7 @@ export function installAdminSidebar(): void {
     section("sales", "Ventas y POS", [
       takeId("udv2PosTab"), takeId("udOrdersTab"),
       quickLink("Abrir caja / POS", "/pos"),
-      quickLink("Recepción de equipos", "/pos/recepciones"),
+      quickLink("Recepción de equipos", "/pos?tab=recepciones"),
       quickLink("Promociones y servicios POS", "/admin/pos/promociones"),
     ]),
     section("commercial", "Comercial", [
@@ -105,6 +105,18 @@ export function installAdminSidebar(): void {
   nav.replaceChildren(toggle, panel);
   nav.dataset.premiumSidebar = "ready";
   nav.setAttribute("aria-label", "Áreas de administración de UpNDown Cabo");
+
+  // Legacy links remain the original DOM nodes; only internal route navigation
+  // is delegated to Next so that this workspace and its listeners survive.
+  if (onAdminRoute) nav.addEventListener("click", event => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = (event.target as Element).closest<HTMLAnchorElement>("a[href]");
+    if (!link || link.target === "_blank") return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/admin/")) return;
+    event.preventDefault();
+    onAdminRoute(url.pathname + url.search + url.hash);
+  });
   root.classList.add("ud-premium-white");
 
   // Native <details> handles keyboard access and expanded/collapsed state.
