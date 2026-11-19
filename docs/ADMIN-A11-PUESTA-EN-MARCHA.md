@@ -65,4 +65,16 @@ Los cambios de tests y documentación son trazabilidad de QA; no forman parte de
 - A10.3 eliminó la sincronización silenciosa de variantes; una conciliación administrativa real necesita autorización, trazabilidad e idempotencia adicionales.
 - Un workflow histórico de impresión POS marca fallo desde antes de A10.3. No es el workflow dedicado de ADMIN; deberá catalogarse por separado antes de imponerlo como puerta de release.
 
+## A11.1 · Staging gratuito bloqueado por cuota; laboratorio sin costo
+
+**Consulta del 18-nov-2026:** la organización «Up And Down» figura en plan `Free` y la cotización oficial para un nuevo proyecto devuelve **0 USD/mes**. Aldo autorizó su creación exclusivamente si no genera cargos. Sin embargo, el alta de «UpNDown Staging» fue **rechazada** por Supabase: el propietario `corporativonexia@gmail.com` ya alcanzó el límite de **dos proyectos gratuitos activos** entre las organizaciones donde es administrador o propietario. Se verificó nuevamente el listado de «Up And Down»: conserva solo el proyecto original `upanddown` (`ACTIVE_HEALTHY`); **no se creó staging ni se generó costo**. No se intentará un upgrade ni pausar/eliminar otro proyecto sin autorización específica.
+
+**Fallback efectivamente ejecutado, sin conexiones a datos comerciales:**
+
+- `node --test tests/admin-shell-a1.contract.cjs tests/admin-product-a3.contract.cjs tests/admin-release-a11.contract.cjs tests/admin-sku-a34.pg.cjs`: **39/39 PASS**. Confirma máscaras históricas, detección de colisiones, sufijos, propuesta SQL aislada y exclusiones del release.
+- `npm run test:pos`: **20 PASS, 1 SKIP**, sin fallos. El escenario omitido es el de terminales simultáneas que exige PostgreSQL multisesión; CI anterior ya ejecutó las pruebas de PostgreSQL aislado de la candidata.
+- La última matriz completa en GitHub Actions sigue siendo #44465465678, **SUCCESS** con 62/62 Chromium y 32/32 contratos. No sustituye comprobaciones de permisos RLS/Storage ni HEIC real de iPhone en un Supabase aislado.
+
+**Puerta abierta:** si Aldo identifica y autoriza pausar algún proyecto gratuito realmente prescindible, se puede volver a cotizar el costo y solicitar un staging nuevo. No se realizará esa acción sobre sistemas ajenos ni sobre producción por iniciativa del agente. Hasta entonces, mantener **NO GO** para SQL alojado, fusión a `main` y despliegue.
+
 **Siguiente decisión solicitada a Aldo:** autorizar un entorno de staging Supabase completamente separado con productos ficticios y la prueba de la regla SKU *solo allí*. Después presentar un GO/NO GO fundamentado y pedir autorización específica para `main` y producción. No solicitar credenciales en el chat ni publicar un entorno de prueba conectado a registros reales.
