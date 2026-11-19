@@ -1137,13 +1137,13 @@ test('A4 name search requires an explicit product choice and sends photos only t
   expect(events.some((e:{path:string})=>/admin_quick_product_create|admin_quick_inventory_receive|admin_inventory_adjust/.test(e.path))).toBe(false);
 });
 
-test('A4 accepts UPC or name but does not search by SKU, and retries gallery metadata',async({page,request})=>{
+test('A4 accepts UPC, SKU or name and retries gallery metadata',async({page,request})=>{
   await configure(request,{galleryInsertForbidden:true});await login(page);await ready(page);
   await page.getByRole('button',{name:'Nueva ficha',exact:true}).click();
   const host=page.locator('#udUnifiedProductHost');
   const search=host.getByRole('searchbox',{name:'Buscar producto existente para fotografías'});
   await search.fill('ROP-0010');
-  await expect(host.getByText('No se encontraron productos. Puedes escanear el UPC o crear una ficha nueva.')).toBeVisible();
+  await expect(host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'})).toBeVisible();
   await search.fill('2000000000022');
   await expect(host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'})).toBeVisible();
   await expect(host.getByRole('button',{name:'Seleccionar Polo clásico · ROP-001'})).toHaveCount(0);
@@ -1159,6 +1159,42 @@ test('A4 accepts UPC or name but does not search by SKU, and retries gallery met
   expect(events.filter((e:{path:string})=>e.path.startsWith('/storage/v1/object/product-media/'))).toHaveLength(1);
   const images=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p2`)).json();
   expect(images).toHaveLength(1);
+});
+
+test('A11.6 dedicated photo tab searches products, stages two camera-ready images and uploads only to the chosen gallery',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.getByRole('button',{name:'Subir fotos',exact:true}).click();
+  const host=page.locator('#udProductGalleryHost');
+  await expect(host.getByRole('heading',{name:'Subir fotos'})).toBeVisible();
+  await expect(host.getByRole('button',{name:'Escanear UPC con cámara'})).toBeVisible();
+  await host.getByRole('searchbox',{name:'Buscar o escanear producto'}).fill('ROP-0010');
+  const target=host.getByRole('button',{name:'Seleccionar Polo clásico azul · ROP-0010'});
+  await expect(target).toBeVisible();await target.click();
+  await expect(host.getByText('0 de 10 fotos guardadas')).toBeVisible();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  const upload=photos.getByRole('button',{name:'SUBIR A LA GALERÍA'});
+  await expect(upload).toBeDisabled();
+  await photos.locator('input[type=file][multiple]').setInputFiles([photoFixture,{...photoFixture,name:'foto-qa-2.png'}]);
+  await expect(photos.locator('img[alt^="Nueva foto"]')).toHaveCount(2);
+  await expect(upload).toBeEnabled();await upload.click();
+  await expect(host.getByText(/2 fotografía\(s\) asociadas a Polo clásico azul/)).toBeVisible();
+  await expect(host.getByText('2 de 10 fotos guardadas')).toBeVisible();
+  const imagesP1=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p1`)).json();
+  const imagesP2=await (await request.get(`${fixture}/rest/v1/product_images?product_id=eq.p2`)).json();
+  expect(imagesP1).toHaveLength(0);expect(imagesP2).toHaveLength(2);
+  expect(imagesP2[0]).toMatchObject({product_id:'p2',is_primary:true});
+});
+
+test('A11.6 dedicated gallery refuses an eleventh image',async({page,request})=>{
+  await configure(request,{fullGallery:true});await login(page);await ready(page);
+  await page.getByRole('button',{name:'Subir fotos',exact:true}).click();
+  const host=page.locator('#udProductGalleryHost');
+  await host.getByRole('searchbox',{name:'Buscar o escanear producto'}).fill('ROP-001');
+  await host.getByRole('button',{name:'Seleccionar Polo clásico · ROP-001'}).click();
+  await expect(host.getByText('10 de 10 fotos guardadas')).toBeVisible();
+  const photos=host.getByRole('region',{name:'Fotografías por UPC'});
+  await expect(photos.locator('input[type=file]')).toBeDisabled();
+  await expect(photos.getByRole('button',{name:'SUBIR A LA GALERÍA'})).toBeDisabled();
 });
 
 test('A4 a blocked catalog search never creates or changes a product',async({page,request})=>{

@@ -1847,6 +1847,15 @@ export default function PosPage() {
         .pos-brand{color:white;padding:18px 4px 28px}
         .pos-brand strong{display:block;font-family:"Cormorant Garamond",serif;font-size:38px;line-height:.9;letter-spacing:.04em}
         .pos-brand span{display:block;margin-top:8px;font-size:10px;font-weight:800;letter-spacing:.16em;opacity:.72}
+        .pos-brand-live{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;padding:12px 4px 18px}
+        .pos-brand-live .pos-brand-identity{flex:0 0 auto}
+        .pos-header-summary{display:flex;align-items:stretch;justify-content:flex-end;flex-wrap:wrap;gap:5px;min-width:0}
+        .pos-header-person,.pos-header-metric{display:flex;flex-direction:column;justify-content:center;gap:4px;border:1px solid #ffffff28;background:#fffffffa;border-radius:9px;padding:8px 10px;color:#143e35}
+        .pos-header-person{min-width:145px}
+        .pos-header-person small,.pos-header-metric small{font-size:8px;font-weight:900;letter-spacing:.1em;color:#58786a;text-transform:uppercase}
+        .pos-header-person b{font-family:"Cormorant Garamond",serif;font-size:25px;line-height:1}
+        .pos-header-metric b{font-size:11px;line-height:1.2;white-space:nowrap}
+        .pos-header-metric{min-width:70px}
         .pos-card{width:100%;padding:24px;border:1px solid rgba(20,62,53,.12);border-radius:24px;background:#fff;box-shadow:0 18px 55px rgba(20,62,53,.12)}
         .pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
         .pos-card h1,.pos-card h2{margin:0;color:#143e35;font-family:"Cormorant Garamond",serif}
@@ -1900,7 +1909,10 @@ export default function PosPage() {
         .pos-ready{padding:18px;border-radius:18px;background:#143e35;color:white;margin:18px 0}
         .pos-ready strong{display:block;font-size:18px}.pos-ready span{display:block;margin-top:5px;font-size:11px;opacity:.75}
         .pos-note{margin-top:16px;padding:13px;border-left:3px solid #c8a86b;background:#f7f2e8;border-radius:0 12px 12px 0;color:#143e35;font-size:11px;line-height:1.6}
-        .pos-sales-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:16px;margin-top:16px}
+        .pos-sales-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);grid-template-rows:auto minmax(0,1fr);gap:16px;margin-top:16px;align-items:start}
+        .pos-sales-layout > .pos-panel:first-child{grid-column:1;grid-row:1;min-width:0}
+        .pos-workflow-ops{grid-column:1;grid-row:2;display:grid;gap:14px;min-width:0}
+        .pos-workflow-ops > .pos-history,.pos-workflow-ops > .pos-cash-tools,.pos-workflow-ops > .pos-refund-search{margin-top:0}
         .pos-panel{border:1px solid rgba(20,62,53,.12);border-radius:20px;background:#fff;overflow:hidden}
         .pos-mobile-cart-jump{display:none}
         .pos-panel-head{padding:16px 18px;border-bottom:1px solid rgba(20,62,53,.1);display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -1986,17 +1998,26 @@ export default function PosPage() {
         .pos-money-input{position:relative;display:flex;align-items:center}
         .pos-money-input input{width:100%;padding-right:72px;font-variant-numeric:tabular-nums}
         .pos-money-code{position:absolute;right:18px;font-size:12px;font-weight:800;letter-spacing:.08em;color:#48635b;pointer-events:none}
-        @media(max-width:900px){.pos-sales-layout{grid-template-columns:1fr}.pos-products{max-height:none}}
-        @media(min-width:901px){.pos-cart-panel{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow-y:auto;scrollbar-gutter:stable}}
+        @media(max-width:900px){.pos-sales-layout{display:flex;flex-direction:column;align-items:stretch}.pos-workflow-ops{display:grid}.pos-products{max-height:none}}
+        @media(min-width:901px){.pos-cart-panel{grid-column:2;grid-row:1 / span 2;position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow-y:auto;scrollbar-gutter:stable}}
         @media(max-width:900px){.pos-mobile-cart-jump{position:fixed;display:flex;justify-content:space-between;align-items:center;gap:14px;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;z-index:50;width:calc(100% - 24px);min-height:58px;padding:12px 18px;border:0;border-radius:16px;background:#143e35;color:white;box-shadow:0 12px 30px #08291eb0;cursor:pointer;text-align:left;font-size:13px;font-weight:800}.pos-mobile-cart-jump strong{font-size:19px}.pos-shell{padding-bottom:92px}}
         @media(max-width:680px){.pos-cash-tools-grid,.pos-cash-summary{grid-template-columns:1fr}.pos-shell{padding:12px}.pos-grid{grid-template-columns:1fr}.pos-stats,.pos-shift-summary{grid-template-columns:1fr}.pos-card{padding:20px}.pos-card h1{font-size:42px}.pos-products{grid-template-columns:1fr}.pos-payment-tabs{grid-template-columns:1fr 1fr}}
         @media(max-width:680px){.pos-shell{padding-bottom:92px}.pos-scan-strip{grid-template-columns:1fr;padding:12px}.pos-scan-strip label{grid-column:1}.pos-checkout-feedback{flex-direction:column}.pos-checkout-feedback button{align-self:flex-end}.pos-card-live{padding:14px}.pos-card-live h1{font-size:23px}.pos-session-heading{align-items:flex-start}.pos-session-inline{gap:5px 9px}.pos-card-live .pos-shift-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-card-live .pos-shift-summary .pos-stat{padding:7px}.pos-card-live .pos-shift-summary .pos-stat strong{font-size:12px}}
+        @media(max-width:760px){.pos-brand-live{display:block}.pos-brand-live .pos-brand-identity{margin-bottom:12px}.pos-header-summary{justify-content:flex-start}.pos-header-person{min-width:125px}.pos-header-metric{flex:1 1 85px}.pos-header-person b{font-size:22px}}
       `}</style>
 
       <div className="pos-wrap">
-        <header className="pos-brand">
-          <strong>UP AND DOWN</strong>
-          <span>PUNTO DE VENTA · LOS CABOS</span>
+        <header className={`pos-brand${access?.open_shift_id && workspaceTab === "pos" ? " pos-brand-live" : ""}`}>
+          <div className="pos-brand-identity"><strong>UP AND DOWN</strong><span>PUNTO DE VENTA · LOS CABOS</span></div>
+          {access?.open_shift_id && workspaceTab === "pos" && <div className="pos-header-summary" aria-label="Resumen del turno">
+            <div className="pos-header-person"><small>Sesión de empleado</small><b>Hola, {access.full_name}</b></div>
+            <div className="pos-header-metric"><small>Empleado</small><b>#{access.employee_number}</b></div>
+            <div className="pos-header-metric"><small>Terminal</small><b>{access.terminal_name}</b></div>
+            <div className="pos-header-metric"><small>Rol</small><b>{roleLabel}</b></div>
+            <div className="pos-header-metric"><small>Ventas del turno</small><b>{shiftSales.filter(sale => sale.status === "completed").length}</b></div>
+            <div className="pos-header-metric"><small>Efectivo</small><b>{money(cashSales)}</b></div>
+            <div className="pos-header-metric"><small>Esperado</small><b>{money(expectedCash)}</b></div>
+          </div>}
         </header>
 
         {checkoutFeedback && (
@@ -2074,18 +2095,8 @@ export default function PosPage() {
           <>
           <div className="pos-workspace-panel" id="posWorkspacePanel" role="tabpanel" aria-labelledby="posWorkspaceTab" hidden={workspaceTab !== "pos"}>
           <section className={`pos-card ${access.open_shift_id ? "pos-card-live" : ""}`}>
-            <div className="pos-session-heading">
-              <div><div className="pos-kicker">Sesión de empleado</div><h1>Hola, {access.full_name}</h1></div>
-              {access.open_shift_id && <span className="pos-shift-indicator">● Turno abierto · POS habilitado</span>}
-            </div>
-            {access.open_shift_id ? (
-              <div className="pos-session-inline">
-                <span>#{access.employee_number} · {access.terminal_name} · {roleLabel}</span>
-                <small>Inicio: {access.open_shift_started_at
-                  ? new Date(access.open_shift_started_at).toLocaleString("es-MX") : "—"}
-                  {" · "}Fondo: {money(numeric(access.opening_cash))}</small>
-              </div>
-            ) : (
+            {!access.open_shift_id && <div className="pos-session-heading"><div><div className="pos-kicker">Sesión de empleado</div><h1>Hola, {access.full_name}</h1></div></div>}
+            {!access.open_shift_id && (
               <div className="pos-stats">
                 <div className="pos-stat"><span>Empleado</span><strong>#{access.employee_number}</strong></div>
                 <div className="pos-stat"><span>Terminal</span><strong>{access.terminal_name}</strong></div>
@@ -2115,21 +2126,6 @@ export default function PosPage() {
                   </button>
                   <small className="pos-muted">Solo equipos «Listos para entregar». Precio pendiente hasta cobrar.</small>
                 </form>
-
-                <div className="pos-shift-summary">
-                  <div className="pos-stat">
-                    <span>Ventas del turno</span>
-                    <strong>{shiftSales.filter((sale) => sale.status === "completed").length}</strong>
-                  </div>
-                  <div className="pos-stat">
-                    <span>Ventas en efectivo</span>
-                    <strong>{money(cashSales)}</strong>
-                  </div>
-                  <div className="pos-stat">
-                    <span>Efectivo esperado</span>
-                    <strong>{money(expectedCash)}</strong>
-                  </div>
-                </div>
 
                 <div className="pos-sales-layout">
                   <section className="pos-panel">
@@ -2543,7 +2539,7 @@ export default function PosPage() {
                       </button>
                     </div>
                   </aside>
-                </div>
+                  <div className="pos-workflow-ops">
 
                 <div className="pos-history">
                   <div className="pos-panel-head" style={{ padding: 0, border: 0 }}>
@@ -3064,6 +3060,8 @@ export default function PosPage() {
                     </div>
                   )}
                 </form>
+                  </div>
+                </div>
               </>
             ) : (
               <>

@@ -34,6 +34,8 @@ export default function AdminParity({ active, section }: { active: boolean; sect
   const [bootError, setBootError] = useState("");
   const [productHost, setProductHost] = useState<HTMLElement | null>(null);
   const [captureVisited, setCaptureVisited] = useState(false);
+  const [galleryHost, setGalleryHost] = useState<HTMLElement | null>(null);
+  const [galleryVisited, setGalleryVisited] = useState(false);
 
   useEffect(() => {
     let attached = true;
@@ -73,7 +75,7 @@ export default function AdminParity({ active, section }: { active: boolean; sect
         await load("/updown-pos-pin-v2.js?v=pos-pin-v3-20261001");
         await load("/updown-h63-order-comms.js?v=h63");
         await load("/updown-inventory-v2.js?v=inventory-product-v4-20261002");
-        await load("/updown-product-tabs-v1.js?v=catalog-stability-20261030");
+        await load("/updown-product-tabs-v1.js?v=photo-gallery-tab-20261119");
 
         // Script.onload does not guarantee asynchronously installed tabs exist.
         const critical = [
@@ -133,14 +135,19 @@ export default function AdminParity({ active, section }: { active: boolean; sect
   useEffect(() => {
     if (bootState !== "ready") return;
     const host = document.getElementById("udUnifiedProductHost");
-    if (!host) return;
+    const gallery = document.getElementById("udProductGalleryHost");
+    if (!host || !gallery) return;
     // The existing admin DOM is owned by the legacy runtime. A portal inserts
     // the reusable React capture without replacing handlers or form nodes.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Host is created by the legacy script before bootState becomes ready.
     setProductHost(host);
+    setGalleryHost(gallery);
     const onView = (event: Event) => {
       if ((event as CustomEvent<{ view: string }>).detail?.view === "capture") {
         setCaptureVisited(true);
+      }
+      if ((event as CustomEvent<{ view: string }>).detail?.view === "gallery") {
+        setGalleryVisited(true);
       }
     };
     window.addEventListener("updown:admin-product-view", onView);
@@ -148,6 +155,7 @@ export default function AdminParity({ active, section }: { active: boolean; sect
     // attaches this listener. Recover its already-active state without
     // mounting the form during normal catalog startup.
     if (!host.hidden) setCaptureVisited(true);
+    if (!gallery.hidden) setGalleryVisited(true);
     return () => window.removeEventListener("updown:admin-product-view", onView);
   }, [bootState]);
 
@@ -170,6 +178,7 @@ export default function AdminParity({ active, section }: { active: boolean; sect
         dangerouslySetInnerHTML={ADMIN_MARKUP}
       />
       {productHost && captureVisited && createPortal(<QuickProductEntry embedded />, productHost)}
+      {galleryHost && galleryVisited && createPortal(<QuickProductEntry embedded galleryOnly />, galleryHost)}
     </div>
   );
 }

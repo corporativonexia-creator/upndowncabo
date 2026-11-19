@@ -49,19 +49,36 @@ test('out-of-stock variant cannot be added by scan or button',async({page,reques
   await expect(page.getByRole('button',{name:/COBRAR/})).toBeDisabled();
 });
 
-test('scanner appears before shift metrics, and mobile cart jump stays accessible',async({page})=>{
+test('compact header holds shift metrics above the scanner, and mobile cart jump stays accessible',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await openPos(page);
   const scanner=page.locator('#posQuickSearch');
   await expect(scanner).toBeVisible();
+  await expect(page.locator('.pos-header-summary')).toContainText('Ventas del turno');
   const scannerBox=await scanner.boundingBox();
-  const sessionBox=await page.locator('.pos-session-heading').boundingBox();
-  expect(scannerBox?.y).toBeLessThan(sessionBox?.y??Infinity);
+  const summaryBox=await page.locator('.pos-header-summary').boundingBox();
+  expect(summaryBox?.y).toBeLessThan(scannerBox?.y??Infinity);
   await page.locator('.pos-product').first().getByRole('button',{name:/Agregar/}).click();
   const cartJump=page.getByRole('button',{name:/Ver carrito/});
   await expect(cartJump).toBeVisible();
   await cartJump.click();
   await expect(page.locator('#posCartPanel')).toBeFocused();
+});
+
+test('cart stays visible beside shift activity and cash movements while scrolling',async({page})=>{
+  await page.setViewportSize({width:1280,height:720});
+  await openPos(page);
+  await page.locator('.pos-product').first().getByRole('button',{name:/Agregar/}).click();
+  await expect(page.locator('.pos-workflow-ops .pos-history')).toBeVisible();
+  await expect(page.locator('.pos-workflow-ops .pos-cash-tools')).toBeVisible();
+  const cart=page.locator('#posCartPanel');
+  await page.locator('.pos-cash-tools').scrollIntoViewIfNeeded();
+  const box=await cart.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeLessThan(80);
+  expect(box!.height).toBeLessThanOrEqual(720);
+  await expect(cart.getByRole('button',{name:/COBRAR/})).toBeVisible();
 });
 
 test('a ready workshop reception selects the service parent despite its Única variant',async({page,request})=>{

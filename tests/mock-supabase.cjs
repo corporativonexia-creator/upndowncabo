@@ -185,7 +185,7 @@ http.createServer(async(req,res)=>{
     if(photoFilter){
       if(options.photoSearchDelay)await new Promise(r=>setTimeout(r,options.photoSearchDelay));
       if(options.photoSearchError)return send({message:'Fixture catalog SELECT denied by RLS',code:'42501'},403);
-      const clauses=photoFilter.replace(/^\(|\)$/g,'').split(',').map(part=>part.match(/^(name|barcode)\.ilike\.%(.+)%$/));
+      const clauses=photoFilter.replace(/^\(|\)$/g,'').split(',').map(part=>part.match(/^(name|barcode|sku)\.ilike\.%(.+)%$/));
       const matching=products.filter(p=>clauses.some(clause=>clause&&String(p[clause[1]]||'').toLocaleLowerCase('es').includes(clause[2].toLocaleLowerCase('es'))));
       return send(matching.slice(0,Math.min(10,Number(url.searchParams.get('limit'))||10)));
     }
