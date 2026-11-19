@@ -79,8 +79,16 @@ before(async () => {
   finally { await initializer.end(); }
   setup=await connect();
   await setup.query(`
-    create role authenticated nologin;
-    create role anon nologin;
+    -- PostgreSQL roles are cluster-wide; the preceding A3.7 fixture may
+    -- already have created these on the same disposable service container.
+    do $roles$ begin
+      if not exists(select 1 from pg_roles where rolname='authenticated') then
+        create role authenticated nologin;
+      end if;
+      if not exists(select 1 from pg_roles where rolname='anon') then
+        create role anon nologin;
+      end if;
+    end $roles$;
     create schema auth;
     create schema private;
     create table public.profiles (id uuid primary key, role text not null, is_active boolean not null);
