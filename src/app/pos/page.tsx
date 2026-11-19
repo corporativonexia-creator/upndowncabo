@@ -424,6 +424,7 @@ export default function PosPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productQuery, setProductQuery] = useState("");
+  const [catalogKind, setCatalogKind] = useState<"all" | "physical" | "service">("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeReception, setActiveReception] = useState<ServiceReception | null>(null);
   const [receptionQuery, setReceptionQuery] = useState("");
@@ -495,22 +496,22 @@ export default function PosPage() {
         .select("id,name,sku,barcode,brand,model,price,sale_price,currency,stock,cover_image_url,status,pos_visible,category_id,is_service")
         .eq("status", "active").eq("pos_visible", true)
         .order("id").range(from, to));
-      const variants: PosVariant[] = [];
-      // Bound the parent filter and paginate below Supabase's response limit.
-      for (let offset = 0; offset < parents.length; offset += 100) {
-        const ids = parents.slice(offset, offset + 100).map(parent => parent.id);
-        const page = await readAllPages<PosVariant>((from, to) => supabase
+      // Each batch stays under the Supabase filter limit; fetch independent
+      // batches concurrently so a 400+ item catalog does not incur a waterfall.
+      const batches = Array.from({ length: Math.ceil(parents.length / 100) }, (_, index) =>
+        parents.slice(index * 100, (index + 1) * 100).map(parent => parent.id));
+      const today=caboLocalDate();
+      const [variantPages, {data:promotionRows,error:promotionError}] = await Promise.all([
+        Promise.all(batches.map(ids => readAllPages<PosVariant>((from, to) => supabase
           .from("product_variants")
           .select("id,product_id,sku,barcode,title,attributes,price,sale_price,stock,is_active")
-          .in("product_id", ids).order("id").range(from, to));
-        variants.push(...page);
-      }
-      const today=caboLocalDate();
-      const {data:promotionRows,error:promotionError}=await supabase
-        .from("pos22_promotions")
-        .select("id,title,target_type,target_value,discount_percent,starts_on,ends_on,enabled")
-        .eq("enabled",true).lte("starts_on",today).gte("ends_on",today);
+          .in("product_id", ids).order("id").range(from, to)))),
+        supabase.from("pos22_promotions")
+          .select("id,title,target_type,target_value,discount_percent,starts_on,ends_on,enabled")
+          .eq("enabled",true).lte("starts_on",today).gte("ends_on",today),
+      ]);
       if(promotionError)throw promotionError;
+      const variants = variantPages.flat();
       const campaigns=(promotionRows||[]) as ScheduledPromotion[];
       const catalog=buildPosCatalog(parents,variants).map(product=>({
         ...product,automaticPromotion:bestPromotion(product,campaigns)
@@ -570,6 +571,10 @@ export default function PosPage() {
     }
     if (!access?.open_shift_id) {
       setMessage("Abre turno de caja antes de cobrar. Para recibir equipos no hace falta turno.");
+      return;
+    }
+    if (productsLoading) {
+      setMessage("Espera a que termine de cargar el catálogo antes de cobrar una recepción.");
       return;
     }
     if (activeReception) {
@@ -1740,6 +1745,8 @@ export default function PosPage() {
   }
 
   const filteredProducts = products.filter((product) => {
+    if (catalogKind === "service" && !product.is_service) return false;
+    if (catalogKind === "physical" && product.is_service) return false;
     const query = productQuery.trim().toLowerCase();
     if (!query) return true;
     return [
@@ -1856,6 +1863,24 @@ export default function PosPage() {
         .pos-scan-strip label{grid-column:1/-1;color:#143e35;font-size:13px;font-weight:900}
         .pos-scan-strip input{min-width:0;min-height:56px;padding:12px 16px;border:1px solid #b5c9bb;border-radius:13px;font-size:17px}
         .pos-scan-strip small{color:#526f5f;font-size:11px;max-width:250px}
+        .pos-card-live{padding:16px 18px}
+        .pos-session-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 16px}
+        .pos-card-live h1{font-family:Inter,Arial,sans-serif;font-size:23px;line-height:1.2}
+        .pos-shift-indicator{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#e4f3e9;color:#185b41;font-size:12px;font-weight:900;padding:8px 12px}
+        .pos-session-inline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:8px 0 12px;color:#51645a;font-size:12px;font-weight:700}
+        .pos-session-inline small{color:#66796d;font-size:11px;font-weight:500}
+        .pos-reception-shortcut{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-bottom:12px;padding:10px;border:1px solid #d4e4d8;border-radius:12px;background:#f3f8f4}
+        .pos-reception-shortcut label{font-weight:800;font-size:12px}
+        .pos-reception-shortcut input{flex:1 1 175px;min-width:0;min-height:38px;padding:9px;border-radius:8px;border:1px solid #b5cab9}
+        .pos-reception-shortcut .pos-btn{min-height:38px;padding:7px 14px;font-size:12px}
+        .pos-reception-shortcut small{color:#66796d;font-size:11px}
+        .pos-card-live .pos-shift-summary{gap:8px;margin:0}
+        .pos-card-live .pos-shift-summary .pos-stat{padding:9px 12px}
+        .pos-card-live .pos-sales-layout{margin-top:12px}
+        .pos-catalog-filter{display:flex;gap:6px;flex-wrap:wrap;margin:8px 14px 0}
+        .pos-catalog-filter button{border:1px solid #cbd9cf;background:#f8faf8;color:#365a48;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer}
+        .pos-catalog-filter button[aria-pressed="true"]{background:#143e35;border-color:#143e35;color:white}
+        .pos-catalog-filter button:focus-visible{outline:2px solid #b7de45;outline-offset:2px}
         .pos-checkout-feedback{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;padding:16px;border:2px solid #8cc7a4;border-radius:16px;background:#e8f6ed;color:#143e35;box-shadow:0 12px 25px #143e3516}
         .pos-checkout-feedback.warning{border-color:#e8b970;background:#fff5e6;color:#56370d}
         .pos-checkout-feedback strong{display:block;font-size:18px}
@@ -1965,7 +1990,7 @@ export default function PosPage() {
         @media(min-width:901px){.pos-cart-panel{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow-y:auto;scrollbar-gutter:stable}}
         @media(max-width:900px){.pos-mobile-cart-jump{position:fixed;display:flex;justify-content:space-between;align-items:center;gap:14px;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;z-index:50;width:calc(100% - 24px);min-height:58px;padding:12px 18px;border:0;border-radius:16px;background:#143e35;color:white;box-shadow:0 12px 30px #08291eb0;cursor:pointer;text-align:left;font-size:13px;font-weight:800}.pos-mobile-cart-jump strong{font-size:19px}.pos-shell{padding-bottom:92px}}
         @media(max-width:680px){.pos-cash-tools-grid,.pos-cash-summary{grid-template-columns:1fr}.pos-shell{padding:12px}.pos-grid{grid-template-columns:1fr}.pos-stats,.pos-shift-summary{grid-template-columns:1fr}.pos-card{padding:20px}.pos-card h1{font-size:42px}.pos-products{grid-template-columns:1fr}.pos-payment-tabs{grid-template-columns:1fr 1fr}}
-        @media(max-width:680px){.pos-shell{padding-bottom:92px}.pos-scan-strip{grid-template-columns:1fr;padding:12px}.pos-scan-strip label{grid-column:1}.pos-checkout-feedback{flex-direction:column}.pos-checkout-feedback button{align-self:flex-end}}
+        @media(max-width:680px){.pos-shell{padding-bottom:92px}.pos-scan-strip{grid-template-columns:1fr;padding:12px}.pos-scan-strip label{grid-column:1}.pos-checkout-feedback{flex-direction:column}.pos-checkout-feedback button{align-self:flex-end}.pos-card-live{padding:14px}.pos-card-live h1{font-size:23px}.pos-session-heading{align-items:flex-start}.pos-session-inline{gap:5px 9px}.pos-card-live .pos-shift-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-card-live .pos-shift-summary .pos-stat{padding:7px}.pos-card-live .pos-shift-summary .pos-stat strong{font-size:12px}}
       `}</style>
 
       <div className="pos-wrap">
@@ -2048,16 +2073,27 @@ export default function PosPage() {
         ) : (
           <>
           <div className="pos-workspace-panel" id="posWorkspacePanel" role="tabpanel" aria-labelledby="posWorkspaceTab" hidden={workspaceTab !== "pos"}>
-          <section className="pos-card">
-            <div className="pos-kicker">Sesión de empleado</div>
-            <h1>Hola, {access.full_name}</h1>
-            <div className="pos-stats">
-              <div className="pos-stat"><span>Empleado</span><strong>#{access.employee_number}</strong></div>
-              <div className="pos-stat"><span>Terminal</span><strong>{access.terminal_name}</strong></div>
-              <div className="pos-stat"><span>Rol</span><strong>{roleLabel}</strong></div>
+          <section className={`pos-card ${access.open_shift_id ? "pos-card-live" : ""}`}>
+            <div className="pos-session-heading">
+              <div><div className="pos-kicker">Sesión de empleado</div><h1>Hola, {access.full_name}</h1></div>
+              {access.open_shift_id && <span className="pos-shift-indicator">● Turno abierto · POS habilitado</span>}
             </div>
+            {access.open_shift_id ? (
+              <div className="pos-session-inline">
+                <span>#{access.employee_number} · {access.terminal_name} · {roleLabel}</span>
+                <small>Inicio: {access.open_shift_started_at
+                  ? new Date(access.open_shift_started_at).toLocaleString("es-MX") : "—"}
+                  {" · "}Fondo: {money(numeric(access.opening_cash))}</small>
+              </div>
+            ) : (
+              <div className="pos-stats">
+                <div className="pos-stat"><span>Empleado</span><strong>#{access.employee_number}</strong></div>
+                <div className="pos-stat"><span>Terminal</span><strong>{access.terminal_name}</strong></div>
+                <div className="pos-stat"><span>Rol</span><strong>{roleLabel}</strong></div>
+              </div>
+            )}
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
+            {!access.open_shift_id && <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 }}>
               <button type="button" className="pos-btn secondary" onClick={() => selectWorkspaceTab("reception")}
                 style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                 🔧 Recibir equipo para servicio
@@ -2065,30 +2101,20 @@ export default function PosPage() {
               <span className="pos-muted" style={{ alignSelf: "center" }}>
                 Disponible sin abrir turno de caja · Comprobante cliente y taller
               </span>
-            </div>
+            </div>}
 
             {access.open_shift_id ? (
               <>
-                <form onSubmit={event => { event.preventDefault(); void openReceptionByFolio(receptionQuery); }}
-                  style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:9,marginBottom:16,padding:12,border:"1px solid #d4e4d8",borderRadius:12,background:"#f3f8f4"}}>
+                <form className="pos-reception-shortcut" onSubmit={event => { event.preventDefault(); void openReceptionByFolio(receptionQuery); }}>
                   <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Cobrar equipo de taller · Folio</label>
                   <input id="posServiceFolio" type="text" value={receptionQuery}
                     onChange={e => setReceptionQuery(e.target.value)} placeholder="Escanea SR-000128"
-                    maxLength={20} autoComplete="off" style={{flex:"1 1 160px",padding:9,borderRadius:8,border:"1px solid #b5cab9"}} />
-                  <button className="pos-btn secondary" type="submit" disabled={busy || receptionLoading || !!activeReception}>
+                    maxLength={20} autoComplete="off" />
+                  <button className="pos-btn secondary" type="submit" disabled={busy || receptionLoading || productsLoading || !!activeReception}>
                     {receptionLoading ? "Consultando..." : "Cargar recepción"}
                   </button>
                   <small className="pos-muted">Solo equipos «Listos para entregar». Precio pendiente hasta cobrar.</small>
                 </form>
-                <div className="pos-ready">
-                  <strong>Turno abierto · POS habilitado</strong>
-                  <span>
-                    Inicio: {access.open_shift_started_at
-                      ? new Date(access.open_shift_started_at).toLocaleString("es-MX")
-                      : "—"}{" "}
-                    · Fondo: {money(numeric(access.opening_cash))}
-                  </span>
-                </div>
 
                 <div className="pos-shift-summary">
                   <div className="pos-stat">
@@ -2113,6 +2139,13 @@ export default function PosPage() {
                         <h3>Agregar productos</h3>
                       </div>
                       <small>{productsLoading ? "Actualizando…" : `${products.length} productos`}</small>
+                    </div>
+
+                    <div className="pos-catalog-filter" role="group" aria-label="Filtrar catálogo POS">
+                      {([ ["all", "Todo"], ["physical", "Artículos"], ["service", "Servicios"] ] as const).map(([kind, label]) => (
+                        <button key={kind} type="button" aria-pressed={catalogKind === kind}
+                          onClick={() => setCatalogKind(kind)}>{label}</button>
+                      ))}
                     </div>
 
                     <div className="pos-products">

@@ -33,6 +33,10 @@ export function buildPosCatalog(parents: PosProduct[], variants: PosVariant[]): 
     byParent.set(variant.product_id, group);
   }
   return parents.filter(p => p.status === "active" && p.pos_visible !== false).flatMap(parent => {
+    // Services are sold by their parent product ID (not by synthetic "Única"
+    // variants created by catalog imports). Reception folios reference this ID,
+    // and the server requires service_unit_price without variant_id.
+    if (parent.is_service) return [{ ...parent, variant_id: null }];
     const children = byParent.get(parent.id);
     // A parent with only inactive variants is not a standalone stock item.
     if (!children?.length) return [parent];

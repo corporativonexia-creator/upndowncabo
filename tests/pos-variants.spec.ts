@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-async function openPos(page: Page) {
+async function openPos(page: Page, count = 3) {
   await page.route('https://**/*', route => route.abort());
   await page.route('**/api/pos/login', async route => {
     const response = await page.request.post('http://127.0.0.1:4319/auth/v1/token',{data:{password:'fixture-password'}});
@@ -9,7 +9,7 @@ async function openPos(page: Page) {
   await page.locator('[name=employee]').fill('QA01');
   await page.locator('[name=password]').fill('fixture-password');
   await page.getByRole('button',{name:'Entrar',exact:true}).click();
-  await expect(page.locator('.pos-product')).toHaveCount(3);
+  await expect(page.locator('.pos-product')).toHaveCount(count);
 }
 test.beforeEach(async({request})=>{
   await request.post('http://127.0.0.1:4319/__reset',{data:{}});
@@ -55,13 +55,39 @@ test('scanner appears before shift metrics, and mobile cart jump stays accessibl
   const scanner=page.locator('#posQuickSearch');
   await expect(scanner).toBeVisible();
   const scannerBox=await scanner.boundingBox();
-  const employeeBox=await page.locator('.pos-stats').boundingBox();
-  expect(scannerBox?.y).toBeLessThan(employeeBox?.y??Infinity);
+  const sessionBox=await page.locator('.pos-session-heading').boundingBox();
+  expect(scannerBox?.y).toBeLessThan(sessionBox?.y??Infinity);
   await page.locator('.pos-product').first().getByRole('button',{name:/Agregar/}).click();
   const cartJump=page.getByRole('button',{name:/Ver carrito/});
   await expect(cartJump).toBeVisible();
   await cartJump.click();
   await expect(page.locator('#posCartPanel')).toBeFocused();
+});
+
+test('a ready workshop reception selects the service parent despite its Única variant',async({page,request})=>{
+  await request.post('http://127.0.0.1:4319/__options',{data:{posServiceFixture:true,receptionFixture:true}});
+  await openPos(page,4);
+  await page.getByRole('button',{name:'Servicios',exact:true}).click();
+  await expect(page.locator('.pos-product')).toHaveCount(1);
+  await expect(page.locator('.pos-product')).toContainText('Cambio de grip');
+  await page.locator('#posServiceFolio').fill('SR-000129');
+  await page.getByRole('button',{name:'Cargar recepción'}).click();
+  await expect(page.getByText(/Recepción SR-000129 cargada/)).toBeVisible();
+  await expect(page.locator('.pos-cart-item')).toContainText('Cambio de grip');
+});
+
+test('a standalone service sends a parent ID and an explicit free price',async({page,request})=>{
+  await request.post('http://127.0.0.1:4319/__options',{data:{posServiceFixture:true}});
+  await openPos(page,4);
+  await page.getByRole('button',{name:'Servicios',exact:true}).click();
+  await page.locator('.pos-product').getByRole('button',{name:/Agregar Cambio de grip/}).click();
+  await page.getByText('Precio libre del servicio (MXN)',{exact:true}).locator('..').locator('input').fill('385');
+  await page.getByText('Efectivo recibido',{exact:true}).locator('..').locator('input').fill('400');
+  await page.getByRole('button',{name:/COBRAR/}).click();
+  await expect(page.getByText(/Venta #1 cobrada/)).toBeVisible();
+  const events=await (await request.get('http://127.0.0.1:4319/__events')).json();
+  const call=events.find((event:{path:string})=>event.path.endsWith('/pos_create_sale_v22'));
+  expect(call.body.p_items).toEqual([{product_id:'service-qa',quantity:1,service_unit_price:385}]);
 });
 
 test('a confirmed sale never becomes SALE_ERROR when history refresh fails',async({page,request})=>{

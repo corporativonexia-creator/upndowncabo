@@ -69,6 +69,13 @@ test('catalog uses variant identifiers, attributes, photo, price, visibility and
   assert.equal(buildPosCatalog([{...parent,pos_visible:false}],[v]).length,0);
   assert.equal(buildPosCatalog([parent],[])[0].id,'p');
 });
+test('POS retains a service parent even when an imported Única variant exists',()=>{
+  const service={id:'service-parent',name:'Reparación de Varilla',sku:'REP-0003',status:'active',pos_visible:true,is_service:true,currency:'MXN',stock:0};
+  const variant={id:'synthetic-variant',product_id:service.id,sku:'REP-0003-V01',title:'Única',attributes:{},price:0,sale_price:null,stock:0,is_active:true};
+  assert.deepEqual(buildPosCatalog([service],[variant]),[{...service,variant_id:null}]);
+  assert.deepEqual(buildPosCatalog([service],[{...variant,is_active:false}]),[{...service,variant_id:null}]);
+  assert.equal(buildPosCatalog([{...service,pos_visible:false}],[variant]).length,0);
+});
 test('catalog paginates past 2000 rows and propagates errors',async()=>{
   const all=Array.from({length:2301},(_,id)=>({id}));
   assert.equal((await readAllPages(async(from,to)=>({data:all.slice(from,to+1),error:null}))).length,2301);
