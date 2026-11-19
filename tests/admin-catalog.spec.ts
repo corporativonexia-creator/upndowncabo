@@ -655,7 +655,7 @@ test('A11.3 switches POS/Recepción tabs without losing the mounted cashier sess
 test('A11.3 denies workshop RPCs without POS auth and offers a login path',async({page,request})=>{
   await page.addInitScript(() => { localStorage.setItem('updown-pos-device-token-v1','terminal-qa'); });
   await page.goto('/pos/recepciones');
-  await expect(page.getByRole('alert')).toContainText('Necesitas iniciar sesión como empleado');
+  await expect(page.getByRole('alert').filter({hasText:'Necesitas iniciar sesión como empleado'})).toBeVisible();
   await expect(page.getByRole('link',{name:/Iniciar sesión/})).toHaveAttribute('href','/pos');
   const events = await (await request.get(`${fixture}/__events`)).json() as Array<{path:string}>;
   expect(events.filter(e=>e.path==='/rest/v1/rpc/pos_reception_access')).toHaveLength(0);
