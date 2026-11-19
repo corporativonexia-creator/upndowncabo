@@ -117,7 +117,7 @@ before(async()=>{
  // The disposable fixture predates real auth.sessions; only local tests use this stub.
  await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as 'select auth.uid() is not null'");
  await migrate('20261114215000_pos_service_receptions');
- await migrate('20261119204813_pos22_allow_service_with_synthetic_variants');
+ await migrate('20261119214913_pos22_allow_service_with_synthetic_variants');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
