@@ -48,3 +48,43 @@ test('out-of-stock variant cannot be added by scan or button',async({page,reques
   await expect(page.getByText(/está agotado/)).toBeVisible();
   await expect(page.getByRole('button',{name:/COBRAR/})).toBeDisabled();
 });
+
+test('scanner appears before shift metrics, and mobile cart jump stays accessible',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await openPos(page);
+  const scanner=page.locator('#posQuickSearch');
+  await expect(scanner).toBeVisible();
+  const scannerBox=await scanner.boundingBox();
+  const employeeBox=await page.locator('.pos-stats').boundingBox();
+  expect(scannerBox?.y).toBeLessThan(employeeBox?.y??Infinity);
+  await page.locator('.pos-product').first().getByRole('button',{name:/Agregar/}).click();
+  const cartJump=page.getByRole('button',{name:/Ver carrito/});
+  await expect(cartJump).toBeVisible();
+  await cartJump.click();
+  await expect(page.locator('#posCartPanel')).toBeFocused();
+});
+
+test('a confirmed sale never becomes SALE_ERROR when history refresh fails',async({page,request})=>{
+  await request.post('http://127.0.0.1:4319/__options',{data:{postCheckoutHistoryError:true}});
+  await openPos(page);
+  await page.locator('.pos-product').filter({hasText:'ROP-001-XXL'}).getByRole('button',{name:/Agregar/}).click();
+  await page.getByText('Efectivo recibido',{exact:true}).locator('..').locator('input').fill('1000');
+  await page.getByRole('button',{name:/COBRAR/}).click();
+  const confirmed=page.getByRole('alert').filter({hasText:'Venta #1 cobrada'});
+  await expect(confirmed).toBeVisible();
+  await expect(confirmed).toContainText('no vuelvas a cobrar');
+  await expect(page.getByText(/SALE_ERROR/)).toHaveCount(0);
+  const events=await (await request.get('http://127.0.0.1:4319/__events')).json();
+  expect(events.filter((event:{path:string})=>event.path.endsWith('/pos_create_sale_v22'))).toHaveLength(1);
+});
+
+test('unconfirmed sale keeps the cart and prompts to check history before retry',async({page,request})=>{
+  await request.post('http://127.0.0.1:4319/__options',{data:{posSaleError:true}});
+  await openPos(page);
+  await page.locator('.pos-product').filter({hasText:'ROP-001-XXL'}).getByRole('button',{name:/Agregar/}).click();
+  await page.getByText('Efectivo recibido',{exact:true}).locator('..').locator('input').fill('1000');
+  await page.getByRole('button',{name:/COBRAR/}).click();
+  await expect(page.getByRole('alert')).toContainText('No pudimos confirmar el resultado de la venta');
+  await expect(page.getByRole('alert')).toContainText('Revisa Ventas del turno');
+  await expect(page.locator('.pos-cart-item')).toHaveCount(1);
+});

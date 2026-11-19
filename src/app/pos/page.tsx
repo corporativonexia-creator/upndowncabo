@@ -65,6 +65,21 @@ type ShiftSale = {
   payments: ShiftPayment[];
 };
 
+type SavedCheckoutFeedback = {
+  kind: "saved";
+  saleNumber: number | null;
+  total: number;
+  change: number;
+  receptionFolio: string | null;
+  printStatus: "pending" | "printed" | "failed";
+  printNote: string;
+};
+
+type CheckoutFeedback = SavedCheckoutFeedback | {
+  kind: "unconfirmed";
+  detail: string;
+};
+
 
 type LookupSale = {
   id: string;
@@ -403,6 +418,7 @@ export default function PosPage() {
   const [deviceToken, setDeviceToken] = useState("");
   const [access, setAccess] = useState<Access | null>(null);
   const [message, setMessage] = useState("");
+  const [checkoutFeedback, setCheckoutFeedback] = useState<CheckoutFeedback | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -469,6 +485,7 @@ export default function PosPage() {
   const checkoutLock = useRef(false);
   const receptionLookupLock = useRef(false);
   const checkoutRequest = useRef<{ fingerprint: string; id: string } | null>(null);
+  const cartPanelRef = useRef<HTMLElement | null>(null);
 
   async function loadProducts() {
     setProductsLoading(true);
@@ -665,6 +682,10 @@ export default function PosPage() {
     }
 
     function handleGlobalScannerKey(event: KeyboardEvent) {
+      if (!access?.open_shift_id || workspaceTab !== "pos") {
+        resetScannerBuffer();
+        return;
+      }
       const target = event.target as HTMLElement | null;
       const tagName = target?.tagName?.toLowerCase();
       const isEditable =
@@ -713,7 +734,7 @@ export default function PosPage() {
       document.removeEventListener("keydown", handleGlobalScannerKey);
       if (resetTimer) clearTimeout(resetTimer);
     };
-  }, [products, cart, activeReception, access?.open_shift_id, deviceToken]);
+  }, [products, cart, activeReception, access?.open_shift_id, deviceToken, workspaceTab]);
 
   function addToCart(product: Product) {
     if (activeReception?.service_product_id === (product.parent_id || product.id)) {
@@ -870,7 +891,9 @@ export default function PosPage() {
     checkoutLock.current = true;
     setBusy(true);
     setMessage("");
+    setCheckoutFeedback(null);
 
+    let confirmedSale: SavedCheckoutFeedback | null = null;
     try {
       const fingerprint = JSON.stringify([access.open_shift_id, activeReception?.id || null, items, payments, approvalToken]);
       if (checkoutRequest.current?.fingerprint !== fingerprint) {
@@ -895,8 +918,25 @@ export default function PosPage() {
         sale_number?: number;
         total?: number | string;
       } | null;
+      if (!result || !Number.isInteger(result.sale_number) || Number(result.sale_number) <= 0 ||
+          !Number.isFinite(numeric(result.total))) {
+        throw new Error("La respuesta no confirmó un folio de venta válido. Consulta Ventas del turno antes de reintentar.");
+      }
 
       const change = numeric(cashApplied)>0 ? Math.max(0,parseMoneyText(cashReceived)-numeric(cashApplied)) : 0;
+
+      // This is the authoritative success boundary. Anything after this point
+      // (history refresh, PDF lookup or local printer) must not report SALE_ERROR.
+      confirmedSale = {
+        kind: "saved",
+        saleNumber: result?.sale_number ?? null,
+        total: numeric(result?.total ?? total),
+        change,
+        receptionFolio: activeReception ? receptionFolio(activeReception.receipt_number) : null,
+        printStatus: "pending",
+        printNote: "Actualizando el comprobante y enviando a imprimir…",
+      };
+      setCheckoutFeedback(confirmedSale);
 
       checkoutRequest.current = null;
       setActiveReception(null);
@@ -911,48 +951,49 @@ export default function PosPage() {
       setMixedAmounts({cash:"",card_terminal:"",transfer:"",other:""});
       setMixedReferences({cash:"",card_terminal:"",transfer:"",other:""});
 
-      // Refrescamos el turno para obtener la venta recién confirmada por Supabase.
-      // No imprimimos antes de esta confirmación para evitar tickets de ventas fallidas.
-      await Promise.all([loadProducts(), loadAccess(deviceToken)]);
+      // Refresh and printing happen after the sale was committed. An error here
+      // cannot turn a successful charge into an unconfirmed charge in the UI.
+      let completedSale: ShiftSale | undefined;
+      try {
+        await Promise.all([loadProducts(), loadAccess(deviceToken)]);
+        const { data: refreshedData, error: refreshedError } = await supabase.rpc(
+          "pos_get_current_shift_sales",
+          { p_device_token: deviceToken },
+        );
+        if (refreshedError) throw refreshedError;
 
-      const { data: refreshedData, error: refreshedError } = await supabase.rpc(
-        "pos_get_current_shift_sales",
-        { p_device_token: deviceToken },
-      );
-      if (refreshedError) throw refreshedError;
-
-      const refreshedPayload = refreshedData as {
-        sales?: ShiftSale[];
-        cash_movements?: CashMovement[];
-        cash_in?: number | string;
-        cash_out?: number | string;
-        cash_refunds?: number | string;
-        expected_cash?: number | string;
-      } | null;
-
-      const refreshedSales = Array.isArray(refreshedPayload?.sales)
-        ? refreshedPayload!.sales!
-        : [];
-      setShiftSales(refreshedSales);
-      setCashMovements(
-        Array.isArray(refreshedPayload?.cash_movements)
-          ? refreshedPayload!.cash_movements!
-          : [],
-      );
-      setCashIn(numeric(refreshedPayload?.cash_in));
-      setCashOut(numeric(refreshedPayload?.cash_out));
-      setCashRefunds(numeric(refreshedPayload?.cash_refunds));
-      setExpectedCashServer(
-        refreshedPayload?.expected_cash == null
-          ? null
-          : numeric(refreshedPayload.expected_cash),
-      );
-
-      const completedSale = refreshedSales.find(
-        (sale) => sale.sale_number === result?.sale_number,
-      );
+        const refreshedPayload = refreshedData as {
+          sales?: ShiftSale[];
+          cash_movements?: CashMovement[];
+          cash_in?: number | string;
+          cash_out?: number | string;
+          cash_refunds?: number | string;
+          expected_cash?: number | string;
+        } | null;
+        const refreshedSales = Array.isArray(refreshedPayload?.sales)
+          ? refreshedPayload.sales
+          : [];
+        setShiftSales(refreshedSales);
+        setCashMovements(Array.isArray(refreshedPayload?.cash_movements)
+          ? refreshedPayload.cash_movements : []);
+        setCashIn(numeric(refreshedPayload?.cash_in));
+        setCashOut(numeric(refreshedPayload?.cash_out));
+        setCashRefunds(numeric(refreshedPayload?.cash_refunds));
+        setExpectedCashServer(refreshedPayload?.expected_cash == null
+          ? null : numeric(refreshedPayload.expected_cash));
+        completedSale = refreshedSales.find(sale => sale.sale_number === result?.sale_number);
+      } catch (refreshError) {
+        console.warn("POS receipt refresh after confirmed sale", refreshError);
+        setCheckoutFeedback({
+          ...confirmedSale,
+          printStatus: "failed",
+          printNote: "La venta ya quedó registrada, pero no pudimos actualizar el historial ni imprimir el ticket. Consulta la venta antes de reimprimir; no vuelvas a cobrar.",
+        });
+        return;
+      }
 
       let printNote = "";
+      let printStatus: SavedCheckoutFeedback["printStatus"] = "failed";
       if (completedSale) {
         try {
           const bridgeResponse = await fetch("http://127.0.0.1:18181/print-sale", {
@@ -968,25 +1009,25 @@ export default function PosPage() {
             );
           }
 
-          printNote = " - Impresion OK: cliente + comercio + cajon.";
+          printStatus = "printed";
+          printNote = "Comando de impresión enviado: cliente, comercio y cajón.";
         } catch (printError) {
-          printNote = ` - VENTA GUARDADA, PERO NO SE IMPRIMIO. Verifica POS-80C y Print Bridge. ${readableError(printError)}`;
+          console.warn("POS printer unavailable after confirmed sale", printError);
+          printNote = "La venta está registrada, pero no se pudo imprimir. Verifica la POS-80C y reimprime desde Ventas del turno; no vuelvas a cobrar.";
         }
       } else {
-        printNote = " - Venta guardada; no se encontro el comprobante para impresion automatica.";
+        printNote = "La venta está registrada, pero el comprobante aún no aparece en Ventas del turno. Actualiza el historial antes de reimprimir; no vuelvas a cobrar.";
       }
-      setMessage(
-        `${activeReception ? "Recepción " + receptionFolio(activeReception.receipt_number) + " cobrada y entregada · " : ""}Venta #${result?.sale_number ?? "—"} cobrada por ${money(
-          numeric(result?.total ?? total),
-        )}${
-          numeric(cashApplied)>0 && change > 0
-            ? ` · Cambio ${money(change)}`
-            : ""
-        }.${printNote}`,
-      );
+      setCheckoutFeedback({ ...confirmedSale, printStatus, printNote });
     } catch (error) {
-      setMessage(`SALE_ERROR: ${readableError(error)}`);
-      await loadProducts();
+      if (confirmedSale) {
+        console.warn("POS post-checkout error after confirmed sale", error);
+        setCheckoutFeedback({ ...confirmedSale, printStatus: "failed",
+          printNote: "La venta ya quedó registrada. Ocurrió un error al preparar el comprobante; consulta el historial antes de reimprimir y no vuelvas a cobrar." });
+      } else {
+        setCheckoutFeedback({ kind: "unconfirmed", detail: readableError(error) });
+        await loadProducts();
+      }
     } finally {
       checkoutLock.current = false;
       setBusy(false);
@@ -1811,6 +1852,15 @@ export default function PosPage() {
         .pos-btn{min-height:50px;padding:12px 18px;border:0;border-radius:999px;background:#143e35;color:#fff;font-weight:800;cursor:pointer}
         .pos-btn.secondary{background:#fff;color:#143e35;border:1px solid rgba(20,62,53,.16)}
         .pos-btn:disabled{opacity:.5;cursor:not-allowed}
+        .pos-scan-strip{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 14px;align-items:center;padding:16px;margin-bottom:16px;border:2px solid #b7d3bd;border-radius:20px;background:#fff;box-shadow:0 12px 30px #143e3512}
+        .pos-scan-strip label{grid-column:1/-1;color:#143e35;font-size:13px;font-weight:900}
+        .pos-scan-strip input{min-width:0;min-height:56px;padding:12px 16px;border:1px solid #b5c9bb;border-radius:13px;font-size:17px}
+        .pos-scan-strip small{color:#526f5f;font-size:11px;max-width:250px}
+        .pos-checkout-feedback{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px;padding:16px;border:2px solid #8cc7a4;border-radius:16px;background:#e8f6ed;color:#143e35;box-shadow:0 12px 25px #143e3516}
+        .pos-checkout-feedback.warning{border-color:#e8b970;background:#fff5e6;color:#56370d}
+        .pos-checkout-feedback strong{display:block;font-size:18px}
+        .pos-checkout-feedback p{margin:7px 0 0;font-size:13px;line-height:1.55}
+        .pos-checkout-feedback button{border:1px solid currentColor;border-radius:999px;background:transparent;color:inherit;font-weight:800;padding:9px 13px;cursor:pointer;white-space:nowrap}
         .pos-workspace-tabs{display:flex;gap:5px;margin-bottom:16px;padding:6px;border-radius:16px;background:#eaf1ed;border:1px solid #d2dfd5}
         .pos-workspace-tabs button{flex:1;min-height:48px;border:0;background:transparent;color:#355a49;font:800 14px Inter,Arial,sans-serif;border-radius:11px;cursor:pointer}
         .pos-workspace-tabs button[aria-selected="true"]{background:#143e35;color:#fff;box-shadow:0 4px 12px #143e3526}
@@ -1827,6 +1877,7 @@ export default function PosPage() {
         .pos-note{margin-top:16px;padding:13px;border-left:3px solid #c8a86b;background:#f7f2e8;border-radius:0 12px 12px 0;color:#143e35;font-size:11px;line-height:1.6}
         .pos-sales-layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);gap:16px;margin-top:16px}
         .pos-panel{border:1px solid rgba(20,62,53,.12);border-radius:20px;background:#fff;overflow:hidden}
+        .pos-mobile-cart-jump{display:none}
         .pos-panel-head{padding:16px 18px;border-bottom:1px solid rgba(20,62,53,.1);display:flex;align-items:center;justify-content:space-between;gap:12px}
         .pos-panel-head h3{margin:0;font-size:18px;color:#143e35}
         .pos-search{width:100%;min-height:44px;padding:10px 13px;border:1px solid rgba(20,62,53,.16);border-radius:12px;background:#fff;font-size:15px}
@@ -1911,7 +1962,10 @@ export default function PosPage() {
         .pos-money-input input{width:100%;padding-right:72px;font-variant-numeric:tabular-nums}
         .pos-money-code{position:absolute;right:18px;font-size:12px;font-weight:800;letter-spacing:.08em;color:#48635b;pointer-events:none}
         @media(max-width:900px){.pos-sales-layout{grid-template-columns:1fr}.pos-products{max-height:none}}
+        @media(min-width:901px){.pos-cart-panel{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow-y:auto;scrollbar-gutter:stable}}
+        @media(max-width:900px){.pos-mobile-cart-jump{position:fixed;display:flex;justify-content:space-between;align-items:center;gap:14px;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;z-index:50;width:calc(100% - 24px);min-height:58px;padding:12px 18px;border:0;border-radius:16px;background:#143e35;color:white;box-shadow:0 12px 30px #08291eb0;cursor:pointer;text-align:left;font-size:13px;font-weight:800}.pos-mobile-cart-jump strong{font-size:19px}.pos-shell{padding-bottom:92px}}
         @media(max-width:680px){.pos-cash-tools-grid,.pos-cash-summary{grid-template-columns:1fr}.pos-shell{padding:12px}.pos-grid{grid-template-columns:1fr}.pos-stats,.pos-shift-summary{grid-template-columns:1fr}.pos-card{padding:20px}.pos-card h1{font-size:42px}.pos-products{grid-template-columns:1fr}.pos-payment-tabs{grid-template-columns:1fr 1fr}}
+        @media(max-width:680px){.pos-shell{padding-bottom:92px}.pos-scan-strip{grid-template-columns:1fr;padding:12px}.pos-scan-strip label{grid-column:1}.pos-checkout-feedback{flex-direction:column}.pos-checkout-feedback button{align-self:flex-end}}
       `}</style>
 
       <div className="pos-wrap">
@@ -1920,12 +1974,51 @@ export default function PosPage() {
           <span>PUNTO DE VENTA · LOS CABOS</span>
         </header>
 
+        {checkoutFeedback && (
+          <section className={`pos-checkout-feedback ${checkoutFeedback.kind === "unconfirmed" || checkoutFeedback.printStatus === "failed" ? "warning" : ""}`}
+            role={checkoutFeedback.kind === "unconfirmed" || checkoutFeedback.printStatus === "failed" ? "alert" : "status"}>
+            <div>
+              {checkoutFeedback.kind === "saved" ? (
+                <>
+                  <strong>{checkoutFeedback.receptionFolio ? `Recepción ${checkoutFeedback.receptionFolio} · ` : ""}
+                    Venta #{checkoutFeedback.saleNumber ?? "—"} cobrada por {money(checkoutFeedback.total)}</strong>
+                  {checkoutFeedback.change > 0 && <p><strong>Cambio: {money(checkoutFeedback.change)}</strong></p>}
+                  <p>{checkoutFeedback.printNote}</p>
+                </>
+              ) : (
+                <>
+                  <strong>No pudimos confirmar el resultado de la venta</strong>
+                  <p>Revisa Ventas del turno antes de intentar cobrar nuevamente. {checkoutFeedback.detail}</p>
+                </>
+              )}
+            </div>
+            <button type="button" onClick={() => setCheckoutFeedback(null)}>Entendido</button>
+          </section>
+        )}
+        {message && <div className="pos-message" role="status">{message}</div>}
+
         {access && (
           <div className="pos-workspace-tabs" role="tablist" aria-label="Módulos del punto de venta">
             <button type="button" role="tab" id="posWorkspaceTab" aria-controls="posWorkspacePanel"
               aria-selected={workspaceTab === "pos"} onClick={() => selectWorkspaceTab("pos")}>🛒 POS</button>
             <button type="button" role="tab" id="receptionWorkspaceTab" aria-controls="receptionWorkspacePanel"
               aria-selected={workspaceTab === "reception"} onClick={() => selectWorkspaceTab("reception")}>🔧 Recepción de equipos</button>
+          </div>
+        )}
+        {access?.open_shift_id && workspaceTab === "pos" && (
+          <div className="pos-scan-strip" role="search" aria-label="Búsqueda rápida de productos">
+            <label htmlFor="posQuickSearch">Escanea un código o busca un producto</label>
+            <input id="posQuickSearch" value={productQuery}
+              onChange={event => setProductQuery(event.target.value)}
+              onKeyDown={event => {
+                if (event.key !== "Enter") return;
+                const code = event.currentTarget.value.trim();
+                if (!products.some(product => product.barcode?.trim() === code)) return;
+                event.preventDefault();
+                handleBarcodeScan(code);
+              }}
+              placeholder="Escanea código o busca producto, SKU, marca o modelo…" autoComplete="off" autoFocus />
+            <small>{productsLoading ? "Actualizando catálogo…" : `${products.length} artículos disponibles · Enter para escanear UPC`}</small>
           </div>
         )}
         {!access ? (
@@ -2022,30 +2115,6 @@ export default function PosPage() {
                       <small>{productsLoading ? "Actualizando…" : `${products.length} productos`}</small>
                     </div>
 
-                    <div style={{ padding: "12px 12px 0" }}>
-                      <input
-                        className="pos-search"
-                        value={productQuery}
-                        onChange={(event) => setProductQuery(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key !== "Enter") return;
-
-                          const code = event.currentTarget.value.trim();
-                          const barcodeMatch = products.some(
-                            (product) => product.barcode?.trim() === code,
-                          );
-
-                          if (!barcodeMatch) return;
-
-                          event.preventDefault();
-                          handleBarcodeScan(code);
-                        }}
-                        placeholder="Escanea código o busca producto, SKU, marca o modelo…"
-                        autoComplete="off"
-                        autoFocus
-                      />
-                    </div>
-
                     <div className="pos-products">
                       {filteredProducts.map((product) => {
                         const stock = numeric(product.stock);
@@ -2097,7 +2166,7 @@ export default function PosPage() {
                     </div>
                   </section>
 
-                  <aside className="pos-panel">
+                  <aside className="pos-panel pos-cart-panel" id="posCartPanel" ref={cartPanelRef} tabIndex={-1}>
                     <div className="pos-panel-head">
                       <div>
                         <div className="pos-kicker">Venta actual</div>
@@ -2977,6 +3046,13 @@ export default function PosPage() {
 
             <button className="pos-btn secondary" style={{marginTop:16}} onClick={()=>logout()} type="button">Cerrar sesión</button>
           </section>
+          {access.open_shift_id && cart.length > 0 && (
+            <button type="button" className="pos-mobile-cart-jump" aria-controls="posCartPanel"
+              onClick={() => { cartPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); cartPanelRef.current?.focus({ preventScroll: true }); }}>
+              <span>🛒 Ver carrito · {cart.reduce((sum, item) => sum + item.quantity, 0)} piezas</span>
+              <strong>{money(cartSubtotal)} ↑</strong>
+            </button>
+          )}
           </div>
           <div className="pos-workspace-panel" id="receptionWorkspacePanel" role="tabpanel" aria-labelledby="receptionWorkspaceTab" hidden={workspaceTab !== "reception"}>
             {receptionVisited && <ServiceRecepcionesPage embedded
@@ -2986,7 +3062,6 @@ export default function PosPage() {
           </>
         )}
 
-        {message && <div className="pos-message" role="status">{message}</div>}
       </div>
     </main>
   );

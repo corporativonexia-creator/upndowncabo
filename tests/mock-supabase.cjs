@@ -163,8 +163,13 @@ http.createServer(async(req,res)=>{
   }
   if(url.pathname==='/rest/v1/rpc/pos_is_session_active')return send(true);
   if(url.pathname==='/rest/v1/rpc/pos_get_my_access')return send({employee_id:'employee-qa',employee_number:'QA01',full_name:'QA Cashier',employee_role:'pos_admin',employee_status:'active',terminal_id:'terminal-qa',terminal_name:'QA Terminal',terminal_authorized:true,open_shift_id:'shift-qa',opening_cash:500});
-  if(url.pathname==='/rest/v1/rpc/pos_get_current_shift_sales')return send({sales:[],cash_movements:[],cash_in:0,cash_out:0,cash_refunds:0,expected_cash:500});
+  if(url.pathname==='/rest/v1/rpc/pos_get_current_shift_sales'){
+    if(options.postCheckoutHistoryError&&events.some(event=>event.path==='/rest/v1/rpc/pos_create_sale_v22'))
+      return send({code:'FIXTURE_POST_CHECKOUT',message:'Shift history temporarily unavailable'},503);
+    return send({sales:[],cash_movements:[],cash_in:0,cash_out:0,cash_refunds:0,expected_cash:500});
+  }
   if(url.pathname==='/rest/v1/rpc/pos_create_sale_v22'){
+    if(options.posSaleError)return send({code:'FIXTURE_SALE_ERROR',message:'Sale confirmation unavailable'},503);
     const i=body.p_items[0],v=variants.find(v=>v.id===i.variant_id);
     if(v)v.stock-=i.quantity;
     return send({ok:true,sale_id:'sale-qa',sale_number:1,total:body.p_payments[0].amount});
