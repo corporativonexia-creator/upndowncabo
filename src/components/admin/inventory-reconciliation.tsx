@@ -48,7 +48,10 @@ export default function InventoryReconciliation(){
       setReport(reconcileInventoryPos(data.rows as InventorySnapshotRow[],parents,variants));
     }catch(cause){
       setReport(null);
-      setError(cause instanceof Error?cause.message:"No se pudo completar la comparación. Revisa permisos y conexión.");
+      // Supabase PostgREST errors are plain objects, not Error instances.
+      const message=cause instanceof Error?cause.message:
+        cause&&typeof cause==="object"&&"message" in cause&&typeof cause.message==="string"?cause.message:"";
+      setError(message||"No se pudo completar la comparación. Revisa permisos y conexión.");
     }finally{setLoading(false);}
   }
 
