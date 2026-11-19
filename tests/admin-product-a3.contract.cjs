@@ -301,3 +301,21 @@ test("A8.2 workshop status filters and selected details reuse read-only authoriz
   assert.equal((page.match(/db\.rpc\("pos_reception_create"/g)||[]).length,1);
   assert.equal((page.match(/db\.rpc\("pos_reception_set_ready"/g)||[]).length,1);
 });
+
+test("A9.1 orders are lazy and seller-note observer cannot refresh itself", () => {
+  const legacy=read("public/updown-admin-legacy-runtime.js");
+  const comms=read("public/updown-h63-order-comms.js");
+  assert.equal((legacy.match(/await Promise\.all\(\[loadCategories\(\),loadProducts\(\)\]\)/g)||[]).length,2);
+  assert.match(legacy,/if\(request!==ordersRequest\)return/);
+  assert.match(legacy,/if\(!showProducts\)\{\s*loadOrders\(\)/);
+  assert.match(comms,/function ordersVisible\(\)/);
+  assert.match(comms,/if \(!ordersVisible\(\)\) return Promise\.resolve\(\)/);
+  assert.match(comms,/if \(currentLoad\) \{/);
+  assert.match(comms,/observer\.observe\(root, \{ childList: true, subtree: false \}\)/);
+  assert.match(comms,/document\.getElementById\("udOrdersTab"\)\?\.addEventListener\("click", activateOrders\)/);
+  assert.match(comms,/if \(ordersVisible\(\)\) void loadOrders\(\)/);
+  assert.match(comms,/void subscribeRealtime\(\)/);
+  assert.doesNotMatch(comms,/observer\.observe\(root, \{ childList: true, subtree: true \}\)/);
+  assert.match(comms,/client\.rpc\("acknowledge_order_note", \{/);
+  assert.match(legacy,/\.update\(\{order_status:newStatus\}\)/);
+});

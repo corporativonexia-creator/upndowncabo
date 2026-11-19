@@ -35,6 +35,20 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/auth/v1/logout')return send({});
   if(url.pathname==='/rest/v1/profiles')return send({id:user.id,role:'admin',is_active:true,full_name:'Fixture Admin'});
   if(url.pathname==='/rest/v1/categories')return send([{id:'c1',name:'Ropa',sort_order:1,is_active:true,variant_schema:['talla','color']},{id:'c2',name:'Palos',sort_order:2,is_active:true,variant_schema:['mano','loft','flex']},{id:'c3',name:'Calzado',sort_order:3,is_active:true,variant_schema:['talla']}]);
+  if(url.pathname==='/rest/v1/orders'&&options.ordersFixture){
+    if(req.method!=='GET')return send({code:'42501',message:'Fixture orders is read-only'},403);
+    return send([{id:'order-qa-1',order_number:73,customer_name:'Cliente Pedido QA',
+      customer_email:'cliente@example.test',customer_phone:'6240000000',currency:'MXN',
+      subtotal:100,total:100,payment_status:'paid',order_status:'processing',
+      affiliate_seller_id:'seller-qa',seller_ref:'AFF-QA',affiliate_commission_rate:10,
+      affiliate_commission_amount:10,created_at:'2026-11-18T12:00:00Z',
+      order_items:[{id:'item-qa',product_name:'Putter de prueba',sku:'PAL-QA',quantity:1,unit_price:100,line_total:100}],
+      order_activity_log:[{id:'note-qa-1',event_type:'note',title:'Nota de vendedor',details:'Nota sintética sin impacto comercial',
+        actor_role:'seller',target_role:'admin',acknowledged_at:null,created_by_email:'vendedor@example.test',
+        created_at:'2026-11-18T12:05:00Z'}],
+      affiliate_seller:{id:'seller-qa',code:'AFF-QA',name:'Vendedor ficticio',email:'vendedor@example.test'}
+    }]);
+  }
   if(url.pathname==='/rest/v1/rpc/admin_inventory_catalog')return send({rows:variants.map(v=>{
     const product=products.find(p=>p.id===v.product_id);
     return {product_id:v.product_id,product_name:product?.name||'Producto',variant_id:v.id,

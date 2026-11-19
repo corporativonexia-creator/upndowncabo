@@ -9,6 +9,14 @@
   let cache = [];
   let observer = null;
   let refreshTimer = null;
+  let currentLoad = null;
+  let refreshQueued = false;
+  let realtimeStarted = false;
+
+  function ordersVisible() {
+    const view = document.getElementById("udOrdersView");
+    return Boolean(view && !view.classList.contains("u-hidden") && !document.hidden);
+  }
 
   function esc(value = "") {
     return String(value)
@@ -99,12 +107,18 @@
     return db;
   }
 
-  async function loadOrders() {
-    try {
-      const client = await getDb();
-      const { data, error } = await client
-        .from("orders")
-        .select(`
+  function loadOrders() {
+    if (!ordersVisible()) return Promise.resolve();
+    if (currentLoad) {
+      refreshQueued = true;
+      return currentLoad;
+    }
+    currentLoad = (async () => {
+      try {
+        const client = await getDb();
+        const { data, error } = await client
+          .from("orders")
+          .select(`
           id,
           order_number,
           customer_name,
@@ -123,15 +137,23 @@
             acknowledged_at,
             acknowledged_by
           )
-        `)
-        .order("created_at", { ascending: false });
+          `)
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      cache = data || [];
-      decorateCards();
-    } catch (error) {
-      console.error("H63 admin communication load", error);
-    }
+        if (error) throw error;
+        cache = data || [];
+        decorateCards();
+      } catch (error) {
+        console.error("H63 admin communication load", error);
+      }
+    })().finally(() => {
+      currentLoad = null;
+      if (refreshQueued) {
+        refreshQueued = false;
+        if (ordersVisible()) void loadOrders();
+      }
+    });
+    return currentLoad;
   }
 
   function extractOrderNumber(card) {
@@ -297,11 +319,14 @@
     if (!root || observer) return;
 
     observer = new MutationObserver(() => {
+      if (!ordersVisible()) return;
       clearTimeout(refreshTimer);
       refreshTimer = setTimeout(() => decorateCards(), 80);
     });
 
-    observer.observe(root, { childList: true, subtree: true });
+    // Legacy renderOrders replaces the root cards; decorating card interiors
+    // must not recursively trigger this observer.
+    observer.observe(root, { childList: true, subtree: false });
   }
 
   async function subscribeRealtime() {
@@ -341,10 +366,23 @@
     }
 
     observe();
-    await loadOrders();
-    await subscribeRealtime();
-
-    setInterval(loadOrders, 30000);
+    function activateOrders() {
+      if (!ordersVisible()) return;
+      if (!realtimeStarted) {
+        realtimeStarted = true;
+        void subscribeRealtime();
+      }
+      void loadOrders();
+    }
+    document.getElementById("udOrdersTab")?.addEventListener("click", activateOrders);
+    document.getElementById("udRefreshOrders")?.addEventListener("click", () => void loadOrders());
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) activateOrders();
+    });
+    activateOrders();
+    setInterval(() => {
+      if (ordersVisible()) void loadOrders();
+    }, 30000);
   }
 
   boot().catch((error) => console.error("H63 admin boot", error));

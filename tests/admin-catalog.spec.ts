@@ -201,6 +201,34 @@ test('A8.2 refreshes the selected receipt status from authorized history without
     ['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
+test('A9.1 orders and seller notes load only when opened without observer reload loops',async({page,request})=>{
+  await configure(request,{ordersFixture:true});
+  await login(page);await ready(page);
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  const reads=async()=>(await events()).filter(e=>e.path==='/rest/v1/orders'&&e.method==='GET').length;
+  expect(await reads()).toBe(0);
+
+  await page.locator('[data-sidebar-section="sales"] summary').click();
+  await page.locator('#udOrdersTab').click();
+  await expect(page.locator('#udOrdersView')).toBeVisible();
+  await expect(page.locator('#udOrdersList .u-order-card')).toHaveCount(1);
+  await expect(page.locator('#udOrdersList .h63-admin-comms')).toHaveCount(1);
+  await expect(page.locator('#udOrdersList .h63-admin-comms')).toContainText('Nota sintética sin impacto comercial');
+  await expect.poll(reads).toBe(2); // One legacy projection and one seller-note projection.
+  await page.waitForTimeout(300);
+  expect(await reads()).toBe(2); // Decorating the cards cannot trigger its own observer again.
+
+  await page.getByRole('button',{name:'Actualizar pedidos'}).click();
+  await expect.poll(reads).toBe(4);
+  await page.locator('[data-sidebar-section="products"] summary').click();
+  await page.locator('#udProductsTab').click();
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  await page.waitForTimeout(220);
+  expect(await reads()).toBe(4);
+  expect((await events()).filter(e=>e.path==='/rest/v1/orders'&&e.method!=='GET')).toHaveLength(0);
+  expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

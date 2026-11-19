@@ -15,6 +15,7 @@
   const el=id=>document.getElementById(id);
   let products=[];
   let orders=[];
+  let ordersRequest=0;
   let productGalleryState=[];
   let productGalleryInitialSignature="";
   let currentProductSpecifications={};
@@ -70,7 +71,8 @@
     el("udDashboard").classList.remove("u-hidden");
     el("udLogout").classList.remove("u-hidden");
     el("udSessionLabel").textContent=`Sesión activa: ${email}`;
-    await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
+    // A9.1: orders and their historical activity are only needed in Pedidos.
+    await Promise.all([loadCategories(),loadProducts()]);
   }
 
   // Server-side requireRole("admin") has already verified the user before
@@ -82,7 +84,7 @@
     el("udLogout").classList.remove("u-hidden");
     el("udSessionLabel").textContent="Sesión de administrador";
     try{
-      await Promise.all([loadCategories(),loadProducts(),loadOrders()]);
+      await Promise.all([loadCategories(),loadProducts()]);
     }catch(error){
       console.error("Error cargando panel administrativo",error);
       showToast("No se pudieron cargar algunos datos. Actualiza la página.",true);
@@ -290,6 +292,7 @@
   }
 
   async function loadOrders(){
+    const request=++ordersRequest;
     el("udOrdersList").innerHTML='<div class="u-empty">Cargando pedidos…</div>';
 
     const {data,error}=await db
@@ -343,6 +346,7 @@
       `)
       .order("created_at",{ascending:false});
 
+    if(request!==ordersRequest)return;
     if(error){
       el("udOrdersList").innerHTML=`<div class="u-empty">${escapeHtml(error.message)}</div>`;
       return;
