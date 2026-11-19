@@ -284,3 +284,20 @@ test("A8.1 reception history is debounced and stale-safe without changing servic
   }
   assert.match(styles,/\.shell\{min-height:100vh;background:#f6f8f6/);
 });
+
+test("A8.2 workshop status filters and selected details reuse read-only authorized history", () => {
+  const page=read("src/app/pos/recepciones/page.tsx");
+  const styles=read("src/app/pos/recepciones/receptions.module.css");
+  assert.match(page,/type ReceptionFilter = "all" \| ServiceReception\["status"\]/);
+  assert.match(page,/receptions\.filter\(row => row\.status === statusFilter\)/);
+  assert.match(page,/aria-label="Filtrar por estado en resultados"/);
+  assert.match(page,/aria-label="Detalle de recepción"/);
+  assert.match(page,/rows\.find\(row => row\.id === previous\?\.id\) \|\| previous/);
+  assert.match(page,/selected\.work_description/);
+  assert.match(page,/selected\.condition_notes/);
+  assert.match(page,/selected\.accessories/);
+  assert.match(styles,/\.filterGroup\{/);
+  assert.equal((page.match(/db\.rpc\("pos_reception_recent"/g)||[]).length,2);
+  assert.equal((page.match(/db\.rpc\("pos_reception_create"/g)||[]).length,1);
+  assert.equal((page.match(/db\.rpc\("pos_reception_set_ready"/g)||[]).length,1);
+});

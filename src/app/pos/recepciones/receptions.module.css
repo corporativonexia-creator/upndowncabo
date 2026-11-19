@@ -26,6 +26,27 @@
 .saved{padding:15px;background:#eff8f2;border:1px solid #b7dccc;border-radius:14px;margin:18px 0}
 .saved strong{display:block;font-size:23px;color:#17493a}
 .saved small{display:block;font-size:12px;color:#48745c;margin-top:5px}
+.filterGroup{display:flex;flex-wrap:wrap;gap:6px;margin-top:15px}
+.filterButton{border:1px solid #cbdcd1;background:#fff;color:#315a46;border-radius:20px;padding:7px 10px;min-height:34px;font-size:11px;font-weight:800;cursor:pointer}
+.filterButton span{margin-left:3px;font-variant-numeric:tabular-nums;opacity:.75}
+.filterButton:hover{background:#f0f7ee}
+.filterButton:focus-visible{outline:2px solid #2f7058;outline-offset:2px}
+.filterActive{background:#123d32;color:#fff;border-color:#123d32}
+.filterActive:hover{background:#205c47}
+.filterHint{font-size:11px;color:#657a6e;margin:7px 0 0;line-height:1.4}
+.selectedHeading{display:flex;align-items:start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.selectedHeading .statusTag{margin-top:2px;font-size:11px}
+.selectedLabel{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#4d7862;margin-bottom:3px}
+.selectedSummary{font-size:12px;color:#476e5a;line-height:1.45;margin:8px 0}
+.selectedDetails{border-top:1px solid #cde1d0;margin-top:10px;padding-top:10px;font-size:12px;color:#244b38}
+.selectedDetails summary{cursor:pointer;font-weight:800;line-height:1.4}
+.selectedDetails summary:focus-visible{outline:2px solid #2f7058;outline-offset:2px}
+.selectedDetails dl{margin:10px 0 0;display:grid;gap:8px}
+.selectedDetails dl div{display:grid;gap:3px}
+.selectedDetails dt{font-weight:800;color:#3b6b50;font-size:11px}
+.selectedDetails dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.saved .actions{margin-top:12px}
+.saved .primary,.saved .secondary{font-size:12px}
 .list{display:grid;gap:10px;margin-top:13px}
 .item{width:100%;text-align:left;background:#fff;border:1px solid #dce4dd;border-radius:14px;padding:12px;cursor:pointer;color:#1a4839}
 .item:hover{border-color:#529779;background:#f7fbf8}

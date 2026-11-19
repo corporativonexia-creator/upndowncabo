@@ -54,6 +54,10 @@ http.createServer(async(req,res)=>{
         service_name:'Cambio de grip',work_description:'Cambiar grip',condition_notes:'Buen estado',accessories:'Ninguno',
         employee_number:'QA01',employee_name:'Cajero ficticio',terminal_name:'Terminal ficticia',received_at:'2026-11-18T12:01:00Z'}
     ];
+    if(options.receptionTrackingFixture)rows.push({...rows[1],id:'reception-qa-3',receipt_number:130,
+      status:'delivered',checkout_sale_id:'sale-qa-delivered',customer_name:'Cliente Entregado',
+      equipment_description:'Hierros de prueba'});
+    if(options.receptionTrackingPutterDelivered)Object.assign(rows[1],{status:'delivered',checkout_sale_id:'sale-qa-putter'});
     const search=String(body.p_search||'').toLowerCase();
     if(options.receptionRaceFixture&&search==='driver'){
       await new Promise(resolve=>setTimeout(resolve,700));

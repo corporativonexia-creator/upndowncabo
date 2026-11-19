@@ -148,6 +148,59 @@ test('A8.1 denied workshop history reads retain previous visible records and sho
   await expect(list.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
 });
 
+test('A8.2 filters reception status locally and keeps the selected workshop detail beside history',async({page,request})=>{
+  await configure(request,{receptionFixture:true,receptionTrackingFixture:true});
+  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await page.goto('/pos/recepciones');
+  const list=page.locator('aside');
+  const filters=list.getByRole('group',{name:'Filtrar por estado en resultados'});
+  await expect(filters.getByRole('button',{name:'Todas 3'})).toHaveAttribute('aria-pressed','true');
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  await filters.getByRole('button',{name:'Listas 1'}).click();
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toHaveCount(0);
+  await expect(list.getByRole('button',{name:/Cliente Entregado/})).toHaveCount(0);
+  await list.getByRole('button',{name:/Cliente Putter/}).click();
+  const detail=list.getByRole('region',{name:'Detalle de recepción'});
+  await expect(detail).toContainText('SR-000129');
+  await expect(detail).toContainText('El servicio se cobra posteriormente en caja');
+  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toHaveAttribute('href','/pos?recepcion=SR-000129');
+  await detail.getByText('Ver datos originales del equipo y servicio').click();
+  await expect(detail).toContainText('Cambiar grip');
+  await expect(detail).toContainText('Buen estado');
+  await filters.getByRole('button',{name:'Entregadas 1'}).click();
+  await expect(list.getByRole('button',{name:/Cliente Entregado/})).toBeVisible();
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toHaveCount(0);
+  await list.getByRole('button',{name:/Cliente Entregado/}).click();
+  await expect(detail).toContainText('Venta vinculada: sale-qa-delivered');
+  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toHaveCount(0);
+  await filters.getByRole('button',{name:'Todas 3'}).click();
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  const calls=(await events()).filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent');
+  expect(calls).toHaveLength(1);
+  expect((await events()).filter(e=>['/rest/v1/rpc/pos_reception_create','/rest/v1/rpc/pos_reception_set_ready'].includes(e.path)||
+    ['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A8.2 refreshes the selected receipt status from authorized history without a write',async({page,request})=>{
+  await configure(request,{receptionFixture:true,receptionTrackingFixture:true});
+  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await page.goto('/pos/recepciones');
+  const list=page.locator('aside');
+  await list.getByRole('button',{name:/Cliente Putter/}).click();
+  const detail=list.getByRole('region',{name:'Detalle de recepción'});
+  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toBeVisible();
+  await configure(request,{receptionTrackingPutterDelivered:true});
+  await list.getByRole('button',{name:'Buscar',exact:true}).click();
+  await expect(detail).toContainText('Venta vinculada: sale-qa-putter');
+  await expect(detail).toContainText('Entregado y cobrado');
+  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toHaveCount(0);
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  expect(events.filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent')).toHaveLength(2);
+  expect(events.filter(e=>['/rest/v1/rpc/pos_reception_create','/rest/v1/rpc/pos_reception_set_ready'].includes(e.path)||
+    ['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
