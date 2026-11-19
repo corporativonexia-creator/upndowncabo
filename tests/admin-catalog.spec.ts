@@ -17,6 +17,51 @@ async function ready(page:Page){
 }
 const card=(page:Page,id:string)=>page.locator(`#udList .u-item[data-product-id="${id}"]`);
 
+async function captureThermalLabel(page:Page,sku:string){
+  await page.evaluate(()=>{
+    const testWindow=window as Window & {__qaLabelHtml?:string;__qaLabelOpens?:number};
+    testWindow.__qaLabelHtml='';testWindow.__qaLabelOpens=0;
+    Object.defineProperty(window,'open',{configurable:true,value:()=>{
+      testWindow.__qaLabelOpens=(testWindow.__qaLabelOpens||0)+1;
+      return {document:{write:(html:string)=>{testWindow.__qaLabelHtml+=html;},close:()=>{}}};
+    }});
+  });
+  page.once('dialog',dialog=>dialog.accept('1'));
+  await page.locator('.inv-tablebox tbody tr').filter({hasText:sku}).getByRole('button',{name:'Imprimir'}).click();
+  await expect.poll(()=>page.evaluate(()=>(window as Window & {__qaLabelHtml?:string}).__qaLabelHtml||'')).toContain('class="label"');
+  return page.evaluate(()=>({html:(window as Window & {__qaLabelHtml?:string}).__qaLabelHtml||'',opens:(window as Window & {__qaLabelOpens?:number}).__qaLabelOpens||0}));
+}
+
+test('A6.2 one thermal label printer uses current variant offer and exact 50 × 30 layout',async({page,request})=>{
+  await login(page);await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  // Prices change only in the local fixture AFTER the catalog loaded: printing must re-read them.
+  await configure(request,{labelFixture:true});
+  const label=await captureThermalLabel(page,'ROP-001-XXL');
+  expect(label.opens).toBe(1);
+  expect(label.html).toContain('@page{size:50mm 30mm;margin:0}');
+  expect(label.html).toContain('UP AND DOWN');
+  expect(label.html).toContain('XXL');
+  expect(label.html).toContain('Polo clásico · Blanco');
+  expect(label.html).toMatch(/USD\s*420\.00\s*USD/);
+  expect(label.html).toContain('2000000000053');
+  expect(label.html).toContain('class="barcode"');
+  const events=await (await request.get(`${fixture}/__events`)).json();
+  expect(events.filter((e:{path:string,query:string})=>e.path==='/rest/v1/product_variants'&&e.query.includes('id=eq.v2'))).toHaveLength(1);
+  expect(events.filter((e:{path:string,query:string})=>e.path==='/rest/v1/products'&&e.query.includes('id=eq.p1'))).toHaveLength(1);
+  expect(events.filter((e:{method:string,path:string})=>['PATCH','PUT','DELETE'].includes(e.method)||e.path==='/rest/v1/rpc/admin_inventory_adjust')).toHaveLength(0);
+});
+
+test('A6.2 a valid zero promotional price stays zero on thermal labels',async({page,request})=>{
+  await login(page);await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  await configure(request,{zeroPriceFixture:true});
+  const label=await captureThermalLabel(page,'ROP-001-XS');
+  expect(label.opens).toBe(1);
+  expect(label.html).toMatch(/\$0\.00\s*MXN/);
+  expect(label.html).toContain('Polo clásico · Rojo');
+});
+
 test('A6.1 inventory loads the movement log only when requested and keeps movement search',async({page,request})=>{
   await login(page);
   await page.goto('/admin/inventario');

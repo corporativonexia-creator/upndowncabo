@@ -146,7 +146,7 @@ test("A5.3 retirement SQL is an isolated test contract, never an installed mutat
 test("A6.1 moves inventory log reads behind its tab and keeps realtime stock in React state", () => {
   const inventory=read("src/components/admin/inventory-admin.tsx");
   const enhancer=read("src/components/admin/inventory-live-enhancer.tsx");
-  const labels=read("src/components/admin/inventory-label-enhancer.tsx");
+  const labels=read("src/components/admin/inventory-label-print.ts");
   const initial=inventory.split("const load=useCallback(async()=>{")[1]?.split("const loadMovements=async()=>{")[0];
   assert.ok(initial,"Catalog loader must remain independent from movements");
   assert.match(initial,/admin_inventory_catalog/);
@@ -161,4 +161,23 @@ test("A6.1 moves inventory log reads behind its tab and keeps realtime stock in 
   assert.match(inventory,/SUBTOTAL /);
   assert.match(inventory,/admin_inventory_adjust/);
   assert.doesNotMatch(enhancer,/\.insert\(|\.update\(|\.delete\(/);
+});
+
+test("A6.2 prints thermal labels from one entry point without touching commercial records", () => {
+  const route=read("src/app/admin/inventario/page.tsx");
+  const inventory=read("src/components/admin/inventory-admin.tsx");
+  const labels=read("src/components/admin/inventory-label-print.ts");
+  assert.equal(fs.existsSync(path.join(root,"src/components/admin/inventory-label-enhancer.tsx")),false);
+  assert.doesNotMatch(route,/InventoryLabelEnhancer/);
+  assert.match(inventory,/printInventoryLabels\(r\)/);
+  assert.doesNotMatch(inventory,/function printLabels\(/);
+  assert.match(labels,/@page\{size:50mm 30mm;margin:0\}/);
+  assert.match(labels,/const rawPrice = variant\.sale_price \?\? variant\.price \?\? product\.sale_price \?\? product\.price/);
+  assert.match(labels,/db\.from\("product_variants"\).*\.eq\("id", row\.variant_id\)/);
+  assert.match(labels,/db\.from\("products"\).*\.eq\("id", row\.product_id\)/);
+  assert.match(labels,/Promise\.all/);
+  assert.match(labels,/price < 0/);
+  assert.match(labels,/esc\(lowerLine\)/);
+  assert.doesNotMatch(labels,/\.insert\(|\.update\(|\.delete\(|\.upsert\(|\.rpc\(/);
+  assert.match(inventory,/SUBTOTAL /);
 });
