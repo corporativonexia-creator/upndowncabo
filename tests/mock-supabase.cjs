@@ -41,6 +41,28 @@ http.createServer(async(req,res)=>{
       variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:options.reconciliationStockSkew&&v.id==='v1'?7:v.stock,
       low_stock_threshold:v.low_stock_threshold,is_default:false,attributes:v.attributes};
   })});
+  if(url.pathname==='/rest/v1/rpc/admin_pos_sales_summary'){
+    if(options.posSummaryRaceFixture){
+      const filtered=body.p_status==='completed';
+      if(!filtered){
+        await new Promise(resolve=>setTimeout(resolve,700));
+        events.push({path:'/__qa_pos_summary_old_completed',method:'GET'});
+      }
+      return send({metrics:{sales_count:filtered?2:999},sales:[]});
+    }
+    return send({metrics:{},sales:[]});
+  }
+  if(url.pathname==='/rest/v1/rpc/admin_pos_audit_feed'){
+    if(options.posAuditFilterFixture){
+      const type=body.p_event_type;
+      const rows=[
+        {id:'audit-sale',event_type:'sale_completed',employee_name:'Cajero QA',created_at:'2026-11-18T12:00:00Z'},
+        {id:'audit-login',event_type:'employee_login',employee_name:'Cajero QA',created_at:'2026-11-18T12:01:00Z'}
+      ];
+      return send({events:rows.filter(row=>type===null||type==='all'||type==='operation'&&row.event_type==='sale_completed'||row.event_type===type)});
+    }
+    return send({events:[]});
+  }
   if(url.pathname==='/rest/v1/rpc/admin_inventory_movement_log'){
     if(options.movementLogDelay)await new Promise(r=>setTimeout(r,options.movementLogDelay));
     if(options.movementLogError)return send({code:'FIXTURE',message:'Bitácora no disponible'},503);

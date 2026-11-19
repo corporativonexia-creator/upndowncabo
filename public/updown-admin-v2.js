@@ -53,6 +53,8 @@
     posShiftStatus: "all",
     posAdminSection: "dashboard",
     posAdminReady: false,
+    posReportVersions: Object.create(null),
+    posReportTimers: Object.create(null),
     posInventoryRows: [],
     posInventoryStock: [],
     posInventoryMovement: "all",
@@ -598,6 +600,7 @@
   }
 
   function hideV2Views(){
+    if(state.activeView==="pos")invalidatePosReports();
     $("udv2ContentView")?.classList.add("udv2-hidden");
     $("udv2SellersView")?.classList.add("udv2-hidden");
     $("udv2LessonsView")?.classList.add("udv2-hidden");
@@ -609,6 +612,7 @@
   }
 
   function switchView(view){
+    if(state.activeView==="pos"&&view!=="pos")invalidatePosReports();
     state.activeView=view;
     const productView=$("udProductsView"),orderView=$("udOrdersView");
     if(productView) productView.classList.add("u-hidden");
@@ -1727,7 +1731,41 @@
     popup.document.close();
   }
 
+  function nextPosReportRequest(section){
+    state.posReportVersions[section]=(state.posReportVersions[section]||0)+1;
+    return state.posReportVersions[section];
+  }
+
+  function isCurrentPosReport(section,version){
+    return state.posReportVersions[section]===version;
+  }
+
+  function cancelPosReportTimer(section){
+    clearTimeout(state.posReportTimers[section]);
+    delete state.posReportTimers[section];
+  }
+
+  function schedulePosReport(section){
+    // Invalidate any in-flight result immediately, before the debounce expires.
+    nextPosReportRequest(section);
+    cancelPosReportTimer(section);
+    state.posReportTimers[section]=setTimeout(()=>{
+      delete state.posReportTimers[section];
+      if(state.posAdminReady&&state.activeView==="pos"&&state.posAdminSection===section){
+        void loadPosActiveReport(section);
+      }
+    },180);
+  }
+
+  function invalidatePosReports(){
+    for(const section of ["dashboard","shifts","summary","inventory","employees-report","daily-close","audit"]){
+      cancelPosReportTimer(section);
+      nextPosReportRequest(section);
+    }
+  }
+
   function loadPosActiveReport(section){
+    cancelPosReportTimer(section);
     // A7.1: request only the visible report; report RPCs and their arguments
     // remain unchanged. Terminal and employee tables come from loadPosAdmin.
     const loaders={
@@ -1745,6 +1783,11 @@
   function setPosAdminSection(section){
     const allowed=new Set(["dashboard","terminals","employees","shifts","summary","inventory","employees-report","daily-close","audit"]);
     const next=allowed.has(section)?section:"dashboard";
+    const previous=state.posAdminSection;
+    if(previous!==next){
+      cancelPosReportTimer(previous);
+      nextPosReportRequest(previous);
+    }
     state.posAdminSection=next;
 
     document.querySelectorAll("#updown-admin .udv2-pos-tab").forEach(btn=>{
@@ -1834,6 +1877,7 @@
   }
 
   async function loadPosInventory(){
+    const version=nextPosReportRequest("inventory");
     try{
       const db=await getDb();
       const from=$("udv2PosInventoryFrom")?.value||"";
@@ -1848,6 +1892,7 @@
         p_search:search||null,
         p_limit:1000
       });
+      if(!isCurrentPosReport("inventory",version))return;
       if(error)throw error;
 
       state.posInventoryRows=Array.isArray(data?.movements)?data.movements:[];
@@ -1855,6 +1900,7 @@
       populateInventoryFilters();
       renderPosInventory();
     }catch(error){
+      if(!isCurrentPosReport("inventory",version))return;
       console.error("POS inventory load",error);
       if($("udv2PosInventoryRows"))$("udv2PosInventoryRows").innerHTML=`<div class="udv2-empty">No se pudo cargar inventario.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar inventario.",true);
@@ -2049,6 +2095,7 @@
   }
 
   async function loadEmployeeReport(){
+    const version=nextPosReportRequest("employees-report");
     try{
       const db=await getDb();
       const from=$("udv2PosEmployeeReportFrom")?.value||"";
@@ -2061,10 +2108,12 @@
         p_terminal_id:(state.posEmployeeReportTerminal&&state.posEmployeeReportTerminal!=="all")?state.posEmployeeReportTerminal:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("employees-report",version))return;
       if(error)throw error;
       state.posEmployeeReportRows=Array.isArray(data?.rows)?data.rows:[];
       renderEmployeeReport();
     }catch(error){
+      if(!isCurrentPosReport("employees-report",version))return;
       console.error("POS employee report",error);
       if($("udv2PosEmployeeReportRows"))$("udv2PosEmployeeReportRows").innerHTML=`<div class="udv2-empty">No se pudo cargar el reporte.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar el reporte por empleado.",true);
@@ -2120,6 +2169,7 @@
   }
 
   async function loadPosDashboard(){
+    const version=nextPosReportRequest("dashboard");
     try{
       const db=await getDb();
 
@@ -2136,12 +2186,14 @@
         p_date:state.posDashboardDate,
         p_terminal_id:null
       });
+      if(!isCurrentPosReport("dashboard",version))return;
 
       if(error)throw error;
 
       state.posDashboardReport=data?.report||null;
       renderPosDashboard();
     }catch(error){
+      if(!isCurrentPosReport("dashboard",version))return;
       console.error("POS dashboard",error);
       if($("udv2PosDashboardCards")){
         $("udv2PosDashboardCards").innerHTML=`<div class="udv2-empty">No se pudo cargar el Dashboard.<br>${escapeHtml(error.message||"Error")}</div>`;
@@ -2214,6 +2266,7 @@
   }
 
   async function loadDailyClose(){
+    const version=nextPosReportRequest("daily-close");
     try{
       const db=await getDb();
       const date=$("udv2PosDailyCloseDate")?.value||"";
@@ -2223,10 +2276,12 @@
         p_date:date,
         p_terminal_id:(state.posDailyCloseTerminal&&state.posDailyCloseTerminal!=="all")?state.posDailyCloseTerminal:null
       });
+      if(!isCurrentPosReport("daily-close",version))return;
       if(error)throw error;
       state.posDailyCloseReport=data?.report||null;
       renderDailyClose();
     }catch(error){
+      if(!isCurrentPosReport("daily-close",version))return;
       console.error("POS daily close",error);
       if($("udv2PosDailyCloseBody"))$("udv2PosDailyCloseBody").innerHTML=`<div class="udv2-empty">No se pudo cargar el cierre.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar el cierre diario.",true);
@@ -2342,6 +2397,7 @@
   }
 
   async function loadPosShifts(){
+    const version=nextPosReportRequest("shifts");
     try{
       const db=await getDb();
       const from=$("udv2PosShiftFrom")?.value||"";
@@ -2355,12 +2411,14 @@
         p_status:(state.posShiftStatus&&state.posShiftStatus!=="all")?state.posShiftStatus:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("shifts",version))return;
 
       if(error)throw error;
 
       state.posShiftRows=Array.isArray(data?.shifts)?data.shifts:[];
       renderPosShifts();
     }catch(error){
+      if(!isCurrentPosReport("shifts",version))return;
       console.error("POS shifts load",error);
       if($("udv2PosShiftList"))$("udv2PosShiftList").innerHTML=`<div class="udv2-empty">No se pudieron cargar los turnos.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudieron cargar los turnos.",true);
@@ -2455,6 +2513,7 @@
   }
 
   async function loadPosSummary(){
+    const version=nextPosReportRequest("summary");
     try{
       const db=await getDb();
 
@@ -2470,6 +2529,7 @@
         p_payment_method:(state.posSummaryPayment&&state.posSummaryPayment!=="all")?state.posSummaryPayment:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("summary",version))return;
 
       if(error)throw error;
 
@@ -2477,6 +2537,7 @@
       state.posSummarySales=Array.isArray(data?.sales)?data.sales:[];
       renderPosSummary();
     }catch(error){
+      if(!isCurrentPosReport("summary",version))return;
       console.error("POS summary load",error);
       if($("udv2PosSummaryCards"))$("udv2PosSummaryCards").innerHTML=`<div class="udv2-empty">No se pudo cargar el resumen.<br>${escapeHtml(error.message||"Error")}</div>`;
       if($("udv2PosSummarySales"))$("udv2PosSummarySales").innerHTML='<div class="udv2-empty">Sin datos.</div>';
@@ -2592,6 +2653,7 @@
   }
 
   async function loadPosAudit(){
+    const version=nextPosReportRequest("audit");
     const list=$("udv2PosAuditList");
     if(list)list.innerHTML='<div class="udv2-empty">Cargando bitácora…</div>';
     try{
@@ -2609,12 +2671,14 @@
         p_from:pFrom,
         p_to:pTo
       });
+      if(!isCurrentPosReport("audit",version))return;
       if(error)throw error;
 
       state.posAuditEvents=Array.isArray(data?.events)?data.events:[];
       populateAuditFilters();
       renderPosAudit();
     }catch(error){
+      if(!isCurrentPosReport("audit",version))return;
       console.error("POS audit load",error);
       if(list)list.innerHTML=`<div class="udv2-empty">No se pudo cargar la bitácora.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar la bitácora.",true);
@@ -2623,6 +2687,7 @@
 
   async function loadPosAdmin(){
     state.posAdminReady=false;
+    invalidatePosReports();
     try{
       await verifyAdmin();
       const db=await getDb();
@@ -2775,14 +2840,14 @@
       const value=String(event.target.value||"");
       if(!value)return;
       state.posDashboardDate=value;
-      loadPosDashboard();
+      schedulePosReport("dashboard");
     });
 
     $("udv2PosDashboardToday")?.addEventListener("click",()=>{
       state.posDashboardDate=localDateInputValue(new Date());
       const input=$("udv2PosDashboardDateInput");
       if(input)input.value=state.posDashboardDate;
-      loadPosDashboard();
+      schedulePosReport("dashboard");
     });
 
     document.querySelectorAll("#updown-admin [data-pos-goto]").forEach(btn=>{
@@ -2793,35 +2858,32 @@
 
     $("udv2PosEmployeeReportEmployee")?.addEventListener("change",event=>{
       state.posEmployeeReportEmployee=String(event.target.value||"all");
-      loadEmployeeReport();
+      schedulePosReport("employees-report");
     });
     $("udv2PosEmployeeReportTerminal")?.addEventListener("change",event=>{
       state.posEmployeeReportTerminal=String(event.target.value||"all");
-      loadEmployeeReport();
+      schedulePosReport("employees-report");
     });
-    $("udv2PosEmployeeReportFrom")?.addEventListener("change",loadEmployeeReport);
-    $("udv2PosEmployeeReportTo")?.addEventListener("change",loadEmployeeReport);
+    $("udv2PosEmployeeReportFrom")?.addEventListener("change",()=>schedulePosReport("employees-report"));
+    $("udv2PosEmployeeReportTo")?.addEventListener("change",()=>schedulePosReport("employees-report"));
 
-    $("udv2PosDailyCloseDate")?.addEventListener("change",loadDailyClose);
+    $("udv2PosDailyCloseDate")?.addEventListener("change",()=>schedulePosReport("daily-close"));
     $("udv2PosDailyCloseTerminal")?.addEventListener("change",event=>{
       state.posDailyCloseTerminal=String(event.target.value||"all");
-      loadDailyClose();
+      schedulePosReport("daily-close");
     });
 
     $("udv2PosInventoryProduct")?.addEventListener("change",event=>{
       state.posInventoryProduct=String(event.target.value||"all");
-      loadPosInventory();
+      schedulePosReport("inventory");
     });
     $("udv2PosInventoryMovement")?.addEventListener("change",event=>{
       state.posInventoryMovement=String(event.target.value||"all");
-      loadPosInventory();
+      schedulePosReport("inventory");
     });
-    $("udv2PosInventoryFrom")?.addEventListener("change",loadPosInventory);
-    $("udv2PosInventoryTo")?.addEventListener("change",loadPosInventory);
-    $("udv2PosInventorySearch")?.addEventListener("input",()=>{
-      clearTimeout(state.__posInventorySearchTimer);
-      state.__posInventorySearchTimer=setTimeout(loadPosInventory,250);
-    });
+    $("udv2PosInventoryFrom")?.addEventListener("change",()=>schedulePosReport("inventory"));
+    $("udv2PosInventoryTo")?.addEventListener("change",()=>schedulePosReport("inventory"));
+    $("udv2PosInventorySearch")?.addEventListener("input",()=>schedulePosReport("inventory"));
 
     document.querySelectorAll("#updown-admin [data-sale-detail-close]").forEach(el=>{
       el.addEventListener("click",closeSaleDetail);
@@ -2829,37 +2891,37 @@
 
     $("udv2PosShiftEmployee")?.addEventListener("change",event=>{
       state.posShiftEmployee=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
     $("udv2PosShiftTerminal")?.addEventListener("change",event=>{
       state.posShiftTerminal=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
     $("udv2PosShiftStatus")?.addEventListener("change",event=>{
       state.posShiftStatus=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
-    $("udv2PosShiftFrom")?.addEventListener("change",loadPosShifts);
-    $("udv2PosShiftTo")?.addEventListener("change",loadPosShifts);
+    $("udv2PosShiftFrom")?.addEventListener("change",()=>schedulePosReport("shifts"));
+    $("udv2PosShiftTo")?.addEventListener("change",()=>schedulePosReport("shifts"));
 
     $("udv2PosSummaryEmployee")?.addEventListener("change",event=>{
       state.posSummaryEmployee=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryTerminal")?.addEventListener("change",event=>{
       state.posSummaryTerminal=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryStatus")?.addEventListener("change",event=>{
       state.posSummaryStatus=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryPayment")?.addEventListener("change",event=>{
       state.posSummaryPayment=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
-    $("udv2PosSummaryFrom")?.addEventListener("change",loadPosSummary);
-    $("udv2PosSummaryTo")?.addEventListener("change",loadPosSummary);
+    $("udv2PosSummaryFrom")?.addEventListener("change",()=>schedulePosReport("summary"));
+    $("udv2PosSummaryTo")?.addEventListener("change",()=>schedulePosReport("summary"));
 
     $("udv2PosAuditSearch")?.addEventListener("input",event=>{
       state.posAuditSearch=String(event.target.value||"").trim().toLowerCase();
@@ -2867,18 +2929,18 @@
     });
     $("udv2PosAuditType")?.addEventListener("change",event=>{
       state.posAuditType=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
     $("udv2PosAuditEmployee")?.addEventListener("change",event=>{
       state.posAuditEmployee=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
     $("udv2PosAuditTerminal")?.addEventListener("change",event=>{
       state.posAuditTerminal=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
-    $("udv2PosAuditFrom")?.addEventListener("change",loadPosAudit);
-    $("udv2PosAuditTo")?.addEventListener("change",loadPosAudit);
+    $("udv2PosAuditFrom")?.addEventListener("change",()=>schedulePosReport("audit"));
+    $("udv2PosAuditTo")?.addEventListener("change",()=>schedulePosReport("audit"));
 
     $("udv2CommissionSearch")?.addEventListener("input",event=>{
       state.commissionSearch=String(event.target.value||"").trim().toLowerCase();

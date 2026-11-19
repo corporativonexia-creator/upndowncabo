@@ -72,6 +72,44 @@ test('A7.1 POS admin fetches only the visible report and binds tabs once after r
   expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
+test('A7.2 ignores an older POS summary response after status filters change',async({page,request})=>{
+  await login(page);await ready(page);await configure(request,{posSummaryRaceFixture:true});
+  await page.locator('[data-sidebar-section="sales"] summary').click();
+  await page.locator('#udv2PosTab').click();
+  await page.locator('#udv2PosView [data-pos-section="summary"]').click();
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string,body?:Record<string,unknown>}>;
+  const summaryCalls=async()=>(await events()).filter(e=>e.path==='/rest/v1/rpc/admin_pos_sales_summary');
+  await expect.poll(async()=>(await summaryCalls()).length).toBe(1);
+  await page.locator('#udv2PosSummaryStatus').selectOption('completed');
+  await expect(page.locator('#udv2PosSummaryCards .udv2-summary-card').first()).toContainText('Ventas');
+  await expect(page.locator('#udv2PosSummaryCards .udv2-summary-card').first().locator('strong')).toHaveText('2');
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/__qa_pos_summary_old_completed')).toBe(true);
+  await expect(page.locator('#udv2PosSummaryCards .udv2-summary-card').first().locator('strong')).toHaveText('2');
+  expect((await summaryCalls()).map(e=>e.body?.p_status)).toEqual([null,'completed']);
+  expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A7.2 POS audit server filters refresh once after rapid changes',async({page,request})=>{
+  await login(page);await ready(page);await configure(request,{posAuditFilterFixture:true});
+  await page.locator('[data-sidebar-section="sales"] summary').click();
+  await page.locator('#udv2PosTab').click();
+  await page.locator('#udv2PosView [data-pos-section="audit"]').click();
+  const list=page.locator('#udv2PosAuditList');
+  await expect(list).toContainText('Venta completada');
+  await page.locator('#udv2PosAuditType').evaluate((select:HTMLSelectElement)=>{
+    select.value='all';select.dispatchEvent(new Event('change',{bubbles:true}));
+    select.value='employee_login';select.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  await expect(list).toContainText('Inicio de sesión');
+  await expect(list).not.toContainText('Venta completada');
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,body?:Record<string,unknown>}>;
+  const auditCalls=events.filter(e=>e.path==='/rest/v1/rpc/admin_pos_audit_feed');
+  expect(auditCalls.map(e=>e.body?.p_event_type)).toEqual(['operation','employee_login']);
+  await page.locator('#udv2PosAuditType').selectOption('all');
+  await expect(list).toContainText('Venta completada');
+  await expect(list).toContainText('Inicio de sesión');
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

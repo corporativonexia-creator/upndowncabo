@@ -256,3 +256,15 @@ test("A7.1 POS administrative reports load on navigation, not all seven at start
   assert.match(runtime,/if\(btn\.dataset\.posPrintBound==="true"\)return/);
   assert.doesNotMatch(runtime,/Promise\.all\(\[loadPosAudit\(\),loadPosSummary\(\),loadPosShifts\(\),loadPosInventory\(\),loadEmployeeReport\(\),loadDailyClose\(\),loadPosDashboard\(\)\]\)/);
 });
+
+test("A7.2 POS report request versions reject stale responses and audit filters requery the server", () => {
+  const runtime=read("public/updown-admin-v2.js");
+  assert.match(runtime,/function schedulePosReport\(section\)/);
+  assert.match(runtime,/nextPosReportRequest\(section\);\s*cancelPosReportTimer\(section\)/);
+  assert.match(runtime,/state\.posAdminReady&&state\.activeView==="pos"&&state\.posAdminSection===section/);
+  assert.equal((runtime.match(/const version=nextPosReportRequest\(/g)||[]).length,7);
+  assert.equal((runtime.match(/if\(!isCurrentPosReport\(/g)||[]).length,14);
+  assert.match(runtime,/state\.posAuditType=String\(event\.target\.value\|\|"all"\);\s*schedulePosReport\("audit"\)/);
+  assert.match(runtime,/state\.posAuditEmployee=String\(event\.target\.value\|\|"all"\);\s*schedulePosReport\("audit"\)/);
+  assert.match(runtime,/state\.posAuditTerminal=String\(event\.target\.value\|\|"all"\);\s*schedulePosReport\("audit"\)/);
+});
