@@ -544,6 +544,61 @@ test('Premium White admin shell mounts original buttons in an expandable sidebar
   await expect(sales.locator('a[href="/admin/pos/promociones"]')).toBeVisible();
 });
 
+test('A11.2 nested inventory, categories and POS promotions retain the Premium White sidebar',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.locator('#udInventoryMainNav').click();
+  await expect(page).toHaveURL(/\/admin\/inventario$/);
+  const side=page.getByRole('navigation',{name:'Áreas de administración de UpNDown Cabo'});
+  await expect(side.getByRole('link',{name:'Inventario',exact:true})).toHaveAttribute('aria-current','page');
+  await expect(page.locator('.admin-section-shell')).toHaveCount(0);
+  await side.getByRole('link',{name:'Categorías y servicios'}).click();
+  await expect(page).toHaveURL(/\/admin\/categorias$/);
+  await expect(side.getByRole('link',{name:'Categorías y servicios'})).toHaveAttribute('aria-current','page');
+  await side.getByText('Ventas y POS').click();
+  await side.getByRole('link',{name:'Promociones y servicios POS'}).click();
+  await expect(page).toHaveURL(/\/admin\/pos\/promociones$/);
+  await expect(side.getByRole('link',{name:'Promociones y servicios POS'})).toHaveAttribute('aria-current','page');
+  await side.getByRole('link',{name:'Productos',exact:true}).click();
+  await ready(page);
+  await expect(page.locator('#updown-admin .u-admin-nav')).toHaveAttribute('data-premium-sidebar','ready');
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{method:string}>;
+  expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A11.2 mobile nav is compact and opens only on demand',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await login(page);await ready(page);
+  const rootNav=page.locator('#updown-admin .u-admin-nav');
+  const toggle=rootNav.getByRole('button',{name:/Menú del administrador/});
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded','false');
+  await expect(rootNav.locator('#udSidebarSections')).toBeHidden();
+  expect((await rootNav.boundingBox())!.height).toBeLessThan(70);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded','true');
+  await expect(rootNav.locator('[data-sidebar-section="products"] summary')).toBeVisible();
+  await rootNav.locator('#udInventoryMainNav').click();
+  await expect(page).toHaveURL(/\/admin\/inventario$/);
+  const nestedToggle=page.getByRole('button',{name:/Menú del administrador/});
+  await expect(nestedToggle).toBeVisible();
+  await expect(nestedToggle).toHaveAttribute('aria-expanded','false');
+  await expect(page.locator('#udAdminRouteNavigation')).toBeHidden();
+  await nestedToggle.click();
+  await expect(page.locator('#udAdminRouteNavigation')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#udAdminRouteNavigation')).toBeHidden();
+});
+
+test('A11.2 deep links open Pedidos and Clases without changing commercial data',async({page,request})=>{
+  await login(page);await ready(page);
+  await page.goto('/admin?section=orders');
+  await expect(page.locator('#udOrdersView')).toBeVisible();
+  await page.goto('/admin?section=clases');
+  await expect(page.locator('#udv2LessonsView')).toBeVisible();
+  const events=await (await request.get(`${fixture}/__events`)).json() as Array<{method:string}>;
+  expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
 test('A10.1 inventory navigation works without the obsolete polling script',async({page,request})=>{
   await login(page);await ready(page);
   const nav=page.locator('#updown-admin .u-admin-nav');

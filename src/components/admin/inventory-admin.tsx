@@ -1,6 +1,5 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from "react";
-import Link from "next/link";
 import {createClient} from "@/lib/supabase/client";
 import {printInventoryLabels} from "@/components/admin/inventory-label-print";
 import InventoryReconciliation from "@/components/admin/inventory-reconciliation";
@@ -173,7 +172,7 @@ export default function InventoryAdmin(){
  }
  async function move(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);let qty=Number(f.get("qty"));const type=String(f.get("type"));if(["damage","supplier_return","adjustment_negative"].includes(type))qty=-qty;const movementType=type==="adjustment_negative"?"adjustment":type;const{error}=await db.rpc("admin_inventory_adjust",{p_variant_id:String(f.get("variant")),p_quantity_change:qty,p_reason:String(f.get("reason")),p_movement_type:movementType});setMsg(error?error.message:"Movimiento registrado correctamente.");if(!error){e.currentTarget.reset();load()}}
  return <main className="inv-page"><div className="inv-wrap">
-  <header className="inv-hero"><div><div className="inv-kicker">CONTROL DE EXISTENCIAS</div><h1>Inventario</h1><p>Consulta existencias, registra entradas o salidas y revisa la trazabilidad de cada SKU desde un solo lugar.</p></div><div className="inv-actions"><Link href="/admin">Productos</Link><Link href="/admin" className="secondary">← Panel administrativo</Link></div></header>
+  <header className="inv-hero"><div><div className="inv-kicker">CONTROL DE EXISTENCIAS</div><h1>Inventario</h1><p>Consulta existencias, registra entradas o salidas y revisa la trazabilidad de cada SKU desde un solo lugar.</p></div><div className="inv-actions"><a href="/admin">Productos</a><a href="/admin" className="secondary">← Panel administrativo</a></div></header>
   <section className="inv-metrics"><Metric label="Unidades disponibles" value={total} hint="Existencia física total"/><Metric label="SKUs / variantes" value={rows.length} hint="Artículos controlados"/><Metric label="Disponibles" value={available} hint="Sobre stock mínimo"/><Metric label="Requieren atención" value={low} hint="Stock bajo o agotado" warn={low>0}/></section>
   <InventoryReconciliation />
   <section className="inv-card"><div className="inv-toolbar"><div className="inv-tabs">{[["stock","Existencias"],["move","Entradas y salidas"],["log","Bitácora"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>{setTab(k as typeof tab);if(k==="log")void loadMovements();}}>{l}</button>)}</div>{(tab==="stock"||tab==="log")&&<div className="inv-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar en todos los campos: niña, talla, color, SKU…"/></div>}</div>

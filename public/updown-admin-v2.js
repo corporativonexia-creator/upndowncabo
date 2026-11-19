@@ -3559,12 +3559,13 @@
     bindShell();
     state.mounted=true;
 
-    // Respect ?section=vendedores/content for old redirects/bookmarks.
+    // Respect existing bookmarks and nested-route navigation links.
     const section=new URLSearchParams(location.search).get("section");
     if(section==="vendedores"||section==="sellers") switchView("sellers");
-    if(section==="contenido") switchView("content");
-    if(section==="clases") switchView("lessons");
+    if(section==="contenido"||section==="content") switchView("content");
+    if(section==="clases"||section==="classes") switchView("lessons");
     if(section==="pos") switchView("pos");
+    if(section==="orders") $("udOrdersTab")?.click();
   }
 
   function boot(){

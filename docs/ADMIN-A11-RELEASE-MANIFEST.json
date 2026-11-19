@@ -11,18 +11,22 @@
     "public/updown-product-tabs-v1.js",
     "src/app/admin/admin-premium-white.css",
     "src/app/admin/inventario/page.tsx",
+    "src/app/admin/layout.tsx",
     "src/app/admin/page.tsx",
     "src/app/admin/productos/alta-rapida/page.tsx",
     "src/app/pos/recepciones/page.tsx",
     "src/app/pos/recepciones/receptions.module.css",
     "src/components/admin/admin-parity.tsx",
+    "src/components/admin/admin-route-shell.tsx",
     "src/components/admin/admin-section-nav.tsx",
+    "src/components/admin/category-images-admin.tsx",
     "src/components/admin/install-admin-sidebar.ts",
     "src/components/admin/inventory-admin.tsx",
     "src/components/admin/inventory-label-enhancer.tsx",
     "src/components/admin/inventory-label-print.ts",
     "src/components/admin/inventory-live-enhancer.tsx",
     "src/components/admin/inventory-reconciliation.tsx",
+    "src/components/admin/pos22-campaigns-admin.tsx",
     "src/components/admin/quick-product-entry.module.css",
     "src/components/admin/quick-product-entry.tsx",
     "src/lib/admin/inventory-reconciliation.ts"
@@ -35,5 +39,5 @@
     "tests/sql/admin-gallery-upc-append-proposal.sql",
     "tests/sql/admin-retirement-a53-fixture.sql"
   ],
-  "notes": "Aldo authorized an isolated production release window and only the two SKU allocator function replacements, preserving all existing product and variant SKU values. Release still requires exact-tree QA and post-migration checksum verification. No other Supabase change is approved."
+  "notes": "Aldo authorized A11.2 UI navigation corrections in the release candidate: persistent nested-route sidebar, compact mobile menu, neutral Premium White background, direct orders/deep links, and full reload when returning to the document-scoped legacy runtime. No Supabase or POS business-logic changes. Release still requires exact-tree QA and post-migration checksum verification; historical SKU values must remain unchanged."
 }

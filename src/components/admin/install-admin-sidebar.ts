@@ -78,7 +78,31 @@ export function installAdminSidebar(): void {
     : current === "contenido" || current === "content" ? "website" : "products";
   sections.find((node) => node.dataset.sidebarSection === selected)?.setAttribute("open", "");
 
-  nav.replaceChildren(...sections);
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "ud-sidebar-mobile-toggle";
+  toggle.setAttribute("aria-controls", "udSidebarSections");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.textContent = "☰  Menú del administrador";
+  const panel = document.createElement("div");
+  panel.id = "udSidebarSections";
+  panel.className = "ud-sidebar-sections";
+  panel.append(...sections);
+  const closeMobileMenu = () => {
+    nav.classList.remove("is-mobile-open");
+    toggle.setAttribute("aria-expanded", "false");
+  };
+  toggle.addEventListener("click", () => {
+    const next = nav.classList.toggle("is-mobile-open");
+    toggle.setAttribute("aria-expanded", String(next));
+  });
+  panel.addEventListener("click", event => {
+    if ((event.target as Element).closest("a, button.u-tab")) closeMobileMenu();
+  });
+  nav.addEventListener("keydown", event => {
+    if (event.key === "Escape") { closeMobileMenu(); toggle.focus(); }
+  });
+  nav.replaceChildren(toggle, panel);
   nav.dataset.premiumSidebar = "ready";
   nav.setAttribute("aria-label", "Áreas de administración de UpNDown Cabo");
   root.classList.add("ud-premium-white");

@@ -2,16 +2,29 @@
 
 Fecha de preparación: 19 de noviembre de 2026 (UTC; 18 de noviembre en Los Cabos).
 
+## A11.2 · Correcciones tras la validación operativa de Aldo
+
+Se detectó una inconsistencia visual: la navegación Premium White persistía únicamente en `/admin`, mientras que `/admin/inventario` y `/admin/categorias` mostraban una barra horizontal heredada. En móvil el menú lateral ocupaba parte importante de la pantalla y el fondo se percibía demasiado verdoso. La ruta `/admin?section=orders` tampoco seleccionaba Pedidos al acceder directamente.
+
+- Se añadió un shell de navegación exclusivamente para las rutas anidadas `/admin/**`; la pantalla raíz conserva los botones originales y sus manejadores comerciales. Inventario, Categorías y Promociones POS comparten menú vertical.
+- El menú principal y el de rutas internas se muestran compactos en móvil y se despliegan solo por decisión del usuario.
+- Fondo administrativo neutral `#f9fafb`, tarjetas blancas y verdes reservados para identidad, estados y acciones.
+- Los enlaces internos a Pedidos, Clases y Contenido seleccionan su pantalla al entrar directamente, sin alterar los datos.
+- `/pos`, `/pos/recepciones` y `/vendedor` permanecen módulos independientes por seguridad de flujo operativo; no se rehace su lógica.
+- Preview no tiene `SUPABASE_SECRET_KEY` por diseño. La clave privada de producción no se copiará a Preview, conectado a la base real. POS y herramientas protegidas requieren QA aislado y comprobación controlada cuando exista entorno seguro.
+
+**Alcance A11.2:** presentación y navegación, con tests de ruta y móvil. Sin migraciones adicionales, escrituras a Supabase, alteraciones de SKU o modificaciones de ventas, precios, stock ni permisos.
+
 ## Árbol exacto preparado en aislamiento
 
 - Base de `main`: `cff541a03dff8fc98437e1176dc3aef057c25562`.
 - Fuente candidata: `6b694364c94f2d30abb0938cb1b9d386119b3632`.
 - Rama local: `integracion/admin-premium-white-release-a11-20261119`.
-- Se trasplantaron las 23 rutas de ejecución del manifiesto `ADMIN-A11-RELEASE-MANIFEST.json`, las pruebas de navegador y sus fixtures, cuatro documentos de auditoría y esta nota de control.
+- Inicialmente se trasplantaron 23 rutas de ejecución; el complemento A11.2 agrega 4 rutas (shell, layout, Categorías y botón de retorno de Promociones POS) al manifiesto `ADMIN-A11-RELEASE-MANIFEST.json`, además de las pruebas de navegador, fixtures y auditorías.
 - Después de la autorización explícita de Aldo para el cambio SKU, se añadió **solo** la migración que reemplaza `next_category_sku` y `next_variant_sku`, así como sus pruebas de PostgreSQL aislado. No incluye ninguna instrucción de actualización de los SKU existentes.
 - Excluidos deliberadamente `vercel.json`, los scripts SQL de experimentación y el workflow exclusivo de la candidata.
-- La rama de release incluye una verificación propia `.github/workflows/admin-release-a11.yml` y un contrato de selección: no publica automáticamente `main`; únicamente ejecuta pruebas aisladas. **Total del corte: 35 rutas modificadas frente a `main` (23 funcionales, una migración y 11 rutas de QA/documentación).**
-- **Solo preparación local: no existe PR, merge ni despliegue de esta rama.**
+- La rama de release incluye una verificación propia `.github/workflows/admin-release-a11.yml` y un contrato de selección: no publica automáticamente `main`; únicamente ejecuta pruebas aisladas. **El corte A11.2 tiene 27 rutas de ejecución declaradas (23 originales + 4 incorporadas).**
+- **Hay un PR #35 en borrador y una Preview de Vercel; no se ha fusionado a `main` ni aplicado la migración de SKU en Supabase.**
 
 ## Verificaciones realizadas sobre el árbol selectivo
 
