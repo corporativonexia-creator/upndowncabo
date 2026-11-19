@@ -9,7 +9,7 @@ Rama exclusiva: `integracion/admin-premium-white-a0a2-20261118`. Se mantienen `m
 | Runtime histórico | Tamaño | Función comprobada | A10.1 |
 | --- | ---: | --- | --- |
 | `updown-admin-legacy-runtime.js` | 81,960 | Catálogo, edición heredada, pedidos, listeners comerciales | Conservar |
-| `updown-product-heic-inventory-hotfix.js` | 6,686 | HEIC de la ficha antigua **y sincronización automática con escrituras** | **Conservar/bloquear retiro hasta auditoría** |
+| `updown-product-heic-inventory-hotfix.js` | 6,686 antes de A10.3 | HEIC de la ficha antigua; anteriormente también sincronizaba variantes sin autorización por producto | **A10.3: mantener conversión HEIC; retirar sincronización automática** |
 | `updown-product-smart-entry-v1.js` | 10,590 | Sugerencias de descripción, categoría y código, incluye operaciones de captura | Conservar |
 | `updown-product-condition-v1.js` | 928 | Normaliza opciones de condición (`demo` → `preowned`) | Conservar |
 | `updown-admin-v2.js` | 183,866 | Contenido, vendedores, clases, reportes y operaciones POS administrativas | Conservar |
@@ -29,7 +29,7 @@ El archivo histórico permanece en el repositorio para trazabilidad y reversión
 
 ## Bloqueos para siguientes retiros
 
-1. **Riesgo de escritura silenciosa:** `updown-product-heic-inventory-hotfix.js` llama `syncMissingInventoryVariants()` **al arrancar** y tras enviar el formulario antiguo; consulta `products` y `product_variants`, crea variantes faltantes mediante `admin_inventory_save_variant` y puede ajustar existencias con `admin_inventory_adjust`. A9.1 ya encontró efectos de este sincronizador en fixtures. No se puede tratar como un conversor HEIC inocuo ni cambiarlo sin autorización específica y pruebas de integridad comercial.
+1. **Riesgo histórico de escritura silenciosa (resuelto en candidata A10.3):** anteriormente `updown-product-heic-inventory-hotfix.js` llamaba `syncMissingInventoryVariants()` **al arrancar** y tras enviar el formulario antiguo. La rama candidata ya no incluye esas llamadas ni RPC de inventario en este script. La ficha mantiene la conversión HEIC. La corrección no está integrada en `main` ni desplegada: producción conserva su comportamiento actual hasta un release expresamente autorizado.
 2. `updown-pos-pin-v2.js` intercepta en captura el botón de PIN y utiliza `admin_pos_generate_shift_pin`; retirarlo podría activar una implementación distinta de `updown-admin-v2.js`. Necesita prueba de paridad de permisos, tiempo de validez y auditoría.
 3. `updown-product-condition-v1.js` cambia opciones y un valor heredado; el nuevo capturador aún admite `demo`. La máscara de condición de artículos existentes no puede cambiar sin revisión.
 4. `updown-inventory-v2.js` y `updown-product-smart-entry-v1.js` comparten responsabilidades de SKU/UPC con implementaciones distintas. No se eliminarán sin aislar los motores de asignación, escaneo, generación y variantes; nunca se reescribirán SKUs registrados.
@@ -55,3 +55,14 @@ El archivo histórico permanece en el repositorio para trazabilidad y reversión
 **Prueba controlada A10.2:** el servidor ficticio presenta `p-orphan` (stock 3) **solo** a la proyección exacta que consume ese sincronizador. Chromium inicia ADMIN con credenciales de prueba, sin tocar productos, y registra la invocación de `admin_inventory_save_variant` seguida de un intento `admin_inventory_adjust` (+3). El fixture acepta una variante sintética sin stock y **responde 403 al ajuste**, sin modificar existencias. El caso demuestra la ejecución automática del cliente, no prueba movimientos en Supabase real. Otros consumidores del catálogo siguen recibiendo únicamente sus tres productos habituales para no contaminar las pruebas de navegación/variantes.
 
 **Decisión A10.2:** auditoría y contratos solamente; `public/updown-product-heic-inventory-hotfix.js`, las funciones SQL y la operación existente permanecen **sin cambios**. No es seguro retirar todo el archivo: el manejo HEIC heredado aún vive ahí. Recomendación para una etapa con autorización específica: separar la conversión de imágenes del motor de sincronización, retirar la sincronización silenciosa de arranque/envío y ofrecer una conciliación **explícita, con vista previa de artículos y relaciones históricas, confirmación y registros**, probada primero en un laboratorio sintético. Cambiar la lógica de variantes/stock o ejecutar una conciliación real queda fuera de esta autorización.
+
+## A10.3 · Aislamiento aprobado del conversor y conciliación manual sin escrituras
+
+**Autorización de Aldo:** cambios de código y pruebas simuladas en candidata para retirar la creación/ajuste automático. Sin uso de datos reales, migraciones, cambios a Supabase, `main` ni despliegues.
+
+- El archivo HEIC permanece cargado para `#udImage`, su normalización a JPG y observación del campo al montar; se retiraron **todas** sus lecturas `products`/`product_variants`, RPC `admin_inventory_save_variant`/`admin_inventory_adjust`, escucha de `submit` y temporizadores de 1.8/4.2 segundos. El parámetro de versión del script se actualizó para invalidar la caché.
+- Se reutiliza **Inventario → Conciliar con POS**, ya bajo demanda y de solo lectura, para detectar padres sin variantes tras leer las páginas completas. La revisión muestra servicio, estado del padre y existencia informativa; no considera un producto archivado como candidato automático a activación.
+- El administrador debe contrastar cada candidato con historial de ventas, movimientos, relaciones, estado y existencias antes de diseñar una corrección por artículo. **No existe botón de ejecución masiva ni de ajuste automático.** Agregar posteriormente un procedimiento con auditoría histórica verificable, confirmación individual y garantía de idempotencia requiere un lote separado y autorización de escritura expresa.
+- No se modifica precio, SKU, UPC, stock, variantes ya almacenadas, pagos, ventas, POS operativo, tablas ni permisos. El único cambio funcional comercial permitido es que **ya no se crean variantes ni se ajusta inventario de forma silenciosa** desde este módulo.
+
+**QA requerido:** contratos de ausencia de RPC en el script HEIC, lectura manual de huérfano ficticio, cero escrituras durante carga o envío heredado y continuidad de capturas HEIC/galería/POS en Chromium. La ausencia de escrituras en el fixture no es una auditoría de los datos de producción.

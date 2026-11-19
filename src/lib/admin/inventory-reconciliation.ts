@@ -26,6 +26,7 @@ export type InventoryReconciliationResult = {
   onlyPos: ReconciliationFinding[];
   stockDifferences: Array<ReconciliationFinding & {inventoryStock:number;posStock:number}>;
   duplicateInventoryIds: string[];
+  missingVariantParents: ReconciliationFinding[];
 };
 
 /** Compares visible read snapshots only. It does not infer missing data from RLS-limited reads. */
@@ -40,6 +41,17 @@ export function reconcileInventoryPos(
   const projected=buildPosCatalog(eligibleParents,allVariants);
   const parentsById=new Map(allParents.map(p=>[p.id,p]));
   const variantsById=new Map(allVariants.map(v=>[v.id,v]));
+  const parentsWithVariants=new Set(allVariants.map(v=>v.product_id));
+  // A parent without variants is a review candidate, not an instruction to
+  // insert a default variant or copy its stock. Services and archived items
+  // must not be silently converted into active inventory.
+  const missingVariantParents:ReconciliationFinding[]=allParents
+    .filter(parent=>!parentsWithVariants.has(parent.id))
+    .map(parent=>({id:parent.id,name:parent.name,sku:parent.sku||"—",
+      reason:parent.is_service?"Servicio sin variante: revisar si corresponde, sin crear existencias":
+        parent.status!=="active"?`Estado ${parent.status}: conservar retiro e historial; revisar antes de cualquier alta`:
+        `Existencia padre ${parent.stock??"sin dato"}: cotejar historial, POS y variantes antes de crear o ajustar`,
+    }));
   const inventoryByVariant=new Map<string,InventorySnapshotRow>();
   const duplicateInventoryIds:string[]=[];
   for(const row of inventory){
@@ -83,5 +95,6 @@ export function reconcileInventoryPos(
     projectedPosParents:new Set(projected.map(p=>p.parent_id||p.id)).size,
     matchingVariants:[...posVariants.keys()].filter(id=>inventoryByVariant.has(id)).length,
     onlyInventory,onlyPos,stockDifferences,duplicateInventoryIds,
+    missingVariantParents,
   };
 }

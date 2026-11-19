@@ -234,6 +234,12 @@ test("A6.4 reconciles POS visibility and stock in read-only snapshots, not by eq
   assert.match(result.onlyInventory.map(x=>x.reason).join(" "),/Producto oculto en POS/);
   assert.equal(result.onlyPos.length,1);
   assert.match(result.onlyPos[0].reason,/sin variantes/);
+  assert.deepEqual(result.missingVariantParents.map(x=>x.id),["s","n"]);
+  assert.match(result.missingVariantParents[0].reason,/Servicio sin variante/);
+  assert.match(result.missingVariantParents[1].reason,/Existencia padre/);
+  const archived=reconcile([], [{id:"old",name:"Archivado",sku:"OLD-1",status:"archived",stock:9,pos_visible:false}], []);
+  assert.equal(archived.missingVariantParents.length,1);
+  assert.match(archived.missingVariantParents[0].reason,/conservar retiro e historial/);
   assert.deepEqual(result.stockDifferences.map(x=>[x.inventoryStock,x.posStock]),[[7,5]]);
   const client=read("src/components/admin/inventory-reconciliation.tsx");
   assert.match(client,/readAllPages<PosProduct>/);

@@ -353,5 +353,13 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **QA exclusivamente ficticio:** se añadió una proyección de un producto huérfano *solo para la consulta del sincronizador*, sin contaminar el catálogo normal. La prueba registra las peticiones automáticas tras el inicio, incluida la tentativa de ajuste de +3 unidades, mientras el servidor simulado deniega el ajuste con HTTP 403 y conserva su stock en cero. Las funciones reales, tablas, permisos, migraciones, POS y script operativo permanecen intactos. La etapa A10.2 documenta el riesgo, **no concede autorización para cambiar ni ejecutar la sincronización en datos reales**.
 
+### A10.3 · Conversión HEIC independiente y conciliación voluntaria
+
+**Aplicación aprobada exclusivamente en candidata:** el script antes mixto ya no consulta ni crea variantes al abrir ADMIN ni programa conciliaciones después de guardar un producto. Solo procesa imágenes HEIC y HEIF de la ficha heredada. El ajuste automático de stock, incluso cuando `products.stock` es positivo, fue eliminado del cliente sin tocar ninguna función o dato de Supabase. Se cambió el parámetro de caché del script.
+
+**Centralización:** «Conciliar con POS» en Inventario —función ya existente bajo demanda— incorpora la lista «Productos sin variantes · revisión manual». Expone el stock del padre como **dato de revisión, no cantidad a migrar**, distingue servicios y artículos inactivos/archivados, y recuerda el cotejo de historial comercial. No incluye un segundo formulario de alta, escritura masiva ni corrección automática: la ejecución de una reconciliación real requiere autorización y un mecanismo separado de auditoría, confirmación e idempotencia.
+
+**Límites de A10.3:** pruebas solo con simulaciones, conservación de captura HEIC y ficha unificada; no se toca ningún SKU/UPC/stock/relación comercial preexistente, ni ventas, POS, base real, migraciones, `main` o producción. Se mantiene `vercel.json` temporal bloqueando despliegue de la candidata. Evidencias técnicas en `docs/ADMIN-A10-SCRIPTS.md`.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

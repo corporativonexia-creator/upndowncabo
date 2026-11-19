@@ -565,29 +565,39 @@ test('A10.1 inventory navigation works without the obsolete polling script',asyn
   expect(events.filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
-test('A10.2 audit detects legacy HEIC startup writes in a disposable fixture only',async({page,request})=>{
-  await configure(request,{orphanStartupFixture:true});
+test('A10.3 ADMIN initialization never creates orphan variants or adjusts stock',async({page,request})=>{
+  await configure(request,{orphanReviewFixture:true});
   await login(page);await ready(page);
-  type EventRow={path:string,method:string,body?:Record<string,unknown>,authorized?:boolean};
+  type EventRow={path:string,method:string,query:string};
   const events=async()=>await (await request.get(`${fixture}/__events`)).json() as EventRow[];
-  const saves=async()=>(await events()).filter(e=>e.path==='/rest/v1/rpc/admin_inventory_save_variant');
-  const adjustments=async()=>(await events()).filter(e=>e.path==='/rest/v1/rpc/admin_inventory_adjust');
+  const forbidden=(rows:EventRow[])=>rows.filter(e=>
+    /\/rest\/v1\/rpc\/(admin_inventory_save_variant|admin_inventory_adjust)$/.test(e.path)||
+    ['PATCH','PUT','DELETE'].includes(e.method));
+  expect(forbidden(await events())).toHaveLength(0);
+  // Even the historical delayed post-submit window must remain quiet.
+  await page.locator('#udProductForm').evaluate(form=>form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+  await page.waitForTimeout(4400);
+  expect(forbidden(await events())).toHaveLength(0);
+  expect((await events()).filter(e=>e.query.includes('id,name,sku,stock,price,sale_price,status'))).toHaveLength(0);
+});
 
-  // No user interaction with a product form: mere ADMIN initialization triggers these RPC attempts.
-  await expect.poll(async()=>(await saves()).length).toBe(1);
-  await expect.poll(async()=>(await adjustments()).length).toBe(1);
-  expect((await saves())[0].body).toMatchObject({p_product_id:'p-orphan',p_variant_id:null,
-    p_title:'Única',p_sku:null,p_barcode:null,p_price:123,p_low_stock_threshold:2});
-  expect((await adjustments())[0].body).toMatchObject({p_variant_id:'v5',p_quantity_change:3,
-    p_reason:'Existencia inicial migrada desde alta de producto',p_movement_type:'adjustment'});
-  expect((await saves())[0].authorized).toBe(true);
-
-  // The isolated fixture records the attempt but denies stock writes (HTTP 403).
-  const snapshot=await (await request.post(`${fixture}/rest/v1/rpc/admin_inventory_catalog`,{data:{}})).json() as {
-    rows:Array<{product_id:string,variant_id:string,stock:number}>;
-  };
-  expect(snapshot.rows.find(row=>row.product_id==='p-orphan')).toMatchObject({variant_id:'v5',stock:0});
-  expect((await events()).filter(e=>['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+test('A10.3 manual review identifies orphan products without any inventory write',async({page,request})=>{
+  await configure(request,{orphanReviewFixture:true});
+  await login(page);await ready(page);
+  await page.goto('/admin/inventario');
+  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  const region=page.getByRole('region',{name:'Conciliación de inventario y POS'});
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  expect((await events()).filter(e=>e.path==='/rest/v1/rpc/admin_inventory_save_variant')).toHaveLength(0);
+  await region.getByRole('button',{name:'Conciliar con POS'}).click();
+  const detail=region.getByText('Productos sin variantes · revisión manual (1)');
+  await expect(detail).toBeVisible();
+  await detail.click();
+  await expect(region).toContainText('Producto huérfano sintético');
+  await expect(region).toContainText('Existencia padre 3');
+  await expect(region).toContainText('cotejar historial, POS y variantes');
+  expect((await events()).filter(e=>e.path==='/rest/v1/rpc/admin_inventory_save_variant'||
+    e.path==='/rest/v1/rpc/admin_inventory_adjust'||['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
 test.beforeEach(async({request,page})=>{
