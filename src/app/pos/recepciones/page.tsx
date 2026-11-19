@@ -10,6 +10,7 @@ import styles from "./receptions.module.css";
 
 type ServiceOption = { id: string; name: string; sku: string };
 type Identity = { employee_number: string; employee_name: string; terminal_name: string };
+type ReceptionFilter = "all" | ServiceReception["status"];
 type ReceptionForm = {
   customer_name: string; customer_phone: string; equipment_description: string;
   service_product_id: string; work_description: string; condition_notes: string; accessories: string;
@@ -46,12 +47,23 @@ export default function ServiceRecepcionesPage() {
   const [form, setForm] = useState<ReceptionForm>(blank);
   const [selected, setSelected] = useState<ServiceReception | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ReceptionFilter>("all");
+  const [searching, setSearching] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const requestId = useRef<string | null>(null);
+  const selectedDetailRef = useRef<HTMLElement | null>(null);
+  const historySequence = useRef(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    historySequence.current += 1;
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,20 +103,58 @@ export default function ServiceRecepcionesPage() {
     requestId.current = null;
   }
 
-  async function refreshHistory(query = "") {
+  function revealSelection() {
+    window.requestAnimationFrame(() => selectedDetailRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "nearest",
+    }));
+  }
+
+  function invalidateHistorySearch() {
+    historySequence.current += 1;
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    return historySequence.current;
+  }
+
+  async function readHistory(query: string, sequence: number) {
     const { data, error: historyError } = await db.rpc("pos_reception_recent", {
       p_device_token: token, p_search: query,
     });
+    if (sequence !== historySequence.current) return;
     if (historyError) throw historyError;
-    setReceptions(Array.isArray(data) ? data as ServiceReception[] : []);
+    const rows = Array.isArray(data) ? data as ServiceReception[] : [];
+    setReceptions(rows);
+    // Keep the selected receipt current when it is included in the new authorized read.
+    setSelected(previous => rows.find(row => row.id === previous?.id) || previous);
+  }
+
+  async function refreshHistory(query = "") {
+    const sequence = invalidateHistorySearch();
+    try { await readHistory(query, sequence); }
+    finally { if (sequence === historySequence.current) setSearching(false); }
+  }
+
+  function changeHistorySearch(value: string) {
+    setSearch(value);
+    const sequence = invalidateHistorySearch();
+    setHistoryError("");
+    setSearching(true);
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      void readHistory(value.trim(), sequence)
+        .catch(e => {
+          if (sequence === historySequence.current) setHistoryError("No se pudo consultar el historial: " + errorText(e));
+        })
+        .finally(() => { if (sequence === historySequence.current) setSearching(false); });
+    }, 300);
   }
 
   async function searchHistory(e: FormEvent) {
     e.preventDefault();
-    setBusy(true); setError("");
+    setSearching(true); setHistoryError("");
     try { await refreshHistory(search.trim()); }
-    catch (e) { setError("No se pudo consultar el historial: " + errorText(e)); }
-    finally { setBusy(false); }
+    catch (e) { setHistoryError("No se pudo consultar el historial: " + errorText(e)); }
   }
 
   async function register(e: FormEvent) {
@@ -127,6 +177,7 @@ export default function ServiceRecepcionesPage() {
       if (saveError) throw saveError;
       const saved = data as ServiceReception;
       setSelected(saved);
+      revealSelection();
       setForm(blank);
       requestId.current = null;
       setNotice("Recepción " + receptionFolio(saved.receipt_number) + " guardada. Imprime la copia del cliente y la del taller.");
@@ -195,6 +246,14 @@ export default function ServiceRecepcionesPage() {
   }
 
   const canWork = !loading && identity !== null;
+  const historyCounts = useMemo(() => ({
+    all: receptions.length,
+    received: receptions.filter(row => row.status === "received").length,
+    ready: receptions.filter(row => row.status === "ready").length,
+    delivered: receptions.filter(row => row.status === "delivered").length,
+  }), [receptions]);
+  const visibleReceptions = useMemo(() => statusFilter === "all" ? receptions :
+    receptions.filter(row => row.status === statusFilter), [receptions, statusFilter]);
   return (
     <main className={styles.shell}>
       <div className={styles.wrap}>
@@ -254,15 +313,58 @@ export default function ServiceRecepcionesPage() {
                 </div>
               </form>
               <p className={styles.footnote}>Recibe: #{identity.employee_number} {identity.employee_name} · {identity.terminal_name}. No hace falta turno de caja abierto. Las recepciones guardadas no se editan silenciosamente.</p>
+            </section>
+            <aside className={styles.panel}>
+              <h2>Consultar recepciones</h2>
+              <p className={styles.muted}>Busca por folio, cliente, teléfono o equipo mientras escribes. Selecciona un resultado para consultar o reimprimir.</p>
+              <form onSubmit={searchHistory} className={styles.actions}>
+                <input aria-label="Buscar recepciones" className={styles.search} maxLength={80}
+                  value={search} onChange={(e) => changeHistorySearch(e.target.value)} placeholder="Folio, nombre, teléfono o equipo" />
+                <button className={styles.secondary} disabled={searching} type="submit">Buscar</button>
+                {search && <button className={styles.secondary} type="button" onClick={() => changeHistorySearch("")}>Limpiar</button>}
+              </form>
+              {searching && <p role="status" className={styles.historyStatus}>Actualizando recepciones…</p>}
+              {historyError && <p role="alert" className={styles.alert}>{historyError} La lista anterior permanece visible; vuelve a intentar la consulta.</p>}
+              <div className={styles.filterGroup} role="group" aria-label="Filtrar por estado en resultados">
+                {([
+                  ["all", "Todas"], ["received", "Recibidas"],
+                  ["ready", "Listas"], ["delivered", "Entregadas"],
+                ] as const).map(([key, label]) => (
+                  <button key={key} type="button" aria-pressed={statusFilter === key}
+                    className={`${styles.filterButton} ${statusFilter === key ? styles.filterActive : ""}`}
+                    onClick={() => setStatusFilter(key)}>{label} <span>{historyCounts[key]}</span></button>
+                ))}
+              </div>
+              <p className={styles.filterHint}>Estados de los {historyCounts.all} resultados cargados; el filtro no cambia datos.</p>
               {selected && (
-                <div className={styles.saved}>
-                  <strong>{receptionFolio(selected.receipt_number)}</strong>
-                  <small>{selected.customer_name} · {selected.equipment_description}</small>
-                  <small><strong style={{fontSize:13,display:"inline"}}>
-                    {selected.status === "delivered" ? "ENTREGADO Y COBRADO" : selected.status === "ready" ? "LISTO PARA ENTREGAR" : "RECIBIDO · PENDIENTE"}
-                  </strong> · Precio del servicio pendiente hasta cobrar en caja.</small>
+                <section ref={selectedDetailRef} className={styles.saved} aria-label="Detalle de recepción">
+                  <div className={styles.selectedHeading}>
+                    <div>
+                      <span className={styles.selectedLabel}>Recepción seleccionada</span>
+                      <strong>{receptionFolio(selected.receipt_number)}</strong>
+                    </div>
+                    <span className={`${styles.statusTag} ${selected.status === "ready" ? styles.statusReady : selected.status === "delivered" ? styles.statusDelivered : ""}`}>
+                      {selected.status === "delivered" ? "Entregado y cobrado" : selected.status === "ready" ? "Listo para entregar" : "Recibido"}
+                    </span>
+                  </div>
+                  <p className={styles.selectedSummary}>{selected.customer_name} · {selected.equipment_description}</p>
+                  <p className={styles.selectedSummary}>{selected.status === "delivered" ?
+                    "Entrega registrada en POS. Este folio no sustituye el comprobante de pago." :
+                    "El servicio se cobra posteriormente en caja."}</p>
                   {selected.status === "delivered" && selected.checkout_sale_id &&
                     <small>Venta vinculada: {selected.checkout_sale_id}</small>}
+                  <details className={styles.selectedDetails}>
+                    <summary>Ver datos originales del equipo y servicio</summary>
+                    <dl>
+                      <div><dt>Recibido</dt><dd>{receptionDate(selected.received_at)}</dd></div>
+                      <div><dt>Teléfono</dt><dd>{selected.customer_phone}</dd></div>
+                      <div><dt>Servicio</dt><dd>{selected.service_name}</dd></div>
+                      <div><dt>Trabajo solicitado</dt><dd>{selected.work_description}</dd></div>
+                      <div><dt>Condición al recibir</dt><dd>{selected.condition_notes}</dd></div>
+                      <div><dt>Accesorios</dt><dd>{selected.accessories}</dd></div>
+                      <div><dt>Recibió</dt><dd>#{selected.employee_number} {selected.employee_name} · {selected.terminal_name}</dd></div>
+                    </dl>
+                  </details>
                   <div className={styles.actions}>
                     {selected.status === "received" &&
                       <button type="button" className={styles.primary} disabled={busy}
@@ -278,26 +380,23 @@ export default function ServiceRecepcionesPage() {
                     <button type="button" className={styles.secondary} onClick={() => pdf(selected, true)}>PDF dos copias</button>
                     <button type="button" className={styles.secondary} onClick={() => pdf(selected, false)}>Descargar PDF</button>
                   </div>
-                </div>
+                </section>
               )}
-            </section>
-            <aside className={styles.panel}>
-              <h2>Consultar recepciones</h2>
-              <p className={styles.muted}>Busca el folio, nombre, teléfono o equipo. Marca listo, cobra desde el POS o reimprime sin duplicar.</p>
-              <form onSubmit={searchHistory} className={styles.actions}>
-                <input aria-label="Buscar recepciones" className={styles.search} maxLength={80}
-                  value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ej. SR-000128" />
-                <button className={styles.secondary} disabled={busy} type="submit">Buscar</button>
-              </form>
-              <div className={styles.list}>
-                {receptions.map(r => (
-                  <button type="button" key={r.id} className={styles.item} onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); }}>
+              <div className={styles.list} aria-busy={searching}>
+                {visibleReceptions.map(r => (
+                  <button type="button" key={r.id} aria-pressed={selected?.id === r.id}
+                    className={`${styles.item} ${selected?.id === r.id ? styles.itemActive : ""}`}
+                    onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); revealSelection(); }}>
                     <span className={styles.itemLine}><strong>{r.customer_name}</strong><span className={styles.folio}>{receptionFolio(r.receipt_number)}</span></span>
                     <small>{r.equipment_description} · {r.service_name}</small>
-                    <small>{receptionDate(r.received_at)} · {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}</small>
+                    <small>{receptionDate(r.received_at)} · <span className={`${styles.statusTag} ${r.status === "ready" ? styles.statusReady : r.status === "delivered" ? styles.statusDelivered : ""}`}>
+                      {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}
+                    </span></small>
                   </button>
                 ))}
-                {!receptions.length && <div className={styles.empty}>No hay recepciones para mostrar.</div>}
+                {!visibleReceptions.length && <div className={styles.empty}>
+                  {receptions.length ? "No hay recepciones de este estado entre los resultados cargados." : "No hay recepciones para mostrar."}
+                </div>}
               </div>
             </aside>
           </div>

@@ -20,16 +20,21 @@
     mounted: false,
     activeView: "products",
     contentType: "courses",
+    contentLoadVersion: 0,
+    contentLoaded: { courses: false, instructors: false, articles: false },
     courses: [],
     instructors: [],
     articles: [],
     sellers: [],
     commissions: [],
+    sellerLoadVersion: 0,
     commissionFilter: "all",
     commissionSearch: "",
     lessonLeads: [],
     lessonEvents: [],
     lessonInstructors: [],
+    lessonLoaded: false,
+    lessonLoadVersion: 0,
     lessonFilter: "all",
     lessonInstructorFilter: "all",
     lessonSearch: "",
@@ -52,6 +57,9 @@
     posShiftTerminal: "all",
     posShiftStatus: "all",
     posAdminSection: "dashboard",
+    posAdminReady: false,
+    posReportVersions: Object.create(null),
+    posReportTimers: Object.create(null),
     posInventoryRows: [],
     posInventoryStock: [],
     posInventoryMovement: "all",
@@ -597,6 +605,11 @@
   }
 
   function hideV2Views(){
+    if(state.activeView==="pos")invalidatePosReports();
+    if(state.activeView==="sellers")invalidateSellerReads();
+    if(state.activeView==="content")invalidateContentReads();
+    if(state.activeView==="lessons")invalidateLessonReads();
+    state.activeView="products";
     $("udv2ContentView")?.classList.add("udv2-hidden");
     $("udv2SellersView")?.classList.add("udv2-hidden");
     $("udv2LessonsView")?.classList.add("udv2-hidden");
@@ -608,6 +621,13 @@
   }
 
   function switchView(view){
+    if(state.activeView==="pos"&&view!=="pos")invalidatePosReports();
+    if(state.activeView==="sellers"&&view!=="sellers")invalidateSellerReads();
+    if(state.activeView==="content"&&view!=="content")invalidateContentReads();
+    if(state.activeView==="lessons"&&view!=="lessons")invalidateLessonReads();
+    const wasSellers=state.activeView==="sellers";
+    const wasContent=state.activeView==="content";
+    const wasLessons=state.activeView==="lessons";
     state.activeView=view;
     const productView=$("udProductsView"),orderView=$("udOrdersView");
     if(productView) productView.classList.add("u-hidden");
@@ -622,9 +642,9 @@
     const tabId=view==="content"?"udv2ContentTab":view==="sellers"?"udv2SellersTab":view==="lessons"?"udv2LessonsTab":"udv2PosTab";
     $(tabId)?.classList.add("is-active");
 
-    if(view==="content") loadContent();
-    if(view==="sellers") loadSellers();
-    if(view==="lessons") loadLessons();
+    if(view==="content"&&!wasContent) loadContent();
+    if(view==="sellers"&&!wasSellers) loadSellers();
+    if(view==="lessons"&&!wasLessons) loadLessons();
     if(view==="pos") loadPosAdmin();
   }
 
@@ -789,12 +809,14 @@
     const current=state.lessonInstructorFilter||"all";
     select.innerHTML='<option value="all">Todos los instructores</option><option value="none">Sin instructor</option>'+
       state.lessonInstructors.map(x=>`<option value="${escapeHtml(x.slug)}">${escapeHtml(x.name)}</option>`).join("");
-    select.value=[...select.options].some(x=>x.value===current)?current:"all";
+    if(![...select.options].some(x=>x.value===current))state.lessonInstructorFilter="all";
+    select.value=state.lessonInstructorFilter;
   }
 
   function renderLessons(){
     const root=$("udv2LessonList");
     if(!root)return;
+    if(!state.lessonLoaded)return; // A pending/denied first SELECT is not an empty result.
 
     renderLessonInstructorFilter();
 
@@ -896,6 +918,7 @@
             .update({status:newStatus,updated_at:new Date().toISOString()})
             .eq("id",id);
           if(error)throw error;
+          invalidateLessonReads(); // A previous SELECT cannot undo this successful local status change.
           const lead=state.lessonLeads.find(x=>x.id===id);
           if(lead)lead.status=newStatus;
           toast("Estado de la solicitud actualizado.");
@@ -909,13 +932,28 @@
     });
   }
 
+  function invalidateLessonReads(){
+    state.lessonLoadVersion++;
+    $("udv2LessonList")?.removeAttribute("aria-busy");
+    const refresh=$("udv2LessonRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadLessons(){
+    const version=++state.lessonLoadVersion;
+    const isCurrent=()=>version===state.lessonLoadVersion&&state.activeView==="lessons"
+      &&!$("udv2LessonsView")?.classList.contains("udv2-hidden");
     const root=$("udv2LessonList");
-    if(root)root.innerHTML='<div class="udv2-empty">Cargando solicitudes…</div>';
+    if(root&&!state.lessonLoaded)root.innerHTML='<div class="udv2-empty">Cargando solicitudes…</div>';
+    root?.setAttribute("aria-busy","true");
+    const refresh=$("udv2LessonRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
 
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
 
       const [leadsResult,eventsResult,instructorsResult]=await Promise.all([
         db.from("golf_lesson_leads")
@@ -928,6 +966,7 @@
           .select("slug,name,is_visible,is_active,sort_order")
           .order("sort_order",{ascending:true})
       ]);
+      if(!isCurrent())return;
 
       if(leadsResult.error)throw leadsResult.error;
       if(eventsResult.error)throw eventsResult.error;
@@ -936,11 +975,19 @@
       state.lessonLeads=leadsResult.data||[];
       state.lessonEvents=eventsResult.data||[];
       state.lessonInstructors=instructorsResult.data||[];
+      state.lessonLoaded=true;
       renderLessons();
     }catch(error){
-      console.error("Clases admin load",error);
-      if(root)root.innerHTML=`<div class="udv2-empty">No se pudieron cargar las solicitudes.<br>${escapeHtml(error.message||"Error")}</div>`;
-      toast(error.message||"No se pudieron cargar las solicitudes.",true);
+      if(isCurrent()){
+        console.error("Clases admin load",error);
+        if(root&&!state.lessonLoaded)root.innerHTML=`<div class="udv2-empty">No se pudieron cargar las solicitudes.<br>${escapeHtml(error.message||"Error")}</div>`;
+        toast(error.message||"No se pudieron cargar las solicitudes.",true);
+      }
+    }finally{
+      if(version===state.lessonLoadVersion){
+        root?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
     }
   }
 
@@ -1726,9 +1773,63 @@
     popup.document.close();
   }
 
+  function nextPosReportRequest(section){
+    state.posReportVersions[section]=(state.posReportVersions[section]||0)+1;
+    return state.posReportVersions[section];
+  }
+
+  function isCurrentPosReport(section,version){
+    return state.posReportVersions[section]===version;
+  }
+
+  function cancelPosReportTimer(section){
+    clearTimeout(state.posReportTimers[section]);
+    delete state.posReportTimers[section];
+  }
+
+  function schedulePosReport(section){
+    // Invalidate any in-flight result immediately, before the debounce expires.
+    nextPosReportRequest(section);
+    cancelPosReportTimer(section);
+    state.posReportTimers[section]=setTimeout(()=>{
+      delete state.posReportTimers[section];
+      if(state.posAdminReady&&state.activeView==="pos"&&state.posAdminSection===section){
+        void loadPosActiveReport(section);
+      }
+    },180);
+  }
+
+  function invalidatePosReports(){
+    for(const section of ["dashboard","shifts","summary","inventory","employees-report","daily-close","audit"]){
+      cancelPosReportTimer(section);
+      nextPosReportRequest(section);
+    }
+  }
+
+  function loadPosActiveReport(section){
+    cancelPosReportTimer(section);
+    // A7.1: request only the visible report; report RPCs and their arguments
+    // remain unchanged. Terminal and employee tables come from loadPosAdmin.
+    const loaders={
+      dashboard:loadPosDashboard,
+      shifts:loadPosShifts,
+      summary:loadPosSummary,
+      inventory:loadPosInventory,
+      "employees-report":loadEmployeeReport,
+      "daily-close":loadDailyClose,
+      audit:loadPosAudit
+    };
+    return loaders[section]?.()||Promise.resolve();
+  }
+
   function setPosAdminSection(section){
     const allowed=new Set(["dashboard","terminals","employees","shifts","summary","inventory","employees-report","daily-close","audit"]);
     const next=allowed.has(section)?section:"dashboard";
+    const previous=state.posAdminSection;
+    if(previous!==next){
+      cancelPosReportTimer(previous);
+      nextPosReportRequest(previous);
+    }
     state.posAdminSection=next;
 
     document.querySelectorAll("#updown-admin .udv2-pos-tab").forEach(btn=>{
@@ -1747,15 +1848,20 @@
       target.classList.add("active");
       target.setAttribute("aria-hidden","false");
     }
+    if(state.posAdminReady)void loadPosActiveReport(next);
   }
 
   function bindPosAdminTabs(){
     document.querySelectorAll("#updown-admin .udv2-pos-tab").forEach(btn=>{
+      if(btn.dataset.posTabBound==="true")return;
+      btn.dataset.posTabBound="true";
       btn.addEventListener("click",()=>{
         setPosAdminSection(String(btn.getAttribute("data-pos-section")||"terminals"));
       });
     });
     document.querySelectorAll("#updown-admin [data-print-report]").forEach(btn=>{
+      if(btn.dataset.posPrintBound==="true")return;
+      btn.dataset.posPrintBound="true";
       btn.addEventListener("click",()=>{
         printPosReport(String(btn.getAttribute("data-print-report")||""));
       });
@@ -1813,6 +1919,7 @@
   }
 
   async function loadPosInventory(){
+    const version=nextPosReportRequest("inventory");
     try{
       const db=await getDb();
       const from=$("udv2PosInventoryFrom")?.value||"";
@@ -1827,6 +1934,7 @@
         p_search:search||null,
         p_limit:1000
       });
+      if(!isCurrentPosReport("inventory",version))return;
       if(error)throw error;
 
       state.posInventoryRows=Array.isArray(data?.movements)?data.movements:[];
@@ -1834,6 +1942,7 @@
       populateInventoryFilters();
       renderPosInventory();
     }catch(error){
+      if(!isCurrentPosReport("inventory",version))return;
       console.error("POS inventory load",error);
       if($("udv2PosInventoryRows"))$("udv2PosInventoryRows").innerHTML=`<div class="udv2-empty">No se pudo cargar inventario.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar inventario.",true);
@@ -2028,6 +2137,7 @@
   }
 
   async function loadEmployeeReport(){
+    const version=nextPosReportRequest("employees-report");
     try{
       const db=await getDb();
       const from=$("udv2PosEmployeeReportFrom")?.value||"";
@@ -2040,10 +2150,12 @@
         p_terminal_id:(state.posEmployeeReportTerminal&&state.posEmployeeReportTerminal!=="all")?state.posEmployeeReportTerminal:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("employees-report",version))return;
       if(error)throw error;
       state.posEmployeeReportRows=Array.isArray(data?.rows)?data.rows:[];
       renderEmployeeReport();
     }catch(error){
+      if(!isCurrentPosReport("employees-report",version))return;
       console.error("POS employee report",error);
       if($("udv2PosEmployeeReportRows"))$("udv2PosEmployeeReportRows").innerHTML=`<div class="udv2-empty">No se pudo cargar el reporte.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar el reporte por empleado.",true);
@@ -2099,6 +2211,7 @@
   }
 
   async function loadPosDashboard(){
+    const version=nextPosReportRequest("dashboard");
     try{
       const db=await getDb();
 
@@ -2115,12 +2228,14 @@
         p_date:state.posDashboardDate,
         p_terminal_id:null
       });
+      if(!isCurrentPosReport("dashboard",version))return;
 
       if(error)throw error;
 
       state.posDashboardReport=data?.report||null;
       renderPosDashboard();
     }catch(error){
+      if(!isCurrentPosReport("dashboard",version))return;
       console.error("POS dashboard",error);
       if($("udv2PosDashboardCards")){
         $("udv2PosDashboardCards").innerHTML=`<div class="udv2-empty">No se pudo cargar el Dashboard.<br>${escapeHtml(error.message||"Error")}</div>`;
@@ -2193,6 +2308,7 @@
   }
 
   async function loadDailyClose(){
+    const version=nextPosReportRequest("daily-close");
     try{
       const db=await getDb();
       const date=$("udv2PosDailyCloseDate")?.value||"";
@@ -2202,10 +2318,12 @@
         p_date:date,
         p_terminal_id:(state.posDailyCloseTerminal&&state.posDailyCloseTerminal!=="all")?state.posDailyCloseTerminal:null
       });
+      if(!isCurrentPosReport("daily-close",version))return;
       if(error)throw error;
       state.posDailyCloseReport=data?.report||null;
       renderDailyClose();
     }catch(error){
+      if(!isCurrentPosReport("daily-close",version))return;
       console.error("POS daily close",error);
       if($("udv2PosDailyCloseBody"))$("udv2PosDailyCloseBody").innerHTML=`<div class="udv2-empty">No se pudo cargar el cierre.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar el cierre diario.",true);
@@ -2321,6 +2439,7 @@
   }
 
   async function loadPosShifts(){
+    const version=nextPosReportRequest("shifts");
     try{
       const db=await getDb();
       const from=$("udv2PosShiftFrom")?.value||"";
@@ -2334,12 +2453,14 @@
         p_status:(state.posShiftStatus&&state.posShiftStatus!=="all")?state.posShiftStatus:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("shifts",version))return;
 
       if(error)throw error;
 
       state.posShiftRows=Array.isArray(data?.shifts)?data.shifts:[];
       renderPosShifts();
     }catch(error){
+      if(!isCurrentPosReport("shifts",version))return;
       console.error("POS shifts load",error);
       if($("udv2PosShiftList"))$("udv2PosShiftList").innerHTML=`<div class="udv2-empty">No se pudieron cargar los turnos.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudieron cargar los turnos.",true);
@@ -2434,6 +2555,7 @@
   }
 
   async function loadPosSummary(){
+    const version=nextPosReportRequest("summary");
     try{
       const db=await getDb();
 
@@ -2449,6 +2571,7 @@
         p_payment_method:(state.posSummaryPayment&&state.posSummaryPayment!=="all")?state.posSummaryPayment:null,
         p_limit:500
       });
+      if(!isCurrentPosReport("summary",version))return;
 
       if(error)throw error;
 
@@ -2456,6 +2579,7 @@
       state.posSummarySales=Array.isArray(data?.sales)?data.sales:[];
       renderPosSummary();
     }catch(error){
+      if(!isCurrentPosReport("summary",version))return;
       console.error("POS summary load",error);
       if($("udv2PosSummaryCards"))$("udv2PosSummaryCards").innerHTML=`<div class="udv2-empty">No se pudo cargar el resumen.<br>${escapeHtml(error.message||"Error")}</div>`;
       if($("udv2PosSummarySales"))$("udv2PosSummarySales").innerHTML='<div class="udv2-empty">Sin datos.</div>';
@@ -2571,6 +2695,7 @@
   }
 
   async function loadPosAudit(){
+    const version=nextPosReportRequest("audit");
     const list=$("udv2PosAuditList");
     if(list)list.innerHTML='<div class="udv2-empty">Cargando bitácora…</div>';
     try{
@@ -2588,12 +2713,14 @@
         p_from:pFrom,
         p_to:pTo
       });
+      if(!isCurrentPosReport("audit",version))return;
       if(error)throw error;
 
       state.posAuditEvents=Array.isArray(data?.events)?data.events:[];
       populateAuditFilters();
       renderPosAudit();
     }catch(error){
+      if(!isCurrentPosReport("audit",version))return;
       console.error("POS audit load",error);
       if(list)list.innerHTML=`<div class="udv2-empty">No se pudo cargar la bitácora.<br>${escapeHtml(error.message||"Error")}</div>`;
       toast(error.message||"No se pudo cargar la bitácora.",true);
@@ -2601,6 +2728,8 @@
   }
 
   async function loadPosAdmin(){
+    state.posAdminReady=false;
+    invalidatePosReports();
     try{
       await verifyAdmin();
       const db=await getDb();
@@ -2623,7 +2752,8 @@
       populateShiftFilters();
       populateEmployeeReportFilters();
       bindPosAdminTabs();
-      await Promise.all([loadPosAudit(),loadPosSummary(),loadPosShifts(),loadPosInventory(),loadEmployeeReport(),loadDailyClose(),loadPosDashboard()]);
+      state.posAdminReady=true;
+      await loadPosActiveReport(state.posAdminSection||"dashboard");
     }catch(error){
       console.error("POS admin load",error);
       $("udv2PosEmployeeList").innerHTML=`<div class="udv2-empty">No se pudo cargar POS.<br>${escapeHtml(error.message||"Error")}</div>`;
@@ -2686,14 +2816,16 @@
 
 
   function bindShell(){
-    $("udv2ContentRefresh")?.addEventListener("click",loadContent);
-    $("udv2SellerRefresh")?.addEventListener("click",loadSellers);
+    $("udv2ContentRefresh")?.addEventListener("click",()=>loadContent());
+    $("udv2SellerRefresh")?.addEventListener("click",()=>loadSellers());
 
     qa("[data-content-type]",$("udv2ContentView")).forEach(btn=>{
       btn.addEventListener("click",()=>{
+        if(state.contentType===btn.dataset.contentType)return;
         state.contentType=btn.dataset.contentType;
         qa("[data-content-type]",$("udv2ContentView")).forEach(x=>x.classList.toggle("is-active",x===btn));
-        renderContentSection();
+        if(state.contentLoaded[state.contentType])renderContentSection();
+        loadContent();
       });
     });
 
@@ -2705,7 +2837,7 @@
     });
     $("udv2SellerForm")?.addEventListener("submit",createSeller);
 
-    $("udv2LessonRefresh")?.addEventListener("click",loadLessons);
+    $("udv2LessonRefresh")?.addEventListener("click",()=>loadLessons());
     $("udv2LessonSearch")?.addEventListener("input",event=>{
       state.lessonSearch=String(event.target.value||"").trim().toLowerCase();
       renderLessons();
@@ -2737,7 +2869,6 @@
       populateShiftFilters();
       const select=$("udv2PosShiftEmployee");
       if(select)select.value=employeeId;
-      loadPosShifts();
       closeForceCloseModal();
     });
 
@@ -2753,14 +2884,14 @@
       const value=String(event.target.value||"");
       if(!value)return;
       state.posDashboardDate=value;
-      loadPosDashboard();
+      schedulePosReport("dashboard");
     });
 
     $("udv2PosDashboardToday")?.addEventListener("click",()=>{
       state.posDashboardDate=localDateInputValue(new Date());
       const input=$("udv2PosDashboardDateInput");
       if(input)input.value=state.posDashboardDate;
-      loadPosDashboard();
+      schedulePosReport("dashboard");
     });
 
     document.querySelectorAll("#updown-admin [data-pos-goto]").forEach(btn=>{
@@ -2771,35 +2902,32 @@
 
     $("udv2PosEmployeeReportEmployee")?.addEventListener("change",event=>{
       state.posEmployeeReportEmployee=String(event.target.value||"all");
-      loadEmployeeReport();
+      schedulePosReport("employees-report");
     });
     $("udv2PosEmployeeReportTerminal")?.addEventListener("change",event=>{
       state.posEmployeeReportTerminal=String(event.target.value||"all");
-      loadEmployeeReport();
+      schedulePosReport("employees-report");
     });
-    $("udv2PosEmployeeReportFrom")?.addEventListener("change",loadEmployeeReport);
-    $("udv2PosEmployeeReportTo")?.addEventListener("change",loadEmployeeReport);
+    $("udv2PosEmployeeReportFrom")?.addEventListener("change",()=>schedulePosReport("employees-report"));
+    $("udv2PosEmployeeReportTo")?.addEventListener("change",()=>schedulePosReport("employees-report"));
 
-    $("udv2PosDailyCloseDate")?.addEventListener("change",loadDailyClose);
+    $("udv2PosDailyCloseDate")?.addEventListener("change",()=>schedulePosReport("daily-close"));
     $("udv2PosDailyCloseTerminal")?.addEventListener("change",event=>{
       state.posDailyCloseTerminal=String(event.target.value||"all");
-      loadDailyClose();
+      schedulePosReport("daily-close");
     });
 
     $("udv2PosInventoryProduct")?.addEventListener("change",event=>{
       state.posInventoryProduct=String(event.target.value||"all");
-      loadPosInventory();
+      schedulePosReport("inventory");
     });
     $("udv2PosInventoryMovement")?.addEventListener("change",event=>{
       state.posInventoryMovement=String(event.target.value||"all");
-      loadPosInventory();
+      schedulePosReport("inventory");
     });
-    $("udv2PosInventoryFrom")?.addEventListener("change",loadPosInventory);
-    $("udv2PosInventoryTo")?.addEventListener("change",loadPosInventory);
-    $("udv2PosInventorySearch")?.addEventListener("input",()=>{
-      clearTimeout(state.__posInventorySearchTimer);
-      state.__posInventorySearchTimer=setTimeout(loadPosInventory,250);
-    });
+    $("udv2PosInventoryFrom")?.addEventListener("change",()=>schedulePosReport("inventory"));
+    $("udv2PosInventoryTo")?.addEventListener("change",()=>schedulePosReport("inventory"));
+    $("udv2PosInventorySearch")?.addEventListener("input",()=>schedulePosReport("inventory"));
 
     document.querySelectorAll("#updown-admin [data-sale-detail-close]").forEach(el=>{
       el.addEventListener("click",closeSaleDetail);
@@ -2807,37 +2935,37 @@
 
     $("udv2PosShiftEmployee")?.addEventListener("change",event=>{
       state.posShiftEmployee=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
     $("udv2PosShiftTerminal")?.addEventListener("change",event=>{
       state.posShiftTerminal=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
     $("udv2PosShiftStatus")?.addEventListener("change",event=>{
       state.posShiftStatus=String(event.target.value||"all");
-      loadPosShifts();
+      schedulePosReport("shifts");
     });
-    $("udv2PosShiftFrom")?.addEventListener("change",loadPosShifts);
-    $("udv2PosShiftTo")?.addEventListener("change",loadPosShifts);
+    $("udv2PosShiftFrom")?.addEventListener("change",()=>schedulePosReport("shifts"));
+    $("udv2PosShiftTo")?.addEventListener("change",()=>schedulePosReport("shifts"));
 
     $("udv2PosSummaryEmployee")?.addEventListener("change",event=>{
       state.posSummaryEmployee=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryTerminal")?.addEventListener("change",event=>{
       state.posSummaryTerminal=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryStatus")?.addEventListener("change",event=>{
       state.posSummaryStatus=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
     $("udv2PosSummaryPayment")?.addEventListener("change",event=>{
       state.posSummaryPayment=String(event.target.value||"all");
-      loadPosSummary();
+      schedulePosReport("summary");
     });
-    $("udv2PosSummaryFrom")?.addEventListener("change",loadPosSummary);
-    $("udv2PosSummaryTo")?.addEventListener("change",loadPosSummary);
+    $("udv2PosSummaryFrom")?.addEventListener("change",()=>schedulePosReport("summary"));
+    $("udv2PosSummaryTo")?.addEventListener("change",()=>schedulePosReport("summary"));
 
     $("udv2PosAuditSearch")?.addEventListener("input",event=>{
       state.posAuditSearch=String(event.target.value||"").trim().toLowerCase();
@@ -2845,18 +2973,18 @@
     });
     $("udv2PosAuditType")?.addEventListener("change",event=>{
       state.posAuditType=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
     $("udv2PosAuditEmployee")?.addEventListener("change",event=>{
       state.posAuditEmployee=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
     $("udv2PosAuditTerminal")?.addEventListener("change",event=>{
       state.posAuditTerminal=String(event.target.value||"all");
-      renderPosAudit();
+      schedulePosReport("audit");
     });
-    $("udv2PosAuditFrom")?.addEventListener("change",loadPosAudit);
-    $("udv2PosAuditTo")?.addEventListener("change",loadPosAudit);
+    $("udv2PosAuditFrom")?.addEventListener("change",()=>schedulePosReport("audit"));
+    $("udv2PosAuditTo")?.addEventListener("change",()=>schedulePosReport("audit"));
 
     $("udv2CommissionSearch")?.addEventListener("input",event=>{
       state.commissionSearch=String(event.target.value||"").trim().toLowerCase();
@@ -2881,18 +3009,33 @@
     return data.publicUrl;
   }
 
+  function invalidateContentReads(){
+    state.contentLoadVersion++;
+    $("udv2ContentBody")?.removeAttribute("aria-busy");
+    const refresh=$("udv2ContentRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadContent(){
+    const type=state.contentType;
+    const version=++state.contentLoadVersion;
+    const isCurrent=()=>version===state.contentLoadVersion&&state.activeView==="content"
+      &&state.contentType===type&&!$("udv2ContentView")?.classList.contains("udv2-hidden");
+    const body=$("udv2ContentBody");
+    if(!state.contentLoaded[type]&&body)body.innerHTML='<div class="udv2-empty">Cargando contenido…</div>';
+    body?.setAttribute("aria-busy","true");
+    const refresh=$("udv2ContentRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
 
-      // Load each source independently. A failure in Journal must never make
-      // Courses and Instructors appear as "0", and vice versa.
-      const [coursesResult,instructorsResult,articlesResult]=await Promise.all([
-        db.from("golf_courses").select("*"),
-        db.from("golf_instructors").select("*"),
-        db.from("journal_articles").select("*")
-      ]);
+      // Each tab retains its existing SELECT; hidden content never queries.
+      const table={courses:"golf_courses",instructors:"golf_instructors",articles:"journal_articles"}[type];
+      const result=await db.from(table).select("*");
+      if(!isCurrent())return;
 
       const sortByOrder=(rows=[])=>[...rows].sort((a,b)=>{
         const ao=Number(a.sort_order||0),bo=Number(b.sort_order||0);
@@ -2900,36 +3043,29 @@
         return String(a.created_at||"").localeCompare(String(b.created_at||""));
       });
 
-      if(coursesResult.error){
-        console.error("golf_courses admin load",coursesResult.error);
-        toast(`Campos: ${coursesResult.error.message}`,true);
-      }else{
-        state.courses=sortByOrder(coursesResult.data||[]);
-      }
-
-      if(instructorsResult.error){
-        console.error("golf_instructors admin load",instructorsResult.error);
-        toast(`Profesores: ${instructorsResult.error.message}`,true);
-      }else{
-        state.instructors=sortByOrder(instructorsResult.data||[]);
-      }
-
-      if(articlesResult.error){
-        console.error("journal_articles admin load",articlesResult.error);
-        toast(`Journal: ${articlesResult.error.message}`,true);
-      }else{
-        state.articles=[...(articlesResult.data||[])].sort((a,b)=>{
+      if(result.error)throw result.error;
+      if(type==="articles"){
+        state.articles=[...(result.data||[])].sort((a,b)=>{
           const ao=Number(a.sort_order||0),bo=Number(b.sort_order||0);
           if(ao!==bo)return ao-bo;
           return String(b.published_at||b.created_at||"").localeCompare(String(a.published_at||a.created_at||""));
         });
-      }
+      }else state[type]=sortByOrder(result.data||[]);
 
+      state.contentLoaded[type]=true;
       renderContentSection();
     }catch(e){
-      console.error("Managed admin content load",e);
-      toast(e.message||"No se pudo cargar contenido.",true);
-      renderContentSection();
+      if(isCurrent()){
+        console.error("Managed admin content load",e);
+        toast(`${{courses:"Campos",instructors:"Profesores",articles:"Journal"}[type]}: ${e.message||"No se pudo cargar contenido."}`,true);
+        if(state.contentLoaded[type])renderContentSection();
+        else if(body)body.innerHTML=`<div class="udv2-empty">No se pudo cargar contenido. ${escapeHtml(e.message||"Intenta actualizar.")}</div>`;
+      }
+    }finally{
+      if(version===state.contentLoadVersion){
+        body?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
     }
   }
 
@@ -3180,18 +3316,43 @@
     await loadContent();
   }
 
+  function invalidateSellerReads(){
+    state.sellerLoadVersion++;
+    $("udv2SellerList")?.removeAttribute("aria-busy");
+    $("udv2CommissionList")?.removeAttribute("aria-busy");
+    const refresh=$("udv2SellerRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadSellers(){
+    const version=++state.sellerLoadVersion;
+    const isCurrent=()=>version===state.sellerLoadVersion&&state.activeView==="sellers"
+      &&!$("udv2SellersView")?.classList.contains("udv2-hidden");
+    $("udv2SellerList")?.setAttribute("aria-busy","true");
+    $("udv2CommissionList")?.setAttribute("aria-busy","true");
+    const refresh=$("udv2SellerRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
       const [s,c]=await Promise.all([
         db.from("affiliate_sellers").select("id,code,name,email,phone,commission_rate,is_active,created_at").order("created_at",{ascending:false}),
         db.from("affiliate_commissions").select("id,order_id,seller_id,seller_code,currency,order_total,commission_rate,commission_amount,status,created_at,affiliate_sellers(name,code),orders(order_number,created_at)").order("created_at",{ascending:false})
       ]);
+      if(!isCurrent())return;
       if(s.error) throw s.error;if(c.error) throw c.error;
       state.sellers=s.data||[];state.commissions=c.data||[];
       renderSellerMetrics();renderSellers();renderCommissions();
-    }catch(e){ toast(e.message||"No se pudieron cargar vendedores.",true); }
+    }catch(e){ if(isCurrent())toast(e.message||"No se pudieron cargar vendedores.",true); }
+    finally{
+      if(version===state.sellerLoadVersion){
+        $("udv2SellerList")?.removeAttribute("aria-busy");
+        $("udv2CommissionList")?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
+    }
   }
 
   function renderSellerMetrics(){

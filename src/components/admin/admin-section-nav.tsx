@@ -3,7 +3,6 @@ import Link from "next/link";
 const items = [
   { label: "Productos", href: "/admin" },
   { label: "Categorías y servicios", href: "/admin/categorias" },
-  { label: "Alta rápida", href: "/admin/productos/alta-rapida" },
   { label: "Inventario", href: "/admin/inventario" },
   { label: "POS / Caja", href: "/admin?section=pos" },
   { label: "Pedidos", href: "/admin?section=orders" },
