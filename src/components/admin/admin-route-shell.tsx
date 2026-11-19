@@ -16,7 +16,9 @@ function NestedAdminShell({ pathname, children }: Readonly<{ pathname: string; c
   const [open, setOpen] = useState(false);
   const mobileToggle = useRef<HTMLButtonElement>(null);
   return (
-    <div className="ud-admin-route-shell">
+    <div className="ud-admin-route-shell" onKeyDown={event => {
+      if (event.key === "Escape" && open) { setOpen(false); mobileToggle.current?.focus(); }
+    }}>
       <button
         type="button"
         ref={mobileToggle}
@@ -28,7 +30,7 @@ function NestedAdminShell({ pathname, children }: Readonly<{ pathname: string; c
         <span aria-hidden="true">☰</span> Menú del administrador <span aria-hidden="true">{open ? "×" : "⌄"}</span>
       </button>
       {open ? <button type="button" className="ud-admin-route-backdrop" aria-label="Cerrar menú" onClick={() => setOpen(false)} /> : null}
-      <aside id="udAdminRouteNavigation" className={`ud-admin-route-sidebar${open ? " is-open" : ""}`} onKeyDown={event => { if (event.key === "Escape") { setOpen(false); mobileToggle.current?.focus(); } }}>
+      <aside id="udAdminRouteNavigation" className={`ud-admin-route-sidebar${open ? " is-open" : ""}`}>
         <AdminSectionNav activePath={pathname} onNavigate={() => setOpen(false)} />
       </aside>
       <div className="ud-admin-route-content">{children}</div>
