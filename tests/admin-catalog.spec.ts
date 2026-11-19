@@ -1193,7 +1193,8 @@ test('A11.6 dedicated gallery refuses an eleventh image',async({page,request})=>
   await host.getByRole('button',{name:'Seleccionar Polo clásico · ROP-001'}).click();
   await expect(host.getByText('10 de 10 fotos guardadas')).toBeVisible();
   const photos=host.getByRole('region',{name:'Fotografías por UPC'});
-  await expect(photos.locator('input[type=file]')).toBeDisabled();
+  await expect(photos.locator('input[type=file]').first()).toBeDisabled();
+  await expect(photos.locator('input[type=file]').last()).toBeDisabled();
   await expect(photos.getByRole('button',{name:'SUBIR A LA GALERÍA'})).toBeDisabled();
 });
 

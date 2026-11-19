@@ -1853,7 +1853,7 @@ export default function PosPage() {
         .pos-header-person,.pos-header-metric{display:flex;flex-direction:column;justify-content:center;gap:4px;border:1px solid #ffffff28;background:#fffffffa;border-radius:9px;padding:8px 10px;color:#143e35}
         .pos-header-person{min-width:145px}
         .pos-header-person small,.pos-header-metric small{font-size:8px;font-weight:900;letter-spacing:.1em;color:#58786a;text-transform:uppercase}
-        .pos-header-person b{font-family:"Cormorant Garamond",serif;font-size:25px;line-height:1}
+        .pos-header-person h1{font-family:"Cormorant Garamond",serif;font-size:25px;line-height:1;margin:0}
         .pos-header-metric b{font-size:11px;line-height:1.2;white-space:nowrap}
         .pos-header-metric{min-width:70px}
         .pos-card{width:100%;padding:24px;border:1px solid rgba(20,62,53,.12);border-radius:24px;background:#fff;box-shadow:0 18px 55px rgba(20,62,53,.12)}
@@ -2003,14 +2003,14 @@ export default function PosPage() {
         @media(max-width:900px){.pos-mobile-cart-jump{position:fixed;display:flex;justify-content:space-between;align-items:center;gap:14px;bottom:max(12px,env(safe-area-inset-bottom));left:12px;right:12px;z-index:50;width:calc(100% - 24px);min-height:58px;padding:12px 18px;border:0;border-radius:16px;background:#143e35;color:white;box-shadow:0 12px 30px #08291eb0;cursor:pointer;text-align:left;font-size:13px;font-weight:800}.pos-mobile-cart-jump strong{font-size:19px}.pos-shell{padding-bottom:92px}}
         @media(max-width:680px){.pos-cash-tools-grid,.pos-cash-summary{grid-template-columns:1fr}.pos-shell{padding:12px}.pos-grid{grid-template-columns:1fr}.pos-stats,.pos-shift-summary{grid-template-columns:1fr}.pos-card{padding:20px}.pos-card h1{font-size:42px}.pos-products{grid-template-columns:1fr}.pos-payment-tabs{grid-template-columns:1fr 1fr}}
         @media(max-width:680px){.pos-shell{padding-bottom:92px}.pos-scan-strip{grid-template-columns:1fr;padding:12px}.pos-scan-strip label{grid-column:1}.pos-checkout-feedback{flex-direction:column}.pos-checkout-feedback button{align-self:flex-end}.pos-card-live{padding:14px}.pos-card-live h1{font-size:23px}.pos-session-heading{align-items:flex-start}.pos-session-inline{gap:5px 9px}.pos-card-live .pos-shift-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.pos-card-live .pos-shift-summary .pos-stat{padding:7px}.pos-card-live .pos-shift-summary .pos-stat strong{font-size:12px}}
-        @media(max-width:760px){.pos-brand-live{display:block}.pos-brand-live .pos-brand-identity{margin-bottom:12px}.pos-header-summary{justify-content:flex-start}.pos-header-person{min-width:125px}.pos-header-metric{flex:1 1 85px}.pos-header-person b{font-size:22px}}
+        @media(max-width:760px){.pos-brand-live{display:block}.pos-brand-live .pos-brand-identity{margin-bottom:12px}.pos-header-summary{justify-content:flex-start}.pos-header-person{min-width:125px}.pos-header-metric{flex:1 1 85px}.pos-header-person h1{font-size:22px}}
       `}</style>
 
       <div className="pos-wrap">
         <header className={`pos-brand${access?.open_shift_id && workspaceTab === "pos" ? " pos-brand-live" : ""}`}>
           <div className="pos-brand-identity"><strong>UP AND DOWN</strong><span>PUNTO DE VENTA · LOS CABOS</span></div>
           {access?.open_shift_id && workspaceTab === "pos" && <div className="pos-header-summary" aria-label="Resumen del turno">
-            <div className="pos-header-person"><small>Sesión de empleado</small><b>Hola, {access.full_name}</b></div>
+            <div className="pos-header-person"><small>Sesión de empleado</small><h1>Hola, {access.full_name}</h1></div>
             <div className="pos-header-metric"><small>Empleado</small><b>#{access.employee_number}</b></div>
             <div className="pos-header-metric"><small>Terminal</small><b>{access.terminal_name}</b></div>
             <div className="pos-header-metric"><small>Rol</small><b>{roleLabel}</b></div>
