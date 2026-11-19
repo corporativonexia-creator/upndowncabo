@@ -296,6 +296,44 @@ test('A9.3 site content reads only the selected tab and ignores older results',a
   expect((await events()).filter(e=>['POST','PATCH','PUT','DELETE'].includes(e.method)&&e.path.startsWith('/rest/v1/golf_'))).toHaveLength(0);
 });
 
+test('A9.4 classes preserve loaded leads during refresh and reject late reads',async({page,request})=>{
+  await login(page);await ready(page);
+  await configure(request,{lessonRaceFixture:true});
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+  const count=async(table:string)=>(await events()).filter(e=>e.method==='GET'&&e.path===`/rest/v1/${table}`).length;
+  await page.locator('[data-sidebar-section="commercial"] summary').click();
+  await page.locator('#udv2LessonsTab').click();
+  await expect.poll(()=>count('golf_lesson_leads')).toBe(1);
+  await expect.poll(()=>count('golf_lesson_events')).toBe(1);
+  await expect.poll(()=>count('golf_instructors')).toBe(1);
+  await expect(page.locator('#udv2LessonList')).toHaveAttribute('aria-busy','true');
+
+  await page.locator('#udv2SellersTab').click();
+  await page.locator('#udv2LessonsTab').click();
+  await expect(page.locator('#udv2LessonList')).toContainText('Alumno actualizado');
+  await expect(page.locator('#udv2LessonList')).toContainText('Profesor de clase QA');
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/__qa_lesson_old_completed')).toBe(true);
+  await expect(page.locator('#udv2LessonList')).not.toContainText('Alumno anterior');
+  await expect(page.locator('#udv2LessonList')).not.toHaveAttribute('aria-busy','true');
+  await page.locator('#udv2LessonList .udv2-lesson-toggle').click();
+  await expect(page.locator('#udv2LessonList')).toContainText('Solicitud creada');
+  await expect(page.locator('#udv2LessonList a[href^="https://wa.me/"]')).toHaveCount(1);
+  expect(await count('golf_lesson_leads')).toBe(2);
+
+  await page.locator('#udv2LessonsTab').click();
+  expect(await count('golf_lesson_leads')).toBe(2);
+  await page.locator('#udv2LessonSearch').fill('Alumno actualizado');
+  await page.locator('#udv2LessonRefresh').click();
+  await expect.poll(()=>count('golf_lesson_leads')).toBe(3);
+  await expect(page.locator('#udv2LessonList')).toContainText('Alumno actualizado');
+  await expect(page.locator('#udv2LessonSearch')).toHaveValue('Alumno actualizado');
+  await configure(request,{lessonHistoryDenied:true});
+  await page.locator('#udv2LessonRefresh').click();
+  await expect.poll(()=>count('golf_lesson_leads')).toBe(4);
+  await expect(page.locator('#udv2LessonList')).toContainText('Alumno actualizado');
+  expect((await events()).filter(e=>['POST','PATCH','PUT','DELETE'].includes(e.method)&&e.path.startsWith('/rest/v1/golf_lesson'))).toHaveLength(0);
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

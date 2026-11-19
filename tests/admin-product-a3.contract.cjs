@@ -353,3 +353,22 @@ test("A9.3 site content reads only its active type and ignores obsolete results"
   assert.match(admin,/\.update\(payload\)\.eq\("id",editingId\)/);
   assert.match(fixture,/if\(options\.contentRaceFixture&&\[/);
 });
+
+test("A9.4 lesson leads keep records while refreshing and reject stale snapshots", () => {
+  const admin=read("public/updown-admin-v2.js");
+  const fixture=read("tests/mock-supabase.cjs");
+  assert.match(admin,/lessonLoaded: false/);
+  assert.match(admin,/lessonLoadVersion: 0/);
+  assert.match(admin,/if\(state\.activeView==="lessons"&&view!=="lessons"\)invalidateLessonReads\(\)/);
+  assert.match(admin,/if\(view==="lessons"&&!wasLessons\) loadLessons\(\)/);
+  assert.match(admin,/const version=\+\+state\.lessonLoadVersion/);
+  assert.match(admin,/if\(root&&!state\.lessonLoaded\)root\.innerHTML=/);
+  assert.match(admin,/if\(!isCurrent\(\)\)return;\s*if\(leadsResult\.error\)/);
+  assert.match(admin,/if\(isCurrent\(\)\)\{\s*console\.error\("Clases admin load"/);
+  assert.match(admin,/invalidateLessonReads\(\); \/\/ A previous SELECT/);
+  assert.match(admin,/db\.from\("golf_lesson_leads"\)\s*\.update\(\{status:newStatus,updated_at:new Date\(\)\.toISOString\(\)\}\)/);
+  assert.match(admin,/\.select\("id,lead_id,event_type,instructor_slug,metadata,created_at"\)/);
+  assert.match(admin,/\.select\("slug,name,is_visible,is_active,sort_order"\)/);
+  assert.match(admin,/lessonWhatsapp\(lead\.phone,lead\.name\)/);
+  assert.match(fixture,/if\(options\.lessonRaceFixture&&\[/);
+});

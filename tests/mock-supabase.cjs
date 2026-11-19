@@ -11,8 +11,8 @@ const baseVariants = [
   {id:'v3',product_id:'p2',title:'M azul',sku:'ROP-0010-M',barcode:'2000000000060',attributes:{talla:'M'}},
   {id:'v4',product_id:'p3',title:'Única',sku:'PAL-001-U',barcode:'2000000000077',attributes:{}},
 ].map(v=>({...v,stock:5,price:null,sale_price:null,is_active:true,low_stock_threshold:2,created_at:'2026-01-01T00:00:00Z'}));
-let products,variants,gallery,events,options,uploadedPaths,sellerReads,commissionReads,courseReads;
-function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};uploadedPaths=new Set();sellerReads=0;commissionReads=0;courseReads=0;}reset();
+let products,variants,gallery,events,options,uploadedPaths,sellerReads,commissionReads,courseReads,lessonReads;
+function reset(){products=structuredClone(baseProducts);variants=structuredClone(baseVariants);gallery=[];events=[];options={};uploadedPaths=new Set();sellerReads=0;commissionReads=0;courseReads=0;lessonReads=0;}reset();
 const user={id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',role:'authenticated',email:'admin@example.test',created_at:'2026-01-01T00:00:00Z',app_metadata:{},user_metadata:{}};
 function token(){const enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');return `${enc({alg:'HS256',typ:'JWT'})}.${enc({sub:user.id,aud:'authenticated',role:'authenticated',exp:Math.floor(Date.now()/1000)+3600,iat:Math.floor(Date.now()/1000)})}.${Buffer.from('fixture-signature').toString('base64url')}`;}
 http.createServer(async(req,res)=>{
@@ -80,6 +80,24 @@ http.createServer(async(req,res)=>{
     }
     if(url.pathname==='/rest/v1/golf_instructors')return send([{id:'instructor-qa',slug:'profesor-qa',name:'Profesor de prueba',sort_order:1,is_active:true}]);
     return send([{id:'article-qa',slug:'noticia-qa',title:'Noticia sintética',sort_order:1,created_at:'2026-11-18T12:00:00Z'}]);
+  }
+  if(options.lessonRaceFixture&&['/rest/v1/golf_lesson_leads','/rest/v1/golf_lesson_events','/rest/v1/golf_instructors'].includes(url.pathname)){
+    if(req.method!=='GET')return send({code:'42501',message:'Solicitudes simuladas: solo lectura'},403);
+    if(url.pathname==='/rest/v1/golf_lesson_leads'){
+      if(options.lessonHistoryDenied)return send({code:'42501',message:'Lectura de clases restringida por RLS'},403);
+      const read=++lessonReads;
+      if(read===1){
+        await new Promise(resolve=>setTimeout(resolve,700));
+        events.push({path:'/__qa_lesson_old_completed',method:'GET'});
+      }
+      return send([{id:'lesson-qa',name:read===1?'Alumno anterior':'Alumno actualizado',phone:'6240000000',
+        phone_digits:'6240000000',skill_level:'beginner',goal_category:'putting',goal_text:'Prueba ficticia',
+        language:'es',source:'web',affiliate_code:'AFF-QA',selected_instructor:'pro-qa',status:'new',
+        created_at:'2026-11-18T12:00:00Z'}]);
+    }
+    if(url.pathname==='/rest/v1/golf_lesson_events')return send([{id:'event-qa',lead_id:'lesson-qa',event_type:'lead_created',
+      instructor_slug:null,created_at:'2026-11-18T12:01:00Z'}]);
+    return send([{slug:'pro-qa',name:'Profesor de clase QA',is_visible:true,is_active:true,sort_order:1}]);
   }
   if(url.pathname==='/rest/v1/rpc/admin_inventory_catalog')return send({rows:variants.map(v=>{
     const product=products.find(p=>p.id===v.product_id);

@@ -33,6 +33,8 @@
     lessonLeads: [],
     lessonEvents: [],
     lessonInstructors: [],
+    lessonLoaded: false,
+    lessonLoadVersion: 0,
     lessonFilter: "all",
     lessonInstructorFilter: "all",
     lessonSearch: "",
@@ -606,6 +608,7 @@
     if(state.activeView==="pos")invalidatePosReports();
     if(state.activeView==="sellers")invalidateSellerReads();
     if(state.activeView==="content")invalidateContentReads();
+    if(state.activeView==="lessons")invalidateLessonReads();
     state.activeView="products";
     $("udv2ContentView")?.classList.add("udv2-hidden");
     $("udv2SellersView")?.classList.add("udv2-hidden");
@@ -621,8 +624,10 @@
     if(state.activeView==="pos"&&view!=="pos")invalidatePosReports();
     if(state.activeView==="sellers"&&view!=="sellers")invalidateSellerReads();
     if(state.activeView==="content"&&view!=="content")invalidateContentReads();
+    if(state.activeView==="lessons"&&view!=="lessons")invalidateLessonReads();
     const wasSellers=state.activeView==="sellers";
     const wasContent=state.activeView==="content";
+    const wasLessons=state.activeView==="lessons";
     state.activeView=view;
     const productView=$("udProductsView"),orderView=$("udOrdersView");
     if(productView) productView.classList.add("u-hidden");
@@ -639,7 +644,7 @@
 
     if(view==="content"&&!wasContent) loadContent();
     if(view==="sellers"&&!wasSellers) loadSellers();
-    if(view==="lessons") loadLessons();
+    if(view==="lessons"&&!wasLessons) loadLessons();
     if(view==="pos") loadPosAdmin();
   }
 
@@ -804,12 +809,14 @@
     const current=state.lessonInstructorFilter||"all";
     select.innerHTML='<option value="all">Todos los instructores</option><option value="none">Sin instructor</option>'+
       state.lessonInstructors.map(x=>`<option value="${escapeHtml(x.slug)}">${escapeHtml(x.name)}</option>`).join("");
-    select.value=[...select.options].some(x=>x.value===current)?current:"all";
+    if(![...select.options].some(x=>x.value===current))state.lessonInstructorFilter="all";
+    select.value=state.lessonInstructorFilter;
   }
 
   function renderLessons(){
     const root=$("udv2LessonList");
     if(!root)return;
+    if(!state.lessonLoaded)return; // A pending/denied first SELECT is not an empty result.
 
     renderLessonInstructorFilter();
 
@@ -911,6 +918,7 @@
             .update({status:newStatus,updated_at:new Date().toISOString()})
             .eq("id",id);
           if(error)throw error;
+          invalidateLessonReads(); // A previous SELECT cannot undo this successful local status change.
           const lead=state.lessonLeads.find(x=>x.id===id);
           if(lead)lead.status=newStatus;
           toast("Estado de la solicitud actualizado.");
@@ -924,13 +932,28 @@
     });
   }
 
+  function invalidateLessonReads(){
+    state.lessonLoadVersion++;
+    $("udv2LessonList")?.removeAttribute("aria-busy");
+    const refresh=$("udv2LessonRefresh");
+    if(refresh)refresh.textContent="Actualizar";
+  }
+
   async function loadLessons(){
+    const version=++state.lessonLoadVersion;
+    const isCurrent=()=>version===state.lessonLoadVersion&&state.activeView==="lessons"
+      &&!$("udv2LessonsView")?.classList.contains("udv2-hidden");
     const root=$("udv2LessonList");
-    if(root)root.innerHTML='<div class="udv2-empty">Cargando solicitudes…</div>';
+    if(root&&!state.lessonLoaded)root.innerHTML='<div class="udv2-empty">Cargando solicitudes…</div>';
+    root?.setAttribute("aria-busy","true");
+    const refresh=$("udv2LessonRefresh");
+    if(refresh)refresh.textContent="Actualizando…";
 
     try{
       await verifyAdmin();
+      if(!isCurrent())return;
       const db=await getDb();
+      if(!isCurrent())return;
 
       const [leadsResult,eventsResult,instructorsResult]=await Promise.all([
         db.from("golf_lesson_leads")
@@ -943,6 +966,7 @@
           .select("slug,name,is_visible,is_active,sort_order")
           .order("sort_order",{ascending:true})
       ]);
+      if(!isCurrent())return;
 
       if(leadsResult.error)throw leadsResult.error;
       if(eventsResult.error)throw eventsResult.error;
@@ -951,11 +975,19 @@
       state.lessonLeads=leadsResult.data||[];
       state.lessonEvents=eventsResult.data||[];
       state.lessonInstructors=instructorsResult.data||[];
+      state.lessonLoaded=true;
       renderLessons();
     }catch(error){
-      console.error("Clases admin load",error);
-      if(root)root.innerHTML=`<div class="udv2-empty">No se pudieron cargar las solicitudes.<br>${escapeHtml(error.message||"Error")}</div>`;
-      toast(error.message||"No se pudieron cargar las solicitudes.",true);
+      if(isCurrent()){
+        console.error("Clases admin load",error);
+        if(root&&!state.lessonLoaded)root.innerHTML=`<div class="udv2-empty">No se pudieron cargar las solicitudes.<br>${escapeHtml(error.message||"Error")}</div>`;
+        toast(error.message||"No se pudieron cargar las solicitudes.",true);
+      }
+    }finally{
+      if(version===state.lessonLoadVersion){
+        root?.removeAttribute("aria-busy");
+        if(refresh)refresh.textContent="Actualizar";
+      }
     }
   }
 
@@ -2805,7 +2837,7 @@
     });
     $("udv2SellerForm")?.addEventListener("submit",createSeller);
 
-    $("udv2LessonRefresh")?.addEventListener("click",loadLessons);
+    $("udv2LessonRefresh")?.addEventListener("click",()=>loadLessons());
     $("udv2LessonSearch")?.addEventListener("input",event=>{
       state.lessonSearch=String(event.target.value||"").trim().toLowerCase();
       renderLessons();
