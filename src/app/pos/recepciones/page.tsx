@@ -46,12 +46,21 @@ export default function ServiceRecepcionesPage() {
   const [form, setForm] = useState<ReceptionForm>(blank);
   const [selected, setSelected] = useState<ServiceReception | null>(null);
   const [search, setSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const requestId = useRef<string | null>(null);
+  const historySequence = useRef(0);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    historySequence.current += 1;
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,20 +100,48 @@ export default function ServiceRecepcionesPage() {
     requestId.current = null;
   }
 
-  async function refreshHistory(query = "") {
+  function invalidateHistorySearch() {
+    historySequence.current += 1;
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    return historySequence.current;
+  }
+
+  async function readHistory(query: string, sequence: number) {
     const { data, error: historyError } = await db.rpc("pos_reception_recent", {
       p_device_token: token, p_search: query,
     });
+    if (sequence !== historySequence.current) return;
     if (historyError) throw historyError;
     setReceptions(Array.isArray(data) ? data as ServiceReception[] : []);
   }
 
+  async function refreshHistory(query = "") {
+    const sequence = invalidateHistorySearch();
+    try { await readHistory(query, sequence); }
+    finally { if (sequence === historySequence.current) setSearching(false); }
+  }
+
+  function changeHistorySearch(value: string) {
+    setSearch(value);
+    const sequence = invalidateHistorySearch();
+    setHistoryError("");
+    setSearching(true);
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      void readHistory(value.trim(), sequence)
+        .catch(e => {
+          if (sequence === historySequence.current) setHistoryError("No se pudo consultar el historial: " + errorText(e));
+        })
+        .finally(() => { if (sequence === historySequence.current) setSearching(false); });
+    }, 300);
+  }
+
   async function searchHistory(e: FormEvent) {
     e.preventDefault();
-    setBusy(true); setError("");
+    setSearching(true); setHistoryError("");
     try { await refreshHistory(search.trim()); }
-    catch (e) { setError("No se pudo consultar el historial: " + errorText(e)); }
-    finally { setBusy(false); }
+    catch (e) { setHistoryError("No se pudo consultar el historial: " + errorText(e)); }
   }
 
   async function register(e: FormEvent) {
@@ -283,18 +320,25 @@ export default function ServiceRecepcionesPage() {
             </section>
             <aside className={styles.panel}>
               <h2>Consultar recepciones</h2>
-              <p className={styles.muted}>Busca el folio, nombre, teléfono o equipo. Marca listo, cobra desde el POS o reimprime sin duplicar.</p>
+              <p className={styles.muted}>Busca por folio, cliente, teléfono o equipo mientras escribes. Selecciona un resultado para consultar o reimprimir.</p>
               <form onSubmit={searchHistory} className={styles.actions}>
                 <input aria-label="Buscar recepciones" className={styles.search} maxLength={80}
-                  value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ej. SR-000128" />
-                <button className={styles.secondary} disabled={busy} type="submit">Buscar</button>
+                  value={search} onChange={(e) => changeHistorySearch(e.target.value)} placeholder="Folio, nombre, teléfono o equipo" />
+                <button className={styles.secondary} disabled={searching} type="submit">Buscar</button>
+                {search && <button className={styles.secondary} type="button" onClick={() => changeHistorySearch("")}>Limpiar</button>}
               </form>
-              <div className={styles.list}>
+              {searching && <p role="status" className={styles.historyStatus}>Actualizando recepciones…</p>}
+              {historyError && <p role="alert" className={styles.alert}>{historyError} La lista anterior permanece visible; vuelve a intentar la consulta.</p>}
+              <div className={styles.list} aria-busy={searching}>
                 {receptions.map(r => (
-                  <button type="button" key={r.id} className={styles.item} onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); }}>
+                  <button type="button" key={r.id} aria-pressed={selected?.id === r.id}
+                    className={`${styles.item} ${selected?.id === r.id ? styles.itemActive : ""}`}
+                    onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); }}>
                     <span className={styles.itemLine}><strong>{r.customer_name}</strong><span className={styles.folio}>{receptionFolio(r.receipt_number)}</span></span>
                     <small>{r.equipment_description} · {r.service_name}</small>
-                    <small>{receptionDate(r.received_at)} · {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}</small>
+                    <small>{receptionDate(r.received_at)} · <span className={`${styles.statusTag} ${r.status === "ready" ? styles.statusReady : r.status === "delivered" ? styles.statusDelivered : ""}`}>
+                      {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}
+                    </span></small>
                   </button>
                 ))}
                 {!receptions.length && <div className={styles.empty}>No hay recepciones para mostrar.</div>}

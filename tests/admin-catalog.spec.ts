@@ -110,6 +110,44 @@ test('A7.2 POS audit server filters refresh once after rapid changes',async({pag
   await expect(list).toContainText('Inicio de sesión');
 });
 
+test('A8.1 workshop searches by name or folio as typed and ignores older responses',async({page,request})=>{
+  await configure(request,{receptionFixture:true,receptionRaceFixture:true});
+  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await page.goto('/pos/recepciones');
+  const list=page.locator('aside');
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+  const search=page.getByRole('textbox',{name:'Buscar recepciones'});
+  await search.fill('Driver');
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string,body?:Record<string,unknown>}>;
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/rest/v1/rpc/pos_reception_recent'&&e.body?.p_search==='Driver')).toBe(true);
+  await search.fill('Putter');
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toHaveCount(0);
+  await expect.poll(async()=>(await events()).some(e=>e.path==='/__qa_reception_old_completed')).toBe(true);
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toHaveCount(1);
+  await list.getByRole('button',{name:/Cliente Putter/}).click();
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toHaveAttribute('aria-pressed','true');
+  await list.getByRole('button',{name:'Limpiar'}).click();
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  const calls=(await events()).filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent');
+  expect(calls.map(e=>e.body?.p_search)).toEqual(['','Driver','Putter','']);
+  expect((await events()).filter(e=>['/rest/v1/rpc/pos_reception_create','/rest/v1/rpc/pos_reception_set_ready'].includes(e.path)||
+    ['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
+});
+
+test('A8.1 denied workshop history reads retain previous visible records and show an error',async({page,request})=>{
+  await configure(request,{receptionFixture:true,receptionHistoryDenied:true});
+  await page.addInitScript(()=>{try{localStorage.setItem('updown-pos-device-token-v1','terminal-qa');}catch{}});
+  await page.goto('/pos/recepciones');
+  const list=page.locator('aside');
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  await page.getByRole('textbox',{name:'Buscar recepciones'}).fill('Putter');
+  await expect(list.getByRole('alert')).toContainText('Lectura de recepciones restringida por RLS');
+  await expect(list.getByRole('button',{name:/Cliente Driver/})).toBeVisible();
+  await expect(list.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+});
+
 test('A6.4 reconciliation is lazy and explains hidden POS variants without writing stock',async({page,request})=>{
   await login(page);await page.goto('/admin/inventario');
   await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);

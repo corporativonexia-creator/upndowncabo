@@ -289,5 +289,13 @@ En la hoja/PDF A4 se añade una sección **SUBTOTALES POR CATEGORÍA** con produ
 
 **Límites:** no se cancela una consulta ya enviada a PostgreSQL ni se altera ninguna operación comercial del POS; solo se ignora su resultado cuando ya no corresponde. Una nueva visita a la pestaña vuelve a consultar datos actuales. La mejora no pretende resolver latencias de red o autorizaciones reales no medidas. QA usa retardos y marcadores de respuesta **simulados** para demostrar que la venta resumida nueva prevalece sobre la antigua y que la Bitácora obtiene del servidor el conjunto correcto, sin modificar registros.
 
+### A8.1 · Recepción/taller: búsqueda ágil y lectura protegida
+
+**Auditoría:** `src/app/pos/recepciones/page.tsx` ya contiene el flujo útil de recepción con folio e idempotencia, servicio asociado, estado «Listo» y comprobantes para cliente/taller. El historial se obtenía en montaje y solo volvía a buscar después de enviar un formulario. Al buscar manualmente no se descartaban respuestas de búsquedas anteriores; una red lenta podía sustituir el resultado recién solicitado por otro obsoleto. La página tenía cabecera oscura ajena a Premium White.
+
+**A8.1 candidata:** la búsqueda de historial por folio, cliente, teléfono o equipo ahora se ejecuta después de 300 ms sin nuevos cambios, conserva un botón de búsqueda manual y permite limpiar el texto. Cada cambio invalida al instante lecturas previas; resultados fuera de orden se descartan, también si luego se refresca el historial después de una recepción. Un error de acceso o red se muestra **junto al buscador**, manteniendo visibles los registros anteriores en lugar de sugerir que no existen. El resultado seleccionado tiene estado accesible `aria-pressed`; las recepciones muestran distintivos «Recibido», «Listo para entregar» o «Entregado y cobrado» sin cambiar sus valores. Fondo, contraste y superficies se alinean con Premium White.
+
+**Límite categórico:** no se modifican los argumentos de `pos_reception_create`/`pos_reception_set_ready`, la lógica de cobro, inventario, registro, folios, pagos, autenticación ni impresión térmica/PDF. El escaneo y cobro en POS siguen siendo acciones independientes; A8.1 es exclusivamente lectura y presentación. QA con cliente/terminal y recepciones **ficticias** prueba una respuesta lenta contra una búsqueda nueva, limpieza, conservación de filas ante RLS simulado y ausencia de operaciones comerciales.
+
 ## Requisitos Premium White
 Blanco #FFFFFF; superficies #F6F8F6; verde principal #123D32; verde secundario #2F7058; lima de acento #B7DE45. Densidad operativa apropiada para tablas, filtros y POS; alertas y bajas con semántica propia.

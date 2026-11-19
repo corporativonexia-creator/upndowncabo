@@ -41,6 +41,28 @@ http.createServer(async(req,res)=>{
       variant_title:v.title,sku:v.sku,barcode:v.barcode,stock:options.reconciliationStockSkew&&v.id==='v1'?7:v.stock,
       low_stock_threshold:v.low_stock_threshold,is_default:false,attributes:v.attributes};
   })});
+  if(url.pathname==='/rest/v1/rpc/pos_reception_access'&&options.receptionFixture)
+    return send({employee_number:'QA01',employee_name:'Cajero ficticio',terminal_name:'Terminal ficticia'});
+  if(url.pathname==='/rest/v1/rpc/pos_reception_recent'&&options.receptionFixture){
+    const rows=[
+      {id:'reception-qa-1',receipt_number:128,service_product_id:'service-qa',status:'received',
+        customer_name:'Cliente Driver',customer_phone:'6240000001',equipment_description:'Driver de prueba',
+        service_name:'Cambio de grip',work_description:'Revisar grip',condition_notes:'Rayón leve',accessories:'Funda',
+        employee_number:'QA01',employee_name:'Cajero ficticio',terminal_name:'Terminal ficticia',received_at:'2026-11-18T12:00:00Z'},
+      {id:'reception-qa-2',receipt_number:129,service_product_id:'service-qa',status:'ready',
+        customer_name:'Cliente Putter',customer_phone:'6240000002',equipment_description:'Putter de prueba',
+        service_name:'Cambio de grip',work_description:'Cambiar grip',condition_notes:'Buen estado',accessories:'Ninguno',
+        employee_number:'QA01',employee_name:'Cajero ficticio',terminal_name:'Terminal ficticia',received_at:'2026-11-18T12:01:00Z'}
+    ];
+    const search=String(body.p_search||'').toLowerCase();
+    if(options.receptionRaceFixture&&search==='driver'){
+      await new Promise(resolve=>setTimeout(resolve,700));
+      events.push({path:'/__qa_reception_old_completed',method:'GET'});
+    }
+    if(options.receptionHistoryDenied&&search)return send({code:'42501',message:'Lectura de recepciones restringida por RLS'},403);
+    return send(rows.filter(row=>[row.customer_name,row.customer_phone,row.equipment_description,`SR-${String(row.receipt_number).padStart(6,'0')}`]
+      .some(value=>value.toLowerCase().includes(search))));
+  }
   if(url.pathname==='/rest/v1/rpc/admin_pos_sales_summary'){
     if(options.posSummaryRaceFixture){
       const filtered=body.p_status==='completed';
@@ -83,6 +105,8 @@ http.createServer(async(req,res)=>{
     if(options.reconciliationDenied&&url.searchParams.get('select')?.includes('is_service'))return send({code:'42501',message:'Lectura de conciliación restringida por RLS'},403);
     if(options.productError)return send({message:'Fixture catalog failure',code:'FIXTURE'},400);
     if(options.productDelay)await new Promise(r=>setTimeout(r,options.productDelay));
+    if(options.receptionFixture&&url.searchParams.get('is_service')==='eq.true')
+      return send([{id:'service-qa',name:'Cambio de grip',sku:'SVC-QA'}]);
     if(req.method==='PATCH'){if(options.metadataError&&body.brand)return send({message:'Fixture metadata save failure',code:'FIXTURE'},503);const id=url.searchParams.get('id')?.slice(3);const p=products.find(p=>p.id===id);Object.assign(p,body);return send(p);}
     const photoFilter=url.searchParams.get('or');
     if(photoFilter){

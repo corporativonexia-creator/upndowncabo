@@ -268,3 +268,19 @@ test("A7.2 POS report request versions reject stale responses and audit filters 
   assert.match(runtime,/state\.posAuditEmployee=String\(event\.target\.value\|\|"all"\);\s*schedulePosReport\("audit"\)/);
   assert.match(runtime,/state\.posAuditTerminal=String\(event\.target\.value\|\|"all"\);\s*schedulePosReport\("audit"\)/);
 });
+
+test("A8.1 reception history is debounced and stale-safe without changing service operations", () => {
+  const page=read("src/app/pos/recepciones/page.tsx");
+  const styles=read("src/app/pos/recepciones/receptions.module.css");
+  assert.match(page,/historySequence = useRef\(0\)/);
+  assert.match(page,/function changeHistorySearch\(value: string\)/);
+  assert.match(page,/if \(sequence !== historySequence\.current\) return/);
+  assert.match(page,/\}, 300\)/);
+  assert.match(page,/onChange=\{\(e\) => changeHistorySearch\(e\.target\.value\)\}/);
+  assert.match(page,/aria-busy=\{searching\}/);
+  assert.match(page,/setHistoryError\("No se pudo consultar el historial: " \+ errorText\(e\)\)/);
+  for(const originalOperation of ["pos_reception_create","pos_reception_set_ready","buildReceptionPdf","printThermal"]){
+    assert.ok(page.includes(originalOperation),`Missing existing operation ${originalOperation}`);
+  }
+  assert.match(styles,/\.shell\{min-height:100vh;background:#f6f8f6/);
+});
