@@ -84,7 +84,8 @@ test('unconfirmed sale keeps the cart and prompts to check history before retry'
   await page.locator('.pos-product').filter({hasText:'ROP-001-XXL'}).getByRole('button',{name:/Agregar/}).click();
   await page.getByText('Efectivo recibido',{exact:true}).locator('..').locator('input').fill('1000');
   await page.getByRole('button',{name:/COBRAR/}).click();
-  await expect(page.getByRole('alert')).toContainText('No pudimos confirmar el resultado de la venta');
-  await expect(page.getByRole('alert')).toContainText('Revisa Ventas del turno');
+  const unconfirmed=page.locator('.pos-checkout-feedback[role="alert"]');
+  await expect(unconfirmed).toContainText('No pudimos confirmar el resultado de la venta');
+  await expect(unconfirmed).toContainText('Revisa Ventas del turno');
   await expect(page.locator('.pos-cart-item')).toHaveCount(1);
 });
