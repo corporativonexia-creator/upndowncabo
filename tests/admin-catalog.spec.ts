@@ -169,7 +169,17 @@ test('A6.4 reconciliation is lazy and explains hidden POS variants without writi
 test('A6.4 reconciliation identifies inactive variants, standalone POS services and stock differences',async({page,request})=>{
   await login(page);await configure(request,{reconciliationFixture:true,reconciliationStockSkew:true});
   await page.goto('/admin/inventario');
-  await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);
+  try{await expect(page.locator('.inv-tablebox tbody tr')).toHaveCount(4);}
+  catch(error){
+    const snapshot=await (await request.post(`${fixture}/rest/v1/rpc/admin_inventory_catalog`,{data:{}})).json();
+    const events=await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,method:string}>;
+    console.log('A6.4 fixture-only diagnostics',JSON.stringify({
+      catalogIds:(snapshot.rows||[]).map((r:{variant_id:string})=>r.variant_id),
+      renderedSkus:await page.locator('.inv-tablebox tbody tr td:nth-child(3)').allTextContents(),
+      recentRequests:events.filter(e=>e.path.includes('inventory')||e.path.includes('variant')).slice(-15),
+    }));
+    throw error;
+  }
   const region=page.getByRole('region',{name:'Conciliación de inventario y POS'});
   await region.getByRole('button',{name:'Conciliar con POS'}).click();
   await expect(region.locator('.inv-reconcile-stats').locator('b')).toHaveText(['4','3','3','3','2']);
