@@ -146,6 +146,21 @@ test('A8.1 workshop searches by name or folio as typed and ignores older respons
     ['PATCH','PUT','DELETE'].includes(e.method))).toHaveLength(0);
 });
 
+test('A8.1 workshop searches new SR folios and older hyphenated codes without changing the stored number',async({page,request})=>{
+  await configure(request,{receptionFixture:true});
+  await receptionSession(page);
+  await page.goto('/pos/recepciones');
+  const input=page.getByRole('textbox',{name:'Buscar recepciones'});
+  const events=async()=>await (await request.get(`${fixture}/__events`)).json() as Array<{path:string,body?:Record<string,unknown>}>;
+  await input.fill('SR000129');
+  await expect(page.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+  await expect.poll(async()=>(await events()).filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent').at(-1)?.body?.p_search).toBe('129');
+  await input.fill('SR-000129');
+  await expect(page.getByRole('button',{name:/Cliente Putter/})).toBeVisible();
+  await expect.poll(async()=>(await events()).filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent').length).toBeGreaterThanOrEqual(3);
+  expect((await events()).filter(e=>e.path==='/rest/v1/rpc/pos_reception_recent').at(-1)?.body?.p_search).toBe('129');
+});
+
 test('A8.1 denied workshop history reads retain previous visible records and show an error',async({page,request})=>{
   await configure(request,{receptionFixture:true,receptionHistoryDenied:true});
   await receptionSession(page);
@@ -172,9 +187,9 @@ test('A8.2 filters reception status locally and keeps the selected workshop deta
   await expect(list.getByRole('button',{name:/Cliente Entregado/})).toHaveCount(0);
   await list.getByRole('button',{name:/Cliente Putter/}).click();
   const detail=list.getByRole('region',{name:'Detalle de recepción'});
-  await expect(detail).toContainText('SR-000129');
+  await expect(detail).toContainText('SR000129');
   await expect(detail).toContainText('El servicio se cobra posteriormente en caja');
-  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toHaveAttribute('href','/pos?recepcion=SR-000129');
+  await expect(detail.getByRole('link',{name:'Escanear y cobrar en POS'})).toHaveAttribute('href','/pos?recepcion=SR000129');
   await detail.getByText('Ver datos originales del equipo y servicio').click();
   await expect(detail).toContainText('Cambiar grip');
   await expect(detail).toContainText('Buen estado');

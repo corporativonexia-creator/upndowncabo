@@ -20,7 +20,7 @@
 2. Selecciona **🔧 Recibir equipo para servicio**. Se abre `/pos/recepciones`.
 3. Registra **cliente y teléfono**; especifica el **equipo y características**. Selecciona un **servicio POS**.
 4. Describe **trabajo solicitado** y **condiciones observadas al recibirlo**: rayones, accesorios, funcionamiento y daños preexistentes. Añade funda, llave u otros accesorios.
-5. Pulsa **Registrar recepción**. Se genera folio `SR-000001` o sucesivo y queda en estado **RECIBIDO**.
+5. Pulsa **Registrar recepción**. Se genera folio `SR000001` o sucesivo (sin guion) y queda en estado **RECIBIDO**.
 6. Pulsa **Imprimir 2 tickets térmicos**. Si el puente local no está actualizado, usa **PDF dos copias**. Ambas copias llevan el mismo folio y código Code 39: **CLIENTE** y **TALLER**.
 7. Entrega una al cliente y conserva la otra junto al equipo. **El ticket de recepción no acredita pago** y no genera venta ni altera inventario.
 
@@ -36,14 +36,14 @@ No se lleva una bitácora extensa ni se obliga a capturar precios antes de conoc
 
 ## D. Cliente recoge: escaneo, precio y pago en POS
 
-1. Abre el turno de caja correspondiente. En `/pos`, usa **Cobrar equipo de taller · Folio** y escanea el código Code 39 o escribe `SR-000001`. También puedes pulsar **Escanear y cobrar en POS** desde la recepción lista.
+1. Abre el turno de caja correspondiente. En `/pos`, usa **Cobrar equipo de taller · Folio** y escanea el código Code 39 o escribe `SR000001`. También puedes pulsar **Escanear y cobrar en POS** desde la recepción lista. Los folios antiguos `SR-000001` siguen siendo válidos para búsqueda y cobro.
 2. El sistema **busca el folio exacto**, verifica que esté **LISTO PARA ENTREGAR** y carga el servicio correcto, cantidad **1**, con precio pendiente.
 3. Revisa en pantalla cliente, equipo, trabajo y condición original. Captura el **precio final MXN mayor a $0**.
 4. Puedes agregar otros artículos a la misma venta. Los descuentos y autorizaciones obedecen las reglas normales del POS 2.2.
 5. Selecciona efectivo, tarjeta, transferencia u otro método y pulsa **Cobrar**. El POS valida importes y guarda **una única venta** vinculada al folio; marca la recepción **ENTREGADO Y COBRADO**.
 6. Entrega el equipo y el ticket fiscal/comercial que proceda. Un folio entregado no se puede cobrar nuevamente.
 
-**Nunca vendas el servicio por $0 para simular la recepción.** El precio `0` es solo el valor pendiente de la recepción; **no se registra como venta**. Tampoco escanees el UPC genérico del servicio para localizar una recepción: usa siempre el **folio SR-**.
+**Nunca vendas el servicio por $0 para simular la recepción.** El precio `0` es solo el valor pendiente de la recepción; **no se registra como venta**. Tampoco escanees el UPC genérico del servicio para localizar una recepción: usa siempre el **folio SR**.
 
 ## E. Seguridad, errores y devoluciones
 
