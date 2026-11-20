@@ -128,7 +128,7 @@ http.createServer(async(req,res)=>{
       events.push({path:'/__qa_reception_old_completed',method:'GET'});
     }
     if(options.receptionHistoryDenied&&search)return send({code:'42501',message:'Lectura de recepciones restringida por RLS'},403);
-    return send(rows.filter(row=>[row.customer_name,row.customer_phone,row.equipment_description,`SR-${String(row.receipt_number).padStart(6,'0')}`]
+    return send(rows.filter(row=>[row.customer_name,row.customer_phone,row.equipment_description,String(row.receipt_number),`SR${String(row.receipt_number).padStart(6,'0')}`,`SR-${String(row.receipt_number).padStart(6,'0')}`]
       .some(value=>value.toLowerCase().includes(search))));
   }
   if(url.pathname==='/rest/v1/rpc/admin_pos_sales_summary'){

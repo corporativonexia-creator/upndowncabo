@@ -14,8 +14,9 @@ test('thermal reception barcode uses raster rendering rather than native GS k th
 
   const code39Pdf = Object.fromEntries([...receipt.matchAll(/"([*SR0-9-])":"([nw]{9})"/g)].map(m => [m[1], m[2]]));
   const code39Bridge = Object.fromEntries([...barcode.matchAll(/'([*SR0-9-])'='([nw]{9})'/g)].map(m => [m[1], m[2]]));
-  assert.equal(Object.keys(code39Bridge).length, 14);
+  assert.equal(Object.keys(code39Bridge).length, 13);
   assert.deepEqual(code39Bridge, code39Pdf, 'thermal and PDF must encode identical Code39 symbols');
+  assert.doesNotMatch(barcode, /'\-'=/);
 
   const body = bridge.slice(bridge.indexOf('function BuildReceptionBody('), bridge.indexOf('function BuildReceptionTicket('));
   assert.match(body, /AddReceptionBarcode \$b \$folio/);
@@ -39,11 +40,23 @@ test('thermal reception has two RAW jobs, each with its own cutter command and n
   assert.doesNotMatch(route, /SendRaw \$CUT|\$DRAWER/);
 });
 
-test('scanner hyphen normalization is limited to workshop folios', () => {
-  const block = receipt.slice(receipt.indexOf('export function normalizeReceptionFolioInput('), receipt.indexOf('export function receptionFileName('));
-  assert.match(block, /\^SR\[/);
-  assert.match(block, /\[0-9\]\{1,12\}\$/);
-  assert.match(block, /"SR-"/);
+test('new receipts use SR + numbers; legacy hyphens and apostrophes remain searchable', () => {
+  const block = receipt.slice(receipt.indexOf('export function receptionFolio('), receipt.indexOf('export function receptionFileName('));
+  const plainJs = block.replaceAll('export function ', 'function ')
+    .replace('(number: number)', '(number)').replaceAll('(value: string)', '(value)');
+  const {receptionFolio,normalizeReceptionFolioInput,receptionSearchTerm} = new Function(
+    plainJs + '\nreturn {receptionFolio,normalizeReceptionFolioInput,receptionSearchTerm};'
+  )();
+  assert.equal(receptionFolio(1), 'SR000001');
+  assert.equal(receptionFolio(1000000), 'SR1000000');
+  for (const oldCode of ['SR000001','sr-000001',"SR'000001",'SR–000001','SR0000001']) {
+    assert.equal(normalizeReceptionFolioInput(oldCode), 'SR000001');
+    assert.equal(receptionSearchTerm(oldCode), '1');
+  }
+  assert.equal(receptionSearchTerm('SR000129'), '129');
+  assert.equal(receptionSearchTerm('SR-000129'), '129');
+  assert.equal(receptionSearchTerm('Cliente Driver'), 'Cliente Driver');
+  assert.equal(normalizeReceptionFolioInput('SR-QA'), 'SR-QA');
 });
 
 test('safe reception hardware check prints fictitious data, without server or cash drawer', () => {
@@ -58,6 +71,7 @@ test('safe reception hardware check prints fictitious data, without server or ca
   assert.match(sample, /service_name='Cambio de grip \(prueba\)'/);
   assert.match(sample, /BuildReceptionTicket \$sample 'CLIENTE'/);
   assert.match(sample, /BuildReceptionTicket \$sample 'TALLER'/);
+  assert.match(bridge, /\$folio='SR'\+\$number\.ToString\('000000'\)/);
   assert.doesNotMatch(sample, /\$DRAWER|pos_reception_create|pos_create_sale/);
   assert.match(bridge, /if\(\$r\.is_test\)\{ReceptionLine \$b '\*\*\* PRUEBA - NO ES RECEPCION REAL \*\*\*'\}/);
 });

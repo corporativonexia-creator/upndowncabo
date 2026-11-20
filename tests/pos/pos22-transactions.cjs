@@ -327,6 +327,8 @@ test('POS Taller: cashier can receive without a shift, repeat safely, and never 
   [...params.slice(0,6),'Trabajo distinto',...params.slice(7)]),/RECEPTION_REQUEST_CONFLICT/);
  const list=(await one("select public.pos_reception_recent($1,$2) result",[token,'SR-'+String(saved.receipt_number).padStart(6,'0')])).result;
  assert.equal(list.length,1);assert.equal(list[0].id,saved.id);
+ const numericSearch=(await one('select public.pos_reception_recent($1,$2) result',[token,String(saved.receipt_number)])).result;
+ assert.equal(numericSearch.length,1);assert.equal(numericSearch[0].id,saved.id);
  assert.equal(list[0].condition_notes,'Grips con desgaste, sin roturas');
  const after=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
  assert.deepEqual(after,before);

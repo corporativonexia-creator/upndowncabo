@@ -84,9 +84,9 @@ function BuildBody($sale,$access,[string]$copy){
 # consuming following text as barcode data (observed as tickets ending here).
 # Match the Code39 symbol patterns used in reception-receipt.ts (PDF).
 function AddReceptionBarcode($b,[string]$folio){
- if($folio -notmatch '^SR-[0-9]{6,12}$'){throw 'FOLIO_BARCODE_INVALIDO'}
+ if($folio -notmatch '^SR[0-9]{6,12}$'){throw 'FOLIO_BARCODE_INVALIDO'}
  $patterns=@{
-  '*'='nwnnwnwnn';'-'='nwnnnnwnw';'S'='nnwnnnwwn';'R'='wnnnnnwwn'
+  '*'='nwnnwnwnn';'S'='nnwnnnwwn';'R'='wnnnnnwwn'
   '0'='nnnwwnwnn';'1'='wnnwnnnnw';'2'='nnwwnnnnw';'3'='wnwwnnnnn'
   '4'='nnnwwnnnw';'5'='wnnwwnnnn';'6'='nnwwwnnnn';'7'='nnnwnnwnw'
   '8'='wnnwnnwnn';'9'='nnwwnnwnn'
@@ -131,7 +131,7 @@ function ReceptionText($b,[string]$label,[string]$value){
 function BuildReceptionBody($r,[string]$copy){
  $number=[int64]$r.receipt_number
  if($number -le 0 -or -not $r.customer_name -or -not $r.equipment_description -or -not $r.service_name -or -not $r.work_description){throw 'RECEPCION_INVALIDA'}
- $folio='SR-'+$number.ToString('000000')
+ $folio='SR'+$number.ToString('000000')
  $b=New-Object 'System.Collections.Generic.List[byte]'
  AddBytes $b $INIT;AddLogo $b
  AddBytes $b $CENTER;AddBytes $b $BOLDON

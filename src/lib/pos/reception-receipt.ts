@@ -22,15 +22,23 @@ export type ServiceReception = {
 };
 
 export function receptionFolio(number: number) {
-  return "SR-" + String(number).padStart(6, "0");
+  return "SR" + String(number).padStart(6, "0");
 }
 
-// Some USB scanners emulate a US keyboard while the POS uses a Spanish layout,
-// converting the Code39 hyphen key into an apostrophe. Only normalize a strict
-// SR folio so product codes and free text are never silently rewritten.
+// New workshop folios have no symbols (SR000001). Still accept receipts printed
+// with SR- and older scanners that translated that hyphen to an apostrophe.
+// Only rewrite strict SR folios, never product SKUs or customer search text.
 export function normalizeReceptionFolioInput(value: string) {
   const code = value.trim().toUpperCase();
-  return code.replace(/^SR['’´`‐‑–—−](?=[0-9]{1,12}$)/, "SR-");
+  const match = /^SR(?:[-'’´`‐‑–—−])?([0-9]{1,12})$/.exec(code);
+  return match ? receptionFolio(Number(match[1])) : code;
+}
+
+// The existing POS RPC stores the receipt number as bigint and searches its
+// decimal representation. No schema rewrite is required for the display code.
+export function receptionSearchTerm(value: string) {
+  const code = normalizeReceptionFolioInput(value);
+  return /^SR[0-9]{6,12}$/.test(code) ? String(Number(code.slice(2))) : value.trim();
 }
 
 export function receptionFileName(reception: ServiceReception) {
@@ -45,10 +53,10 @@ export function receptionDate(value: string) {
   }).format(new Date(value));
 }
 
-// Code 39 for uppercase workshop folios (SR- + digits).
+// Code 39 for uppercase workshop folios (SR + digits, no punctuation).
 // Printed as actual bars on BOTH 80-mm PDF copies, not a decorative stripe.
 const CODE39: Record<string,string> = {
-  "*":"nwnnwnwnn", "-":"nwnnnnwnw",
+  "*":"nwnnwnwnn",
   "S":"nnwnnnwwn", "R":"wnnnnnwwn",
   "0":"nnnwwnwnn", "1":"wnnwnnnnw", "2":"nnwwnnnnw", "3":"wnwwnnnnn",
   "4":"nnnwwnnnw", "5":"wnnwwnnnn", "6":"nnwwwnnnn", "7":"nnnwnnwnw",
