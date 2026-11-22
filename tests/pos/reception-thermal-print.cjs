@@ -44,8 +44,8 @@ test('thermal reception barcode stays within the width of the already-working lo
   const finish = bridge.slice(bridge.indexOf('function BuildReceptionFinish('), bridge.indexOf('function SendRaw('));
   assert.match(finish, /AddBytes \$b \$INIT/);
   assert.match(finish, /ReceptionLine \$b \('FIN '/);
-  assert.match(finish, /\$ESC,100,8/);
-  assert.match(finish, /AddBytes \$b \$CUT/);
+  assert.doesNotMatch(finish, /\$ESC,100,8|AddBytes \$b \$CUT/, 'footer should contain text only');
+  assert.match(bridge, /\$RECEPTION_FEED_CUT=B @\(\$ESC,64,\$ESC,100,8,\$GS,86,0\)/);
 });
 
 test('reception sends text, raster and visible finish as separate jobs per copy, never drawer', () => {
@@ -53,8 +53,10 @@ test('reception sends text, raster and visible finish as separate jobs per copy,
   assert.equal((print.match(/SendRaw \(BuildReceptionBody/g) || []).length, 1);
   assert.equal((print.match(/SendRaw \(BuildReceptionBarcode/g) || []).length, 1);
   assert.equal((print.match(/SendRaw \(BuildReceptionFinish/g) || []).length, 1);
+  assert.equal((print.match(/SendRaw \$RECEPTION_FEED_CUT/g) || []).length, 1);
   assert.ok(print.indexOf('SendRaw (BuildReceptionBody') < print.indexOf('SendRaw (BuildReceptionBarcode'));
   assert.ok(print.indexOf('SendRaw (BuildReceptionBarcode') < print.indexOf('SendRaw (BuildReceptionFinish'));
+  assert.ok(print.indexOf('SendRaw (BuildReceptionFinish') < print.indexOf('SendRaw $RECEPTION_FEED_CUT'));
   assert.match(print, /PrintReceptionCopy \$r 'CLIENTE'/);
   assert.match(print, /PrintReceptionCopy \$r 'TALLER'/);
   assert.doesNotMatch(print, /\$DRAWER/);

@@ -192,25 +192,28 @@ function BuildReceptionFinish($r,[string]$copy){
  AddBytes $b $INIT
  AddBytes $b $CENTER
  ReceptionLine $b ('FIN '+$folio+' '+$copy)
- AddBytes $b (B @($ESC,100,8))
- AddBytes $b $CUT
+ AddBytes $b (B @(10,10))
  return $b.ToArray()
 }
 function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
 function PrintReceptionCopy($r,[string]$copy){
- # Each stage is a separate RAW spool job. Reception raster output must never
- # share a command buffer with the data text or the paper cutter.
+ # Keep all four stages separate: text, barcode, visible footer, cutter.
+ # The footer displayed on the second copy but its trailing cut was ignored.
+ # The dedicated reception feed/cut packet is already proven by plain QA.
  $number=[string]$r.receipt_number
  SendRaw (BuildReceptionBody $r $copy $false) ("Recepcion "+$number+" "+$copy+" TEXTO")
  Start-Sleep -Milliseconds 700
  SendRaw (BuildReceptionBarcode $r) ("Recepcion "+$number+" "+$copy+" CODIGO")
  Start-Sleep -Milliseconds 1200
- SendRaw (BuildReceptionFinish $r $copy) ("Recepcion "+$number+" "+$copy+" FIN Y CORTE")
+ SendRaw (BuildReceptionFinish $r $copy) ("Recepcion "+$number+" "+$copy+" FIN")
+ Start-Sleep -Milliseconds 900
+ SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" "+$copy+" AVANCE Y CORTE")
 }
 function PrintReception($r){
  PrintReceptionCopy $r 'CLIENTE'
  Start-Sleep -Milliseconds 1500
  PrintReceptionCopy $r 'TALLER'
+ Start-Sleep -Milliseconds 1200
 }
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
 # Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,

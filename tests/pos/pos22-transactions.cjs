@@ -416,6 +416,7 @@ test('POS Taller: reception isolates text, Code39 raster and visible cut per cop
  assert.match(copy,/SendRaw \(BuildReceptionBody \$r \$copy \$false\)/);
  assert.match(copy,/SendRaw \(BuildReceptionBarcode \$r\)/);
  assert.match(copy,/SendRaw \(BuildReceptionFinish \$r \$copy\)/);
+ assert.match(copy,/SendRaw \$RECEPTION_FEED_CUT/);
  assert.ok(copy.indexOf('SendRaw (BuildReceptionBody')<copy.indexOf('SendRaw (BuildReceptionBarcode'));
  assert.ok(copy.indexOf('SendRaw (BuildReceptionBarcode')<copy.indexOf('SendRaw (BuildReceptionFinish'));
  assert.match(copy,/PrintReceptionCopy \$r 'CLIENTE'/);
@@ -423,8 +424,8 @@ test('POS Taller: reception isolates text, Code39 raster and visible cut per cop
  assert.doesNotMatch(copy,/\$DRAWER/);
  const finish=bridge.slice(bridge.indexOf('function BuildReceptionFinish('),bridge.indexOf('function SendRaw('));
  assert.match(finish,/ReceptionLine \$b \('FIN '/);
- assert.match(finish,/AddBytes \$b \(B @\(\$ESC,100,8\)\)/);
- assert.match(finish,/AddBytes \$b \$CUT/);
+ assert.doesNotMatch(finish,/AddBytes \$b \$CUT|\$ESC,100,8/);
+ assert.match(bridge,/\$RECEPTION_FEED_CUT=B @\(\$ESC,64,\$ESC,100,8,\$GS,86,0\)/);
  const barcode=bridge.slice(bridge.indexOf('function BuildReceptionBarcode('),bridge.indexOf('function BuildReceptionFinish('));
  assert.match(barcode,/AddReceptionBarcode \$b \$folio/);
  assert.doesNotMatch(barcode,/\$CUT|\$DRAWER/);
