@@ -423,7 +423,8 @@ test('POS Taller: reception isolates text, Code39 raster and visible cut per cop
  assert.match(copy,/PrintReceptionCopy \$r 'TALLER'/);
  assert.doesNotMatch(copy,/\$DRAWER/);
  const finish=bridge.slice(bridge.indexOf('function BuildReceptionFinish('),bridge.indexOf('function SendRaw('));
- assert.match(finish,/ReceptionLine \$b \('FIN '/);
+ assert.match(finish,/ReceptionLine \$b \(\$folio\+' '\+\$copy\)/);
+  assert.doesNotMatch(finish,/'FIN '/, 'no diagnostic label should appear on customer or workshop tickets');
  assert.doesNotMatch(finish,/AddBytes \$b \$CUT|\$ESC,100,8/);
  assert.match(bridge,/\$RECEPTION_FEED_CUT=B @\(\$ESC,64,\$ESC,100,8,\$GS,86,0\)/);
  const barcode=bridge.slice(bridge.indexOf('function BuildReceptionBarcode('),bridge.indexOf('function BuildReceptionFinish('));
