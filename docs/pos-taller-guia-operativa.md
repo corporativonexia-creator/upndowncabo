@@ -76,3 +76,10 @@ Mientras el PR #39 esté en borrador, **no reemplazar el puente de impresión en
 3. Si el primer paso falla, el problema no depende del código de barras: registrar foto del papel y estado de la cola de impresión. Si solo falla el segundo paso, registrar dónde se detiene y si realiza los cortes. **No repetir impresiones reales hasta diagnosticarlo**.
 
 Si la política de ejecución del equipo impide iniciar la prueba, pedir autorización al administrador de Windows; no cambiar las restricciones del equipo para esta prueba.
+
+### Resultado físico y siguiente prueba (22/11/2026)
+
+- **Confirmado:** `-TestReceptionPlain` imprimió completos los datos y **sí ejecutó el corte**, pero el ticket quedó dentro de la salida y requirió pulsar FEED.
+- **Confirmado:** con `-TestReception`, el código de barras se imprimió pero las dos copias quedaron unidas; se deben validar por separado la sincronización tras el raster y el corte.
+- **Cambio en PR #39:** el corte de recepción ahora envía `ESC @` para reiniciar el estado de comandos de imagen, `ESC d 8` para avanzar ocho líneas y el `GS V 0` ya probado. El corte de **ventas normales no cambia**. El texto del folio se imprime *antes* de la imagen de código de barras.
+- **QA siguiente:** sustituir **solo la copia temporal** del archivo descargado. Primero probar `-TestReceptionPlain`: comprobar que sale suficiente papel después de cortarse. Si se expulsa correctamente, probar `-TestReception`: dos tickets independientes, los dos códigos legibles y cajón cerrado. Si falla, no instalar ni fusionar.

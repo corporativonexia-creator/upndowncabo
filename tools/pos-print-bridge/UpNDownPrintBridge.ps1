@@ -19,6 +19,9 @@ public class RawPrinterHelper {
 function B([int[]]$a){[byte[]]$a}
 $ESC=27;$GS=29;$INIT=B @($ESC,64);$LEFT=B @($ESC,97,0);$CENTER=B @($ESC,97,1);$BOLDON=B @($ESC,69,1);$BOLDOFF=B @($ESC,69,0);$CUT=B @($GS,86,0);$DRAWER=B @($ESC,112,0,50,100)
 $enc=[Text.Encoding]::GetEncoding(850)
+# Reception-only paper ejection: reset any raster state, feed eight lines and
+# then use the cutter that already works on this printer. Retail stays intact.
+$RECEPTION_FEED_CUT=B @($ESC,64,$ESC,100,8,$GS,86,0)
 $AllowedOrigins=@('https://upndowncabo.vercel.app','https://upndowncabo.com','https://www.upndowncabo.com')
 $LogoGzipBase64='H4sIACgsv2oC/+3XsY7jNhAA0KFpiAaiNV2yMCx/gkoXhu1P4V2AS5e4dBDjzCDtFSlT3L+EXZp8QIoUBNJeoUMaFYadGVLSWbJ3V2wCHCAu1rtavZVIajgaAjzXTheIaqdrGemvsd5G+iLSl5H+EumvJtK7SF9E+jLSX2O9jfQu0kfMaPD9h1z5ItK7SG8jvYn0kfNzifTnSN8/Qk9nEDEBdLJ0j/7xc4xLb4Mf/OAHP/jBf2WeFTFeVFVSX1+XMT29vFZ1wzHm8niDfn5b+0svz3xfst6VTBYqPNbTs7rikf0qN9EUYP12L6emXmN9OsRvytOsR22V3ZSPokfp3Lrk9tVaUrSEeLV2bu8w2WvFKu+cz155BLIz4/zlEbO7y738jOXdA8peHPF96X77jKf3gV8+KrmrG7DLfSjYF8JPXnrt7psbdM/Kx9GVVVMkuwPPHkcvr1dzd2KzZ4K32vTcdTZ9af3H7KqyyF0Pi9ylPjsVQxva0Ib2P7erESW+W8IB5twDZAUeF1V29i8NA9t/L5fMScuuJ+BFk50dVZHC1SmN+ZcC5X75z/koLXdwWZCSv/jXAcPPBTALAjb+/0sUMIcShD2suMHz8wX1Qvxc1HWt9Mf0A9seCvpYA3frlQA8ms/9eRP6i5/CeC9s8Ae6Pd7Trffoy/r65tB46z2v/JpOS/SbfUKDa3mBnzha8swF74eDnSs2Gt/Y79s+IV90PDfUx2JB/gRpy6/wu/QeiuBl5cupxZH+YFo+xd4mx44X3h8k+e9s7ffe45+STfD74AVhvMVBWLz5t21Pg0my4A/V9U3wa2EUwBtXez88RV6aWy8aT9d/U1T+Dz/dK5y4RDz0c2GxC7qsfIjP7e/oub3zzMAi+GPdn6pYIO9a4618JqxGv+l4AwkrHs2PFA6HqBctr/FnAuWtlxRQ5CVeBrRMpzfeen/0Xgc/pcijRzz97P2HlsdzCay9dx3/8bOhDvx541nwC+9t4x0dir9/JM8/yS+eGzyXQObjs/JzWnQY+fyvn8izs6TZqjxFcQLSrxdTe4y8KS2lE00InIXhHS9smMV6PR7on1ix9f7IHfZO+rMi3JtT/0L5e6Cw3sCK/MbnmzUr39/4ktYqerfy/kLLOKO5Ym7h88faV66ZXx2Z5RfY0nrPQn5jvhoWPpk5rCD5GbuG0wHblt+hDwMKZacPRku+fLbuHNrQvtrGPoJ5MrgQxk7iuniHOSTX0mUGPgkFPBdFsp+motlNj8bMpnbvQOUqn8BbSJa5nu2VhXdcwVhNVmOVjEez2ifkd3oP+WymUswCCeQ6z9G/Zb/CZKLUJEV/s7njOt3ZHPDLe0Fe0fUxwyiYpV0/0k+WfE7+iCll65ZKGfgeglfjZMzdzfVd6oKfkAfnPeDQ7QM/hkSnuvGYynPfH3yBeq+8/9KfBNI8Xepl1Z/Kzyo/ARxuq//JOFWpzncwo/lcahjjfOLcBo/nVDpJ0tGk2UV/UGq+w+GlOl0+OZxPneNv6N9Sss+nMzHjv/FDcwM9VzNKXSPM0d8Yjdk8340oLRv/GmEGqxw30hEhs48MsXX9y39GyvjFoCAAAA=='
 $QRGzipBase64='H4sIAGcwv2oC/+2WO46EMBBEa0RA6CP4JszFLIE0FxtuwhEcOkD0Vpv5aJkJViuKiA4s+xF0d6k/AKed9gfrzSwDdkeKvM5amoBLbqZ2CXNcn1Iabcz91N7DEFvLR9AUcbXDaD/ZwtsB1PWtMXyoLqC1duje095UlIA+PjGQL82xO3XPuTF0rJ3aIVLKjBc0Vjr0U0EY1LR4kVLaIZYuzFqa1rTL89BStjv9G64U2cZXRamoAeHGCUP3zHjQ0oR2tJvXjrHx3/qK6Cqtd2FdD2IKSuujzG18dYuIPgJB57kvENPnjl2H2nbz7k3rrGa7c2B7DElM6x4y26iupXTP4/23oqW++moVianri1gunvFv1QV03bEgwMfm3Z+edtq/7AeBR9ocIA8AAA=='
@@ -119,8 +122,10 @@ function AddReceptionBarcode($b,[string]$folio){
  }
  $data=New-Object byte[] ($widthBytes*$height)
  for($y=0;$y -lt $height;$y++){[Array]::Copy($row,0,$data,$y*$widthBytes,$widthBytes)}
- AddRaster $b $data $widthBytes $height
+ # Last visible folio text must precede the raster on this POS-80C.
+ # Commands after a reception raster were missing during physical QA.
  ReceptionLine $b $folio
+ AddRaster $b $data $widthBytes $height
 }
 function ReceptionLine($b,[string]$value){AddText $b ($value+[char]10)}
 function ReceptionText($b,[string]$label,[string]$value){
@@ -168,16 +173,18 @@ function BuildReceptionBody($r,[string]$copy,[bool]$includeBarcode=$true){
 }
 function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
 function PrintReception($r){
- # Match the working sale path exactly: body and cut in separate RAW jobs,
- # with a pause between copies. Never trigger the sale cash drawer.
+ # Separate the body from a reception-only reset/feed/cut RAW job.
+ # The barcode raster sometimes prevents subsequent commands from executing;
+ # reinitializing at the start of the cut job also helps resynchronize it.
+ # Never trigger the sale cash drawer.
  $number=[string]$r.receipt_number
  SendRaw (BuildReceptionBody $r 'CLIENTE') ("Recepcion "+$number+" CLIENTE")
  Start-Sleep -Milliseconds 700
- SendRaw $CUT ("Recepcion "+$number+" CORTE CLIENTE")
+ SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" AVANCE Y CORTE CLIENTE")
  Start-Sleep -Milliseconds 1200
  SendRaw (BuildReceptionBody $r 'TALLER') ("Recepcion "+$number+" TALLER")
  Start-Sleep -Milliseconds 700
- SendRaw $CUT ("Recepcion "+$number+" CORTE TALLER")
+ SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" AVANCE Y CORTE TALLER")
 }
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
 # Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
@@ -196,7 +203,7 @@ if($TestReception -or $TestReceptionPlain){
   Write-Host 'DIAGNOSTICO RECEPCION SIN BARCODE: una copia ficticia y un corte; sin abrir cajon.' -ForegroundColor Cyan
   SendRaw (BuildReceptionBody $sample 'CLIENTE' $false) 'QA RECEPCION SOLO TEXTO'
   Start-Sleep -Milliseconds 700
-  SendRaw $CUT 'QA RECEPCION CORTE SOLO TEXTO'
+  SendRaw $RECEPTION_FEED_CUT 'QA RECEPCION AVANCE Y CORTE SOLO TEXTO'
   Write-Host 'Prueba enviada. Comprueba CLIENTE, EQUIPO, SERVICIO y corte.' -ForegroundColor Green
  }else{
   Write-Host 'PRUEBA RECEPCION (NO REAL): 2 copias completas, 2 cortes, sin abrir cajon.' -ForegroundColor Cyan
