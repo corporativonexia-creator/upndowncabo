@@ -6,9 +6,13 @@ const fs = require('node:fs');
 const bridge = fs.readFileSync('tools/pos-print-bridge/UpNDownPrintBridge.ps1', 'utf8');
 const receipt = fs.readFileSync('src/lib/pos/reception-receipt.ts', 'utf8');
 
-test('thermal reception barcode uses raster rendering rather than native GS k that truncated tickets', () => {
+test('thermal reception barcode stays within the width of the already-working logo raster', () => {
   const barcode = bridge.slice(bridge.indexOf('function AddReceptionBarcode('), bridge.indexOf('function ReceptionLine('));
   assert.match(barcode, /AddRaster \$b \$data \$widthBytes \$height/);
+  const barcodeWidthBytes = Number(barcode.match(/\$widthBytes=(\d+);\$height=/)?.[1]);
+  const logoWidthBytes = Number(bridge.match(/function AddLogo\(\$b\)\{AddRaster \$b \$LogoRaster (\d+)/)?.[1]);
+  assert.equal(barcodeWidthBytes, 48);
+  assert.equal(barcodeWidthBytes, logoWidthBytes);
   assert.doesNotMatch(barcode, /\$GS,107|\$GS,\s*107|\$GS,\s*107/);
   assert.match(barcode, /ReceptionLine \$b \$folio/);
 
@@ -18,26 +22,40 @@ test('thermal reception barcode uses raster rendering rather than native GS k th
   assert.deepEqual(code39Bridge, code39Pdf, 'thermal and PDF must encode identical Code39 symbols');
   assert.doesNotMatch(barcode, /'\-'=/);
 
-  const body = bridge.slice(bridge.indexOf('function BuildReceptionBody('), bridge.indexOf('function BuildReceptionTicket('));
-  assert.match(body, /AddReceptionBarcode \$b \$folio/);
+  // Code39: six narrow + three wide bars/spaces per symbol; one narrow separator.
+  const fits = (digits, narrow, wide) => {
+    const count = digits + 4; // Start, S, R, digits, stop.
+    return count * (6 * narrow + 3 * wide) + (count - 1) * narrow <= barcodeWidthBytes * 8;
+  };
+  for (let digits = 6; digits <= 9; digits++) assert.ok(fits(digits, 2, 5));
+  for (let digits = 10; digits <= 12; digits++) assert.ok(fits(digits, 1, 3));
+
+  const body = bridge.slice(bridge.indexOf('function BuildReceptionBody('), bridge.indexOf('function SendRaw('));
+  assert.match(body, /if\(\$includeBarcode\)\{AddReceptionBarcode \$b \$folio\}/);
   for (const field of ['CLIENTE', 'TELEFONO', 'EQUIPO', 'SERVICIO', 'TRABAJO SOLICITADO', 'CONDICION AL RECIBIR', 'ACCESORIOS']) {
     assert.match(body, new RegExp("ReceptionText \\$b '" + field + "'"));
   }
+  assert.ok(body.indexOf("ReceptionText $b 'TRABAJO SOLICITADO'") < body.indexOf('AddReceptionBarcode $b $folio'),
+    'receipt fields must precede the raster barcode so a printer failure cannot hide them');
 });
 
-test('thermal reception has two RAW jobs, each with its own cutter command and no drawer', () => {
-  const ticket = bridge.slice(bridge.indexOf('function BuildReceptionTicket('), bridge.indexOf('function SendRaw('));
-  assert.match(ticket, /AddBytes \$b \(BuildReceptionBody \$r \$copy\)/);
-  assert.match(ticket, /AddBytes \$b \$CUT/);
+test('thermal reception matches the working retail path: two bodies, two separate RAW cutter jobs, no drawer', () => {
+  const print = bridge.slice(bridge.indexOf('function PrintReception('), bridge.indexOf('function Reply('));
+  assert.equal((print.match(/SendRaw \(BuildReceptionBody/g) || []).length, 2);
+  assert.equal((print.match(/SendRaw \$CUT/g) || []).length, 2);
+  assert.match(print, /BuildReceptionBody \$r 'CLIENTE'/);
+  assert.match(print, /BuildReceptionBody \$r 'TALLER'/);
+  assert.ok(print.indexOf("BuildReceptionBody $r 'CLIENTE'") < print.indexOf('SendRaw $CUT'), 'first copy precedes first cut');
+  assert.ok(print.lastIndexOf("BuildReceptionBody $r 'TALLER'") < print.lastIndexOf('SendRaw $CUT'), 'second copy precedes second cut');
+  assert.doesNotMatch(print, /\$DRAWER/);
 
   const start = bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')");
   const end = bridge.indexOf('};$sale=$p.sale;', start);
   assert.ok(start >= 0 && end > start);
   const route = bridge.slice(start, end);
-  assert.equal((route.match(/SendRaw \(BuildReceptionTicket/g) || []).length, 2);
-  assert.match(route, /BuildReceptionTicket \$reception 'CLIENTE'/);
-  assert.match(route, /BuildReceptionTicket \$reception 'TALLER'/);
-  assert.doesNotMatch(route, /SendRaw \$CUT|\$DRAWER/);
+  assert.match(route, /PrintReception \$reception/);
+  assert.match(route, /"drawer":0/);
+  assert.doesNotMatch(route, /\$DRAWER/);
 });
 
 test('new receipts use SR + numbers; legacy hyphens and apostrophes remain searchable', () => {
@@ -59,8 +77,8 @@ test('new receipts use SR + numbers; legacy hyphens and apostrophes remain searc
   assert.equal(normalizeReceptionFolioInput('SR-QA'), 'SR-QA');
 });
 
-test('safe reception hardware check prints fictitious data, without server or cash drawer', () => {
-  const start = bridge.indexOf('if($TestReception){');
+test('local diagnostic prints fictitious data; plain mode isolates barcode and print cut without opening drawer', () => {
+  const start = bridge.indexOf('if($TestReception -or $TestReceptionPlain){');
   const end = bridge.indexOf('if($TestReceipt){', start);
   const listener = bridge.indexOf('$l=New-Object Net.HttpListener;');
   assert.ok(start > 0 && end > start && listener > end);
@@ -69,8 +87,10 @@ test('safe reception hardware check prints fictitious data, without server or ca
   assert.match(sample, /customer_name='CLIENTE DE PRUEBA - NO REAL'/);
   assert.match(sample, /equipment_description='Putter ficticio de prueba'/);
   assert.match(sample, /service_name='Cambio de grip \(prueba\)'/);
-  assert.match(sample, /BuildReceptionTicket \$sample 'CLIENTE'/);
-  assert.match(sample, /BuildReceptionTicket \$sample 'TALLER'/);
+  assert.match(sample, /if\(\$TestReceptionPlain\)/);
+  assert.match(sample, /BuildReceptionBody \$sample 'CLIENTE' \$false/);
+  assert.match(sample, /SendRaw \$CUT 'QA RECEPCION CORTE SOLO TEXTO'/);
+  assert.match(sample, /PrintReception \$sample/);
   assert.match(bridge, /\$folio='SR'\+\$number\.ToString\('000000'\)/);
   assert.doesNotMatch(sample, /\$DRAWER|pos_reception_create|pos_create_sale/);
   assert.match(bridge, /if\(\$r\.is_test\)\{ReceptionLine \$b '\*\*\* PRUEBA - NO ES RECEPCION REAL \*\*\*'\}/);

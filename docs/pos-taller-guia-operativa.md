@@ -66,3 +66,13 @@ No se lleva una bitácora extensa ni se obliga a capturar precios antes de conoc
 - [ ] Confirmar que ventas, promociones, anulaciones, devoluciones e inventario continúen correctos.
 
 No ejecutar ni simular cobros reales sobre producción durante la verificación de código.
+
+## G. Diagnóstico de impresión térmica de recepción (PR #39, sin instalación)
+
+Mientras el PR #39 esté en borrador, **no reemplazar el puente de impresión en operación**, ni fusionar a `main`. Descargar la versión de `UpNDownPrintBridge.ps1` de esa rama a una carpeta temporal y ejecutar las pruebas **cuando no haya otros trabajos de impresión**. Ambas utilizan `SR999999`, datos ficticios, no abren el cajón y no registran recepciones ni ventas.
+
+1. Primero, comprobar texto y corte **sin código de barras** (una sola copia). Desde PowerShell, en la carpeta temporal: `./UpNDownPrintBridge.ps1 -PrinterName 'POS-80C' -TestReceptionPlain`. Deben aparecer cliente, equipo, servicio, trabajo solicitado y corte automático.
+2. Si lo anterior funciona, probar el ticket **con código de barras** (dos copias y dos cortes): `./UpNDownPrintBridge.ps1 -PrinterName 'POS-80C' -TestReception`. Verificar en ambas: datos completos, cortes independientes, cajón cerrado y escaneo exacto de `SR999999`.
+3. Si el primer paso falla, el problema no depende del código de barras: registrar foto del papel y estado de la cola de impresión. Si solo falla el segundo paso, registrar dónde se detiene y si realiza los cortes. **No repetir impresiones reales hasta diagnosticarlo**.
+
+Si la política de ejecución del equipo impide iniciar la prueba, pedir autorización al administrador de Windows; no cambiar las restricciones del equipo para esta prueba.
