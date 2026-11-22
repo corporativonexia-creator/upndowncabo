@@ -89,7 +89,7 @@ test('a ready workshop reception selects the service parent despite its Única v
   await expect(page.locator('.pos-product')).toContainText('Cambio de grip');
   await page.locator('#posServiceFolio').fill('SR-000129');
   await page.getByRole('button',{name:'Cargar recepción'}).click();
-  await expect(page.getByText(/Recepción SR-000129 cargada/)).toBeVisible();
+  await expect(page.getByText(/Recepción SR000129 cargada/)).toBeVisible();
   await expect(page.locator('.pos-cart-item')).toContainText('Cambio de grip');
 });
 
