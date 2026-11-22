@@ -43,7 +43,8 @@ test('thermal reception barcode stays within the width of the already-working lo
   assert.doesNotMatch(raster, /\$CUT/);
   const finish = bridge.slice(bridge.indexOf('function BuildReceptionFinish('), bridge.indexOf('function SendRaw('));
   assert.match(finish, /AddBytes \$b \$INIT/);
-  assert.match(finish, /ReceptionLine \$b \('FIN '/);
+  assert.match(finish, /ReceptionLine \$b \(\$folio\+' '\+\$copy\)/);
+  assert.doesNotMatch(finish, /'FIN '/, 'the printed footer must not show the former diagnostic label');
   assert.doesNotMatch(finish, /\$ESC,100,8|AddBytes \$b \$CUT/, 'footer should contain text only');
   assert.match(bridge, /\$RECEPTION_FEED_CUT=B @\(\$ESC,64,\$ESC,100,8,\$GS,86,0\)/);
 });

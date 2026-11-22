@@ -191,7 +191,7 @@ function BuildReceptionFinish($r,[string]$copy){
  $b=New-Object 'System.Collections.Generic.List[byte]'
  AddBytes $b $INIT
  AddBytes $b $CENTER
- ReceptionLine $b ('FIN '+$folio+' '+$copy)
+ ReceptionLine $b ($folio+' '+$copy)
  AddBytes $b (B @(10,10))
  return $b.ToArray()
 }
@@ -205,7 +205,7 @@ function PrintReceptionCopy($r,[string]$copy){
  Start-Sleep -Milliseconds 700
  SendRaw (BuildReceptionBarcode $r) ("Recepcion "+$number+" "+$copy+" CODIGO")
  Start-Sleep -Milliseconds 1200
- SendRaw (BuildReceptionFinish $r $copy) ("Recepcion "+$number+" "+$copy+" FIN")
+ SendRaw (BuildReceptionFinish $r $copy) ("Recepcion "+$number+" "+$copy+" CIERRE")
  Start-Sleep -Milliseconds 900
  SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" "+$copy+" AVANCE Y CORTE")
 }
@@ -237,11 +237,11 @@ if($TestReception -or $TestReceptionPlain -or $TestReceptionBarcode){
  }elseif($TestReceptionBarcode){
   Write-Host 'DIAGNOSTICO BARCODE: una copia ficticia, codigo y corte. Sin abrir cajon.' -ForegroundColor Cyan
   PrintReceptionCopy $sample 'CLIENTE'
-  Write-Host 'Verifica FIN SR999999 CLIENTE y corte. Si falta, no ejecutes las dos copias.' -ForegroundColor Green
+  Write-Host 'Verifica SR999999 CLIENTE y corte. Si falta, no ejecutes las dos copias.' -ForegroundColor Green
  }else{
   Write-Host 'PRUEBA RECEPCION (NO REAL): 2 copias completas, 2 cortes, sin abrir cajon.' -ForegroundColor Cyan
   PrintReception $sample
-  Write-Host 'Prueba enviada. Verifica ambas lineas FIN, 2 cortes y escanea SR999999.' -ForegroundColor Green
+  Write-Host 'Prueba enviada. Verifica ambos folios al final, 2 cortes y escanea SR999999.' -ForegroundColor Green
  }
  exit 0
 }
