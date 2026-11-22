@@ -5,9 +5,9 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { jsPDF } from "jspdf";
 import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
-import { receptionFolio, type ServiceReception } from "@/lib/pos/reception-receipt";
+import { normalizeReceptionFolioInput, receptionFolio, receptionSearchTerm, type ServiceReception } from "@/lib/pos/reception-receipt";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
-import ServiceRecepcionesPage from "./recepciones/page";
+import ServiceRecepcionesPage from "./recepciones/reception-workspace";
 
 type Access = {
   employee_id: string;
@@ -564,9 +564,9 @@ export default function PosPage() {
   }
 
   async function openReceptionByFolio(rawValue: string) {
-    const code = rawValue.trim().toUpperCase();
-    if (!/^SR-[0-9]{1,12}$/.test(code)) {
-      setMessage("Folio inválido. Escribe o escanea un código como SR-000128.");
+    const code = normalizeReceptionFolioInput(rawValue);
+    if (!/^SR[0-9]{6,12}$/.test(code)) {
+      setMessage("Folio inválido. Escribe o escanea un código como SR000128.");
       return;
     }
     if (!access?.open_shift_id) {
@@ -586,7 +586,7 @@ export default function PosPage() {
     setReceptionLoading(true);
     try {
       const { data, error } = await supabase.rpc("pos_reception_recent", {
-        p_device_token: deviceToken, p_search: code,
+        p_device_token: deviceToken, p_search: receptionSearchTerm(code),
       });
       if (error) throw error;
       const reception = ((Array.isArray(data) ? data : []) as ServiceReception[])
@@ -626,8 +626,9 @@ export default function PosPage() {
   function handleBarcodeScan(rawValue: string) {
     const code = rawValue.trim();
     if (!code) return false;
-    if (/^SR-[0-9]{1,12}$/i.test(code)) {
-      void openReceptionByFolio(code);
+    const receptionCode = normalizeReceptionFolioInput(code);
+    if (/^SR[0-9]{6,12}$/.test(receptionCode)) {
+      void openReceptionByFolio(receptionCode);
       return true;
     }
 
@@ -2119,7 +2120,7 @@ export default function PosPage() {
                 <form className="pos-reception-shortcut" onSubmit={event => { event.preventDefault(); void openReceptionByFolio(receptionQuery); }}>
                   <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Cobrar equipo de taller · Folio</label>
                   <input id="posServiceFolio" type="text" value={receptionQuery}
-                    onChange={e => setReceptionQuery(e.target.value)} placeholder="Escanea SR-000128"
+                    onChange={e => setReceptionQuery(e.target.value)} placeholder="Escanea SR000128"
                     maxLength={20} autoComplete="off" />
                   <button className="pos-btn secondary" type="submit" disabled={busy || receptionLoading || productsLoading || !!activeReception}>
                     {receptionLoading ? "Consultando..." : "Cargar recepción"}
