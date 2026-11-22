@@ -83,3 +83,9 @@ Si la política de ejecución del equipo impide iniciar la prueba, pedir autoriz
 - **Confirmado:** con `-TestReception`, el código de barras se imprimió pero las dos copias quedaron unidas; se deben validar por separado la sincronización tras el raster y el corte.
 - **Cambio en PR #39:** el corte de recepción ahora envía `ESC @` para reiniciar el estado de comandos de imagen, `ESC d 8` para avanzar ocho líneas y el `GS V 0` ya probado. El corte de **ventas normales no cambia**. El texto del folio se imprime *antes* de la imagen de código de barras.
 - **QA siguiente:** sustituir **solo la copia temporal** del archivo descargado. Primero probar `-TestReceptionPlain`: comprobar que sale suficiente papel después de cortarse. Si se expulsa correctamente, probar `-TestReception`: dos tickets independientes, los dos códigos legibles y cajón cerrado. Si falla, no instalar ni fusionar.
+
+### Investigación del código de barras (22/11/2026)
+
+La prueba posterior confirmó que el **ticket sin código de barras ya avanza y corta correctamente**. Sin embargo, el modo con barcode seguía imprimiendo ambas copias pegadas sin cortarlas. La hipótesis de sincronización del raster queda abierta: un trabajo RAW solo con comandos de corte tampoco resolvió el caso.
+
+**Nueva estrategia en PR #39 (sin instalar):** cada copia se transmite mediante **tres trabajos RAW secuenciales**: (1) texto completo; (2) código Code39 rasterizado; (3) línea impresa de fin `FIN SR999999 CLIENTE/TALLER`, avance de ocho líneas y corte. El modo nuevo `-TestReceptionBarcode` produce **una sola copia ficticia con barcode** para comprobar primero si aparece la línea `FIN` y si corta. Solo si ese diagnóstico es satisfactorio ejecutar `-TestReception` para validar las dos copias. El modo `-TestReceptionPlain` permanece sin barcode; el flujo de impresión de ventas normales no se modifica.

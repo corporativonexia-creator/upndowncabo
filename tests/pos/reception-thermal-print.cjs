@@ -32,27 +32,36 @@ test('thermal reception barcode stays within the width of the already-working lo
   for (let digits = 6; digits <= 9; digits++) assert.ok(fits(digits, 2, 5));
   for (let digits = 10; digits <= 12; digits++) assert.ok(fits(digits, 1, 3));
 
-  const body = bridge.slice(bridge.indexOf('function BuildReceptionBody('), bridge.indexOf('function SendRaw('));
-  assert.match(body, /if\(\$includeBarcode\)\{AddReceptionBarcode \$b \$folio\}/);
+  const body = bridge.slice(bridge.indexOf('function BuildReceptionBody('), bridge.indexOf('function BuildReceptionBarcode('));
+  assert.doesNotMatch(body, /AddReceptionBarcode|AddRaster/, 'text body cannot include the barcode raster');
   for (const field of ['CLIENTE', 'TELEFONO', 'EQUIPO', 'SERVICIO', 'TRABAJO SOLICITADO', 'CONDICION AL RECIBIR', 'ACCESORIOS']) {
     assert.match(body, new RegExp("ReceptionText \\$b '" + field + "'"));
   }
-  assert.ok(body.indexOf("ReceptionText $b 'TRABAJO SOLICITADO'") < body.indexOf('AddReceptionBarcode $b $folio'),
-    'receipt fields must precede the raster barcode so a printer failure cannot hide them');
+  const raster = bridge.slice(bridge.indexOf('function BuildReceptionBarcode('), bridge.indexOf('function BuildReceptionFinish('));
+  assert.match(raster, /AddBytes \$b \$INIT/);
+  assert.match(raster, /AddReceptionBarcode \$b \$folio/);
+  assert.doesNotMatch(raster, /\$CUT/);
+  const finish = bridge.slice(bridge.indexOf('function BuildReceptionFinish('), bridge.indexOf('function SendRaw('));
+  assert.match(finish, /AddBytes \$b \$INIT/);
+  assert.match(finish, /ReceptionLine \$b \('FIN '/);
+  assert.match(finish, /\$ESC,100,8/);
+  assert.match(finish, /AddBytes \$b \$CUT/);
 });
 
-test('reception feed-and-cut resets raster state, feeds paper and separates both copies without opening drawer', () => {
-  assert.match(bridge, /\$RECEPTION_FEED_CUT=B @\(\$ESC,64,\$ESC,100,8,\$GS,86,0\)/);
-  assert.match(bridge, /\$CUT=B @\(\$GS,86,0\)/, 'retail cutting command must remain unchanged');
-  const print = bridge.slice(bridge.indexOf('function PrintReception('), bridge.indexOf('function Reply('));
-  assert.equal((print.match(/SendRaw \(BuildReceptionBody/g) || []).length, 2);
-  assert.equal((print.match(/SendRaw \$RECEPTION_FEED_CUT/g) || []).length, 2);
-  assert.match(print, /BuildReceptionBody \$r 'CLIENTE'/);
-  assert.match(print, /BuildReceptionBody \$r 'TALLER'/);
-  assert.ok(print.indexOf("BuildReceptionBody $r 'CLIENTE'") < print.indexOf('SendRaw $RECEPTION_FEED_CUT'), 'first copy precedes first cut');
-  assert.ok(print.lastIndexOf("BuildReceptionBody $r 'TALLER'") < print.lastIndexOf('SendRaw $RECEPTION_FEED_CUT'), 'second copy precedes second cut');
+test('reception sends text, raster and visible finish as separate jobs per copy, never drawer', () => {
+  const print = bridge.slice(bridge.indexOf('function PrintReceptionCopy('), bridge.indexOf('function Reply('));
+  assert.equal((print.match(/SendRaw \(BuildReceptionBody/g) || []).length, 1);
+  assert.equal((print.match(/SendRaw \(BuildReceptionBarcode/g) || []).length, 1);
+  assert.equal((print.match(/SendRaw \(BuildReceptionFinish/g) || []).length, 1);
+  assert.ok(print.indexOf('SendRaw (BuildReceptionBody') < print.indexOf('SendRaw (BuildReceptionBarcode'));
+  assert.ok(print.indexOf('SendRaw (BuildReceptionBarcode') < print.indexOf('SendRaw (BuildReceptionFinish'));
+  assert.match(print, /PrintReceptionCopy \$r 'CLIENTE'/);
+  assert.match(print, /PrintReceptionCopy \$r 'TALLER'/);
   assert.doesNotMatch(print, /\$DRAWER/);
 
+  const retail = bridge.slice(bridge.indexOf('if($TestReceipt){'));
+  assert.match(retail, /SendRaw \$CUT \("Venta "\+\$sale.sale_number\+" CORTE CLIENTE"\)/);
+  assert.match(retail, /SendRaw \$DRAWER \("Venta "\+\$sale.sale_number\+" CAJON"\)/);
   const start = bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')");
   const end = bridge.indexOf('};$sale=$p.sale;', start);
   assert.ok(start >= 0 && end > start);
@@ -82,7 +91,7 @@ test('new receipts use SR + numbers; legacy hyphens and apostrophes remain searc
 });
 
 test('local diagnostic prints fictitious data; plain mode isolates barcode and print cut without opening drawer', () => {
-  const start = bridge.indexOf('if($TestReception -or $TestReceptionPlain){');
+  const start = bridge.indexOf('if($TestReception -or $TestReceptionPlain -or $TestReceptionBarcode){');
   const end = bridge.indexOf('if($TestReceipt){', start);
   const listener = bridge.indexOf('$l=New-Object Net.HttpListener;');
   assert.ok(start > 0 && end > start && listener > end);
@@ -92,8 +101,10 @@ test('local diagnostic prints fictitious data; plain mode isolates barcode and p
   assert.match(sample, /equipment_description='Putter ficticio de prueba'/);
   assert.match(sample, /service_name='Cambio de grip \(prueba\)'/);
   assert.match(sample, /if\(\$TestReceptionPlain\)/);
-  assert.match(sample, /BuildReceptionBody \$sample 'CLIENTE' \$false/);
+  assert.match(sample, /BuildReceptionBody \$sample 'CLIENTE'/);
   assert.match(sample, /SendRaw \$RECEPTION_FEED_CUT 'QA RECEPCION AVANCE Y CORTE SOLO TEXTO'/);
+  assert.match(sample, /if\(\$TestReceptionBarcode\)/);
+  assert.match(sample, /PrintReceptionCopy \$sample 'CLIENTE'/);
   assert.match(sample, /PrintReception \$sample/);
   assert.match(bridge, /\$folio='SR'\+\$number\.ToString\('000000'\)/);
   assert.doesNotMatch(sample, /\$DRAWER|pos_reception_create|pos_create_sale/);

@@ -403,21 +403,29 @@ test('POS Taller: no anonymous access, unapproved terminal or inactive service',
  await auth(user);
 });
 
-test('POS Taller: each thermal copy includes its cut in the same RAW job, without opening the drawer',()=>{
+test('POS Taller: reception isolates text, Code39 raster and visible cut per copy, without drawer',()=>{
  const bridge=fs.readFileSync('tools/pos-print-bridge/UpNDownPrintBridge.ps1','utf8');
  const start=bridge.indexOf("if($c.Request.Url.AbsolutePath -eq '/print-reception')");
  const end=bridge.indexOf('};$sale=$p.sale;',start);
  assert.ok(start>=0&&end>start);
  const route=bridge.slice(start,end);
- assert.match(route,/SendRaw \(BuildReceptionTicket \$reception 'CLIENTE'\)/);
- assert.match(route,/SendRaw \(BuildReceptionTicket \$reception 'TALLER'\)/);
- assert.equal((route.match(/SendRaw \(BuildReceptionTicket/g)||[]).length,2);
- assert.doesNotMatch(route,/SendRaw \$CUT/);
+ assert.match(route,/PrintReception \$reception/);
  assert.doesNotMatch(route,/\$DRAWER/);
  assert.match(route,/"drawer":0/);
- const ticket=bridge.slice(bridge.indexOf('function BuildReceptionTicket('),bridge.indexOf('function SendRaw('));
- assert.match(ticket,/AddBytes \$b \(BuildReceptionBody \$r \$copy\)/);
- assert.match(ticket,/AddBytes \$b \$CUT/);
- assert.match(ticket,/return \$b\.ToArray\(\)/);
- assert.match(bridge,/AddReceptionBarcode \$b \$folio/);
+ const copy=bridge.slice(bridge.indexOf('function PrintReceptionCopy('),bridge.indexOf('function Reply('));
+ assert.match(copy,/SendRaw \(BuildReceptionBody \$r \$copy \$false\)/);
+ assert.match(copy,/SendRaw \(BuildReceptionBarcode \$r\)/);
+ assert.match(copy,/SendRaw \(BuildReceptionFinish \$r \$copy\)/);
+ assert.ok(copy.indexOf('SendRaw (BuildReceptionBody')<copy.indexOf('SendRaw (BuildReceptionBarcode'));
+ assert.ok(copy.indexOf('SendRaw (BuildReceptionBarcode')<copy.indexOf('SendRaw (BuildReceptionFinish'));
+ assert.match(copy,/PrintReceptionCopy \$r 'CLIENTE'/);
+ assert.match(copy,/PrintReceptionCopy \$r 'TALLER'/);
+ assert.doesNotMatch(copy,/\$DRAWER/);
+ const finish=bridge.slice(bridge.indexOf('function BuildReceptionFinish('),bridge.indexOf('function SendRaw('));
+ assert.match(finish,/ReceptionLine \$b \('FIN '/);
+ assert.match(finish,/AddBytes \$b \(B @\(\$ESC,100,8\)\)/);
+ assert.match(finish,/AddBytes \$b \$CUT/);
+ const barcode=bridge.slice(bridge.indexOf('function BuildReceptionBarcode('),bridge.indexOf('function BuildReceptionFinish('));
+ assert.match(barcode,/AddReceptionBarcode \$b \$folio/);
+ assert.doesNotMatch(barcode,/\$CUT|\$DRAWER/);
 });

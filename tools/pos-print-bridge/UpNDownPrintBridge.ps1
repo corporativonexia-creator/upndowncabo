@@ -1,6 +1,6 @@
 # Up & Down POS - Local ESC/POS Print Bridge
 # Windows PowerShell 5.1+
-param([string]$PrinterName='POS-80C',[int]$Port=18181,[switch]$TestReceipt,[switch]$TestReception,[switch]$TestReceptionPlain,[switch]$TestDrawer)
+param([string]$PrinterName='POS-80C',[int]$Port=18181,[switch]$TestReceipt,[switch]$TestReception,[switch]$TestReceptionPlain,[switch]$TestReceptionBarcode,[switch]$TestDrawer)
 $ErrorActionPreference='Stop'
 Add-Type @"
 using System; using System.Runtime.InteropServices;
@@ -136,7 +136,7 @@ function ReceptionText($b,[string]$label,[string]$value){
   ReceptionLine $b $clean.Substring($offset,[Math]::Min(42,$clean.Length-$offset))
  }
 }
-function BuildReceptionBody($r,[string]$copy,[bool]$includeBarcode=$true){
+function BuildReceptionBody($r,[string]$copy,[bool]$cutMargin=$true){
  $number=[int64]$r.receipt_number
  if($number -le 0 -or -not $r.customer_name -or -not $r.equipment_description -or -not $r.service_name -or -not $r.work_description){throw 'RECEPCION_INVALIDA'}
  $folio='SR'+$number.ToString('000000')
@@ -165,33 +165,59 @@ function BuildReceptionBody($r,[string]$copy,[bool]$includeBarcode=$true){
  AddBytes $b $BOLDOFF
  ReceptionLine $b 'NO ES COMPROBANTE DE PAGO'
  if($copy -eq 'CLIENTE'){ReceptionLine $b 'Firma de quien entrega: ______________'}
- # Print every customer/equipment/service field BEFORE the barcode. If the
- # printer cannot parse the raster, the essential receipt remains readable.
- if($includeBarcode){AddReceptionBarcode $b $folio}
- AddBytes $b $LEFT;AddBytes $b (B @(10,10,10,10,10))
+ # Keep the entire text document free of barcode raster commands.
+ # Only the plain-text diagnostic needs the same extra margin used for cutting.
+ AddBytes $b $LEFT
+ if($cutMargin){AddBytes $b (B @(10,10,10,10,10))}else{AddBytes $b (B @(10))}
+ return $b.ToArray()
+}
+# The code39 raster is a separate RAW job. No cut command follows its data.
+function BuildReceptionBarcode($r){
+ $number=[int64]$r.receipt_number
+ if($number -le 0){throw 'RECEPCION_INVALIDA'}
+ $folio='SR'+$number.ToString('000000')
+ $b=New-Object 'System.Collections.Generic.List[byte]'
+ AddBytes $b $INIT
+ AddBytes $b $CENTER
+ AddReceptionBarcode $b $folio
+ return $b.ToArray()
+}
+# An actual printed footer makes it visible whether the POS-80C accepted
+# instructions after a Code39 raster. Feed before cutting to expose the ticket.
+function BuildReceptionFinish($r,[string]$copy){
+ $number=[int64]$r.receipt_number
+ if($number -le 0){throw 'RECEPCION_INVALIDA'}
+ $folio='SR'+$number.ToString('000000')
+ $b=New-Object 'System.Collections.Generic.List[byte]'
+ AddBytes $b $INIT
+ AddBytes $b $CENTER
+ ReceptionLine $b ('FIN '+$folio+' '+$copy)
+ AddBytes $b (B @($ESC,100,8))
+ AddBytes $b $CUT
  return $b.ToArray()
 }
 function SendRaw([byte[]]$x,[string]$n){if(-not [RawPrinterHelper]::SendBytes($PrinterName,$x,$n)){throw "No se pudo enviar RAW a $PrinterName"}}
-function PrintReception($r){
- # Separate the body from a reception-only reset/feed/cut RAW job.
- # The barcode raster sometimes prevents subsequent commands from executing;
- # reinitializing at the start of the cut job also helps resynchronize it.
- # Never trigger the sale cash drawer.
+function PrintReceptionCopy($r,[string]$copy){
+ # Each stage is a separate RAW spool job. Reception raster output must never
+ # share a command buffer with the data text or the paper cutter.
  $number=[string]$r.receipt_number
- SendRaw (BuildReceptionBody $r 'CLIENTE') ("Recepcion "+$number+" CLIENTE")
+ SendRaw (BuildReceptionBody $r $copy $false) ("Recepcion "+$number+" "+$copy+" TEXTO")
  Start-Sleep -Milliseconds 700
- SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" AVANCE Y CORTE CLIENTE")
+ SendRaw (BuildReceptionBarcode $r) ("Recepcion "+$number+" "+$copy+" CODIGO")
  Start-Sleep -Milliseconds 1200
- SendRaw (BuildReceptionBody $r 'TALLER') ("Recepcion "+$number+" TALLER")
- Start-Sleep -Milliseconds 700
- SendRaw $RECEPTION_FEED_CUT ("Recepcion "+$number+" AVANCE Y CORTE TALLER")
+ SendRaw (BuildReceptionFinish $r $copy) ("Recepcion "+$number+" "+$copy+" FIN Y CORTE")
+}
+function PrintReception($r){
+ PrintReceptionCopy $r 'CLIENTE'
+ Start-Sleep -Milliseconds 1500
+ PrintReceptionCopy $r 'TALLER'
 }
 function Reply($c,[int]$s,[string]$body){$c.Response.StatusCode=$s;$c.Response.ContentType='application/json; charset=utf-8';$o=$c.Request.Headers['Origin'];if($o -and ($AllowedOrigins -contains $o)){$c.Response.Headers.Add('Access-Control-Allow-Origin',$o);$c.Response.Headers.Add('Vary','Origin')};$c.Response.Headers.Add('Access-Control-Allow-Headers','Content-Type');$c.Response.Headers.Add('Access-Control-Allow-Methods','GET,POST,OPTIONS');$c.Response.Headers.Add('Access-Control-Allow-Private-Network','true');$x=[Text.Encoding]::UTF8.GetBytes($body);$c.Response.ContentLength64=$x.Length;$c.Response.OutputStream.Write($x,0,$x.Length);$c.Response.Close()}
 # Diagnostic is a local-only CLI mode. No HTTP listener, Supabase calls, POS session,
 # inventory changes or sale creation. The cash drawer is opt-in with -TestDrawer.
-if(([int][bool]$TestReceipt+[int][bool]$TestReception+[int][bool]$TestReceptionPlain) -gt 1){throw 'Selecciona solo una prueba: -TestReceipt, -TestReception o -TestReceptionPlain'}
+if(([int][bool]$TestReceipt+[int][bool]$TestReception+[int][bool]$TestReceptionPlain+[int][bool]$TestReceptionBarcode) -gt 1){throw 'Selecciona solo una prueba: -TestReceipt, -TestReception, -TestReceptionPlain o -TestReceptionBarcode'}
 if($TestDrawer -and (-not $TestReceipt)){throw '-TestDrawer requires -TestReceipt'}
-if($TestReception -or $TestReceptionPlain){
+if($TestReception -or $TestReceptionPlain -or $TestReceptionBarcode){
  $sample=[pscustomobject]@{
   is_test=$true;receipt_number=999999;received_at=[datetime]::Now
   customer_name='CLIENTE DE PRUEBA - NO REAL';customer_phone='0000000000'
@@ -201,14 +227,18 @@ if($TestReception -or $TestReceptionPlain){
  }
  if($TestReceptionPlain){
   Write-Host 'DIAGNOSTICO RECEPCION SIN BARCODE: una copia ficticia y un corte; sin abrir cajon.' -ForegroundColor Cyan
-  SendRaw (BuildReceptionBody $sample 'CLIENTE' $false) 'QA RECEPCION SOLO TEXTO'
+  SendRaw (BuildReceptionBody $sample 'CLIENTE') 'QA RECEPCION SOLO TEXTO'
   Start-Sleep -Milliseconds 700
   SendRaw $RECEPTION_FEED_CUT 'QA RECEPCION AVANCE Y CORTE SOLO TEXTO'
   Write-Host 'Prueba enviada. Comprueba CLIENTE, EQUIPO, SERVICIO y corte.' -ForegroundColor Green
+ }elseif($TestReceptionBarcode){
+  Write-Host 'DIAGNOSTICO BARCODE: una copia ficticia, codigo y corte. Sin abrir cajon.' -ForegroundColor Cyan
+  PrintReceptionCopy $sample 'CLIENTE'
+  Write-Host 'Verifica FIN SR999999 CLIENTE y corte. Si falta, no ejecutes las dos copias.' -ForegroundColor Green
  }else{
   Write-Host 'PRUEBA RECEPCION (NO REAL): 2 copias completas, 2 cortes, sin abrir cajon.' -ForegroundColor Cyan
   PrintReception $sample
-  Write-Host 'Prueba enviada. Verifica campos, 2 cortes, y escanea SR999999.' -ForegroundColor Green
+  Write-Host 'Prueba enviada. Verifica ambas lineas FIN, 2 cortes y escanea SR999999.' -ForegroundColor Green
  }
  exit 0
 }
