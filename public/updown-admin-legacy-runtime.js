@@ -1966,11 +1966,18 @@
         if(error) throw error;
         saved=data;
       }else{
-        // New products need unique URLs, even when their names are identical.
+        // Never trust a client-side SKU preview: imports can advance the database
+        // beyond a stale category counter. The INSERT trigger allocates a unique SKU.
+        payload.sku=null;
         payload.slug=`${slug||"producto"}-${crypto.randomUUID().slice(0,8)}`;
-        const {data,error}=await db.from("products").insert(payload).select().single();
-        if(error) throw error;
-        saved=data;
+        let createError;
+        for(let attempt=0;attempt<3;attempt++){
+          const {data,error}=await db.from("products").insert(payload).select().single();
+          if(!error){saved=data;createError=null;break;}
+          createError=error;
+          if(error.code!=="23505"||!String(error.message||"").includes("products_sku_key"))break;
+        }
+        if(createError)throw createError;
       }
 
       // No photograph is required to save or edit a product.
