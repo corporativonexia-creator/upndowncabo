@@ -179,6 +179,8 @@ begin
   select * into r from public.pos_consignments where product_id=new.product_id for update;
   if not found then return new; end if;
   if r.status<>'on_sale' then raise exception 'CONSIGNMENT_NOT_AVAILABLE'; end if;
+  if r.expires_on is not null and r.expires_on<timezone('America/Mazatlan',now())::date
+    then raise exception 'CONSIGNMENT_EXPIRED'; end if;
   select * into s from public.pos_sales where id=new.sale_id;
   if not found or s.status<>'completed' then raise exception 'CONSIGNMENT_SALE_INVALID'; end if;
   if new.quantity<>1 or new.discount_amount<>0

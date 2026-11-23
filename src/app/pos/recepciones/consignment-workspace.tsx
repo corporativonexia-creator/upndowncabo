@@ -290,6 +290,7 @@ export default function ConsignmentWorkspace({ onReturnToService }: { onReturnTo
               <p className={styles.selectedSummary}>{selected.equipment_description}</p>
               <p className={styles.selectedSummary}>Dueño: <b>{consignmentMoney(Number(selected.agreed_payout))}</b> · Venta: <b>{consignmentMoney(Number(selected.sold_price ?? selected.asking_price))}</b> · Margen bruto: <b>{consignmentMoney(expectedGrossProfit)}</b></p>
               <p className={styles.selectedSummary}>Condición: {selected.condition_notes} · Accesorios: {selected.accessories}</p>
+              {selected.expires_on && <p className={styles.selectedSummary}>Fin del periodo de exhibición: <b>{selected.expires_on}</b></p>}
               {selected.payout_due_on && <p className={cx.due}>Fecha estimada para liquidar: {selected.payout_due_on} (sin considerar días feriados).</p>}
               {selected.sale_id && <small>Venta vinculada: {selected.sale_id}</small>}
               {selected.status === "received" && <div className={styles.fields}>

@@ -372,6 +372,8 @@ function readableError(error: unknown) {
     return "La consignación debe cobrarse sin descuentos ni promociones. Retira el descuento o pide al administrador revisar el precio pactado.";
   if (text.includes("CONSIGNMENT_NOT_AVAILABLE"))
     return "Esta pieza a consignación ya no está disponible. Actualiza el catálogo antes de volver a cobrar.";
+  if (text.includes("CONSIGNMENT_EXPIRED"))
+    return "El periodo autorizado para vender esta consignación terminó. Pide al administrador renovar el acuerdo o devolver el artículo.";
   if (text.includes("CONSIGNMENT_SALE_INVALID"))
     return "No se pudo vincular la consignación con esta venta. No se realizó el cobro; avisa al administrador.";
   if (error instanceof Error) return error.message;

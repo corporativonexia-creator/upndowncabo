@@ -464,7 +464,7 @@ test('Consignaci√≥n: rechazo de descuentos, reembolso antes del pago y protecci√
  const variant=await one('select id from product_variants where product_id=$1',[pub.product_id]);
  await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id,promotion_mode:'percent',promotion_value:10}),720),
    /CONSIGNMENT_DISCOUNT_OR_PRICE_NOT_ALLOWED/);
- await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id}),790,{discount:10}),
+ await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id}),790,{mode:'amount',value:10,discount:10}),
    /CONSIGNMENT_DISCOUNT_OR_PRICE_NOT_ALLOWED/);
  assert.equal((await one('select status from pos_consignments where id=$1',[r.id])).status,'on_sale');
  const s=await sell(items(pub.product_id,{variant_id:variant.id}),800);
