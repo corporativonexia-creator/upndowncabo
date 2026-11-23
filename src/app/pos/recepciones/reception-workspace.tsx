@@ -272,7 +272,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
   if (workspaceMode === "consignment") return (
     <main className={`${styles.shell}${embedded ? ` ${styles.embedded}` : ""}`}>
       <div className={styles.wrap}>
-        <ConsignmentWorkspace onReturnToService={() => setWorkspaceMode("service")} />
+        <ConsignmentWorkspace db={db} onReturnToService={() => setWorkspaceMode("service")} />
       </div>
     </main>
   );

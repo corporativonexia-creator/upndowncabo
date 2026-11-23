@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildConsignmentReceipt, buildConsignmentPayoutReceipt, consignmentFolio, consignmentMoney,
   type Consignment,
@@ -39,14 +39,10 @@ function errorText(error: unknown) {
   return Object.entries(map).find(([key]) => message.includes(key))?.[1] || message;
 }
 
-export default function ConsignmentWorkspace({ onReturnToService }: { onReturnToService: () => void }) {
-  const db = useMemo(() => createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false,
-        storage: typeof window !== "undefined" ? window.localStorage : undefined,
-        storageKey: "updown-pos-auth-v1" },
-    }
-  ), []);
+export default function ConsignmentWorkspace({ db, onReturnToService }: {
+  db: SupabaseClient;
+  onReturnToService: () => void;
+}) {
   const [token, setToken] = useState("");
   const [access, setAccess] = useState(false);
   const [loading, setLoading] = useState(true);
