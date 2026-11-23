@@ -71,6 +71,10 @@ test('CG reception -> stocked physical product -> sale liability -> cash payout 
     values($1,$2,$3,'Driver QA',1000,1,1000,0,1000)`,
   [sale,published.product_id,variant.id]);
   assert.equal((await one('select status from pos_consignments where id=$1',[received.id])).status,'sold_pending');
+  await one('select pos_consignment_create($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) r',
+    [token,randomUUID(),'Otro propietario QA','6247654321','Putter sin vender','Sin daños','Ninguno',200,300,null,2]);
+  const queue=(await one("select pos_consignment_recent($1,'') r",[token])).r;
+  assert.equal(queue[0].id,received.id,'Payables must be listed ahead of newly received items');
   const payout=(await one('select pos_consignment_payout($1,$2,$3,$4,$5,$6) r',
     [token,received.id,randomUUID(),'cash',null,true])).r;
   assert.equal(Number(payout.amount),600);

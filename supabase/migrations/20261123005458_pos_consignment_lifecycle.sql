@@ -224,14 +224,14 @@ as $recent$
 declare a jsonb; term text:=left(btrim(coalesce(p_search,'')),80); v_rows jsonb;
 begin
   a:=public.pos_consignment_manager(p_device_token);
-  select coalesce(jsonb_agg(to_jsonb(x) order by x.created_at desc),'[]'::jsonb) into v_rows
+  select coalesce(jsonb_agg(to_jsonb(x) order by (x.status='sold_pending') desc,x.created_at desc),'[]'::jsonb) into v_rows
   from (select r.*,p.method as payout_method,p.reference as payout_reference,p.created_at as payout_recorded_at
     from public.pos_consignments r
     left join public.pos_consignment_payouts p on p.consignment_id=r.id
     where term='' or r.receipt_number::text=regexp_replace(upper(term),'^CG0*','','g')
       or r.owner_name ilike '%'||term||'%' or r.owner_phone ilike '%'||term||'%'
       or r.equipment_description ilike '%'||term||'%'
-    order by r.created_at desc limit 100) x;
+    order by (r.status='sold_pending') desc,r.created_at desc limit 100) x;
   return v_rows;
 end;
 $recent$;
