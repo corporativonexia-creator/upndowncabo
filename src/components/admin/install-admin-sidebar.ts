@@ -58,6 +58,7 @@ export function installAdminSidebar(onAdminRoute?: (href: string) => void): void
       takeId("udv2PosTab"), takeId("udOrdersTab"),
       quickLink("Abrir caja / POS", "/pos"),
       quickLink("Recepción de equipos", "/pos?tab=recepciones"),
+      quickLink("Consignaciones y liquidaciones", "/pos?tab=recepciones&modo=consignacion"),
       quickLink("Promociones y servicios POS", "/admin/pos/promociones"),
     ]),
     section("commercial", "Comercial", [

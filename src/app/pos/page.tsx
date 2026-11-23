@@ -366,6 +366,14 @@ function CurrencyInput({
 }
 
 function readableError(error: unknown) {
+  const text = error instanceof Error ? error.message :
+    error && typeof error === "object" && "message" in error ? String(error.message) : "";
+  if (text.includes("CONSIGNMENT_DISCOUNT_OR_PRICE_NOT_ALLOWED"))
+    return "La consignación debe cobrarse sin descuentos ni promociones. Retira el descuento o pide al administrador revisar el precio pactado.";
+  if (text.includes("CONSIGNMENT_NOT_AVAILABLE"))
+    return "Esta pieza a consignación ya no está disponible. Actualiza el catálogo antes de volver a cobrar.";
+  if (text.includes("CONSIGNMENT_SALE_INVALID"))
+    return "No se pudo vincular la consignación con esta venta. No se realizó el cobro; avisa al administrador.";
   if (error instanceof Error) return error.message;
 
   if (error && typeof error === "object") {
