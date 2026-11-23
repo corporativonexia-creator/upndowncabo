@@ -193,8 +193,9 @@ export default function ConsignmentWorkspace({ db, onReturnToService }: {
       if (download) pdf.save(`UPNDOWN-Consignacion-${consignmentFolio(item.receipt_number)}.pdf`);
       else {
         const url = URL.createObjectURL(pdf.output("blob"));
-        const printWindow = window.open(url, "_blank", "noopener,noreferrer");
+        const printWindow = window.open(url, "_blank");
         if (!printWindow) { URL.revokeObjectURL(url); throw new Error("Autoriza ventanas emergentes para abrir el PDF de impresión."); }
+        printWindow.opener = null;
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       }
     } catch (reason) { setError(errorText(reason)); }
