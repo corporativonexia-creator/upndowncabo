@@ -43,3 +43,13 @@ test('CG handoff and owner payout PDFs each contain exactly two copies',()=>{
   assert.ok(payout.output('arraybuffer').byteLength>1000);
   assert.throws(()=>buildConsignmentPayoutReceipt({...fixture,status:'sold_pending'}),/No hay una liquidación/);
 });
+
+test('long owner payout receipts grow to keep all fields and the signature printable',()=>{
+  const receipt=buildConsignmentPayoutReceipt({
+    ...fixture,owner_name:'PROPIETARIO '.repeat(11),
+    equipment_description:'Equipo de golf con detalle de uso y accesorios incluidos. '.repeat(9),
+    payout_reference:'TRANSFERENCIA-'.repeat(11),
+  });
+  assert.equal(receipt.getNumberOfPages(),2);
+  assert.ok(receipt.internal.pageSize.getHeight()>158);
+});
