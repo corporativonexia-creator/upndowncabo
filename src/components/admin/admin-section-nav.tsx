@@ -13,6 +13,7 @@ const groups = [
     { label: "Pedidos", href: "/admin?section=orders" },
     { label: "Abrir caja / POS ↗", href: "/pos" },
     { label: "Recepción de equipos ↗", href: "/pos?tab=recepciones" },
+    { label: "Consignaciones y liquidaciones ↗", href: "/pos?tab=recepciones&modo=consignacion" },
     { label: "Promociones y servicios POS", href: "/admin/pos/promociones" },
   ] },
   { name: "Comercial", items: [

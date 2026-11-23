@@ -7,6 +7,7 @@ import {
   type ServiceReception,
 } from "@/lib/pos/reception-receipt";
 import styles from "./receptions.module.css";
+import ConsignmentWorkspace from "./consignment-workspace";
 
 type ServiceOption = { id: string; name: string; sku: string };
 type Identity = { employee_number: string; employee_name: string; terminal_name: string };
@@ -45,6 +46,9 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
     }
   ), []);
   const [token, setToken] = useState("");
+  const [workspaceMode, setWorkspaceMode] = useState<"service" | "consignment">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modo") === "consignacion"
+      ? "consignment" : "service");
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [receptions, setReceptions] = useState<ServiceReception[]>([]);
@@ -265,6 +269,13 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
   }), [receptions]);
   const visibleReceptions = useMemo(() => statusFilter === "all" ? receptions :
     receptions.filter(row => row.status === statusFilter), [receptions, statusFilter]);
+  if (workspaceMode === "consignment") return (
+    <main className={`${styles.shell}${embedded ? ` ${styles.embedded}` : ""}`}>
+      <div className={styles.wrap}>
+        <ConsignmentWorkspace db={db} onReturnToService={() => setWorkspaceMode("service")} />
+      </div>
+    </main>
+  );
   return (
     <main className={`${styles.shell}${embedded ? ` ${styles.embedded}` : ""}`}>
       <div className={styles.wrap}>
@@ -278,6 +289,10 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
             ? <button type="button" className={styles.back} onClick={onReturnToPos}>← Volver al POS</button>
             : <a href="/pos" className={styles.back}>← Iniciar sesión / volver al POS</a>}
         </header>
+        <nav className={styles.filterGroup} aria-label="Tipo de recepción" style={{ marginBottom: 21 }}>
+          <button className={`${styles.filterButton} ${styles.filterActive}`} aria-current="page" type="button">🔧 Equipo para servicio</button>
+          <button className={styles.filterButton} type="button" onClick={() => setWorkspaceMode("consignment")}>🏷️ Recibir a consignación</button>
+        </nav>
         {loading && <div className={styles.success}>Validando sesión de empleado y terminal...</div>}
         {error && <div className={styles.alert} role="alert">{error}</div>}
         {notice && <div className={styles.success} role="status">{notice}</div>}

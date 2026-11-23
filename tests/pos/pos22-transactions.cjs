@@ -118,6 +118,7 @@ before(async()=>{
  await sql("create or replace function public.pos_is_session_active() returns boolean language sql stable security definer set search_path='' as 'select auth.uid() is not null'");
  await migrate('20261114215000_pos_service_receptions');
  await migrate('20261119214913_pos22_allow_service_with_synthetic_variants');
+ await migrate('20261123005458_pos_consignment_lifecycle');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
@@ -401,6 +402,107 @@ test('POS Taller: no anonymous access, unapproved terminal or inactive service',
    [token,randomUUID(),'Cliente QA','6241234567','Putter QA',randomUUID(),
     'Reparar grip de prueba','Rayas leves','Ninguno']),/SERVICE_NOT_AVAILABLE/);
  await auth(user);
+});
+
+async function consign({payout=600,price=1000}={}){
+ const receipt=(await one(`select public.pos_consignment_create(
+   $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) result`,
+   [token,randomUUID(),'Propietario QA','6241234567','Driver de consignación de prueba',
+    'Rayones leves de prueba','Funda de prueba',payout,price,null,2])).result;
+ return receipt;
+}
+async function publishConsign(r){
+ return (await one('select public.pos_consignment_publish($1,$2,$3,$4,$5,$6) result',
+   [token,r.id,category,'Driver golf usado de prueba','QA Golf','V1'])).result;
+}
+
+test('Consignación: ingreso sin venta, alta de un solo SKU, cobro normal y liquidación de efectivo una vez',async()=>{
+ const before=await one(`select (select count(*)::int from pos_sales) sales,
+   (select count(*)::int from pos_cash_movements) movements`);
+ const r=await consign();
+ assert.equal(r.status,'received');
+ assert.equal((await one('select count(*)::int n from pos_sales')).n,before.sales);
+ const again=(await one(`select public.pos_consignment_create($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) result`,
+   [token,r.request_id,r.owner_name,r.owner_phone,r.equipment_description,r.condition_notes,
+    r.accessories,600,1000,null,2])).result;
+ assert.equal(again.id,r.id);
+ await assert.rejects(one('select public.pos_consignment_create($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+   [token,r.request_id,r.owner_name,r.owner_phone,r.equipment_description,'Cambio no acordado',
+    r.accessories,600,1000,null,2]),/CONSIGNMENT_REQUEST_CONFLICT/);
+ const pub=await publishConsign(r);
+ assert.equal(pub.status,'on_sale');assert.ok(pub.product_id);
+ const product=await one('select sku,barcode,stock,online_visible,pos_visible from products where id=$1',[pub.product_id]);
+ assert.match(product.sku,/^CG[0-9]{6,}$/);assert.equal(product.barcode,product.sku);
+ assert.equal(product.stock,1);assert.equal(product.online_visible,false);assert.equal(product.pos_visible,true);
+ assert.equal((await publishConsign(r)).product_id,pub.product_id);
+ const variant=await one('select id,stock from product_variants where product_id=$1',[pub.product_id]);
+ assert.equal(variant.stock,1);
+ const paidSale=await sell(items(pub.product_id,{variant_id:variant.id}),1000);
+ assert.equal(money(paidSale.total),1000);
+ const linked=await one('select status,sale_id,sale_item_id,sold_price,payout_due_on from pos_consignments where id=$1',[r.id]);
+ assert.equal(linked.status,'sold_pending');assert.equal(linked.sale_id,paidSale.sale_id);
+ assert.ok(linked.sale_item_id);assert.equal(money(linked.sold_price),1000);assert.ok(linked.payout_due_on);
+ assert.equal((await one('select stock from products where id=$1',[pub.product_id])).stock,0);
+ await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id}),1000),/INSUFFICIENT_STOCK|CONSIGNMENT_NOT_AVAILABLE/);
+ const payReq=randomUUID();
+ const payout=(await one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6) result',
+   [token,r.id,payReq,'cash',null,true])).result;
+ assert.equal(money(payout.amount),600);assert.equal(payout.shift_id,shift);
+ const replay=(await one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6) result',
+   [token,r.id,payReq,'cash',null,true])).result;
+ assert.equal(replay.id,payout.id);
+ await assert.rejects(one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6)',
+   [token,r.id,randomUUID(),'cash',null,true]),/CONSIGNMENT_ALREADY_PAID/);
+ assert.equal((await one('select status from pos_consignments where id=$1',[r.id])).status,'paid');
+ assert.equal((await one(`select count(*)::int n from pos_cash_movements
+   where metadata->>'consignment_id'=$1`,[r.id])).n,1);
+ assert.equal((await one('select count(*)::int n from pos_cash_movements')).n,before.movements+1);
+});
+
+test('Consignación: rechazo de descuentos, reembolso antes del pago y protección de caja',async()=>{
+ const r=await consign({payout:400,price:800});const pub=await publishConsign(r);
+ const variant=await one('select id from product_variants where product_id=$1',[pub.product_id]);
+ await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id,promotion_mode:'percent',promotion_value:10}),720),
+   /CONSIGNMENT_DISCOUNT_OR_PRICE_NOT_ALLOWED/);
+ await assert.rejects(sell(items(pub.product_id,{variant_id:variant.id}),790,{mode:'amount',value:10,discount:10}),
+   /CONSIGNMENT_DISCOUNT_OR_PRICE_NOT_ALLOWED/);
+ assert.equal((await one('select status from pos_consignments where id=$1',[r.id])).status,'on_sale');
+ const s=await sell(items(pub.product_id,{variant_id:variant.id}),800);
+ await one('select public.pos_void_sale($1,$2,$3)',[token,s.sale_id,'QA cancelación']);
+ assert.equal((await one('select status from pos_consignments where id=$1',[r.id])).status,'refunded');
+ await assert.rejects(one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6)',
+   [token,r.id,randomUUID(),'cash',null,true]),/CONSIGNMENT_NOT_PAYABLE/);
+});
+
+test('Consignación: devolución antes de venta, liquidación por transferencia y controles de rol',async()=>{
+ const unsold=await consign({payout:200,price:350});const pub=await publishConsign(unsold);
+ const returned=(await one('select public.pos_consignment_return($1,$2) result',[token,unsold.id])).result;
+ assert.equal(returned.status,'returned');
+ assert.equal((await one('select status from products where id=$1',[pub.product_id])).status,'archived');
+ assert.equal((await one('select stock from products where id=$1',[pub.product_id])).stock,0);
+ await assert.rejects(one('select public.pos_consignment_return($1,$2)',[token,unsold.id]),/CONSIGNMENT_NOT_RETURNABLE/);
+ const transfer=await consign({payout:250,price:450});const onSale=await publishConsign(transfer);
+ const variant=await one('select id from product_variants where product_id=$1',[onSale.product_id]);
+ await sell(items(onSale.product_id,{variant_id:variant.id}),450);
+ await assert.rejects(one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6)',
+   [token,transfer.id,randomUUID(),'transfer',null,true]),/CONSIGNMENT_PAYMENT_REFERENCE_REQUIRED/);
+ const outBefore=(await one('select count(*)::int n from pos_cash_movements')).n;
+ const result=(await one('select public.pos_consignment_payout($1,$2,$3,$4,$5,$6) result',
+   [token,transfer.id,randomUUID(),'transfer','QA-TRANSFER-001',true])).result;
+ assert.equal(money(result.amount),250);assert.equal(result.shift_id,null);
+ assert.equal((await one('select count(*)::int n from pos_cash_movements')).n,outBefore);
+ await auth(cashierUser);
+ await assert.rejects(one('select public.pos_consignment_recent($1,$2)',[token,'']),/CONSIGNMENT_MANAGER_REQUIRED/);
+ await assert.rejects(one('select public.pos_consignment_create($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+   [token,randomUUID(),'Propietario QA','6241234567','Putter QA','Usado','Ninguno',100,200,null,2]),/CONSIGNMENT_MANAGER_REQUIRED/);
+ await auth(user);
+ const privs=await one(`select
+   has_table_privilege('authenticated','public.pos_consignments','SELECT') direct_owner,
+   has_table_privilege('anon','public.pos_consignment_payouts','SELECT') anonymous_payout,
+   has_function_privilege('anon','public.pos_consignment_payout(text,uuid,uuid,text,text,boolean)','EXECUTE') anonymous_rpc,
+   (select relrowsecurity from pg_class where oid='public.pos_consignments'::regclass) rls`);
+ assert.equal(privs.direct_owner,false);assert.equal(privs.anonymous_payout,false);
+ assert.equal(privs.anonymous_rpc,false);assert.equal(privs.rls,true);
 });
 
 test('POS Taller: reception isolates text, Code39 raster and visible cut per copy, without drawer',()=>{
