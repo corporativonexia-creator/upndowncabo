@@ -117,11 +117,23 @@ export function buildConsignmentReceipt(item: Consignment) {
 
 export function buildConsignmentPayoutReceipt(item: Consignment) {
   if (item.status !== "paid" || !item.paid_at) throw new Error("No hay una liquidación completada para imprimir.");
-  const doc = new jsPDF({ unit: "mm", format: [80, 158], compress: true });
   const methodLabel = item.payout_method === "cash" ? "Efectivo" :
     item.payout_method === "transfer" ? "Transferencia" : "Otro";
+  const rows = [
+    ["FECHA", receiptDate(item.paid_at)], ["PROPIETARIO", item.owner_name],
+    ["TELÉFONO", item.owner_phone], ["ARTÍCULO", item.equipment_description],
+    ["IMPORTE ENTREGADO", consignmentMoney(Number(item.agreed_payout))],
+    ["MÉTODO DE PAGO", methodLabel], ["REFERENCIA", item.payout_reference || "Sin referencia"],
+  ];
+  // Long owner names, product descriptions and bank references must not clip the signature.
+  const tester = new jsPDF({ unit: "mm", format: [80, 280] });
+  tester.setFont("courier", "normal"); tester.setFontSize(8);
+  const rowHeight = rows.reduce((height, [, value]) => height +
+    3.4 + tester.splitTextToSize(value, 70).length * 4 + 2, 0);
+  const pageHeight = Math.max(158, Math.ceil(78 + rowHeight));
+  const doc = new jsPDF({ unit: "mm", format: [80, pageHeight], compress: true });
   (["PROPIETARIO", "TIENDA"] as const).forEach((copy, index) => {
-    if (index) doc.addPage([80, 158], "portrait");
+    if (index) doc.addPage([80, pageHeight], "portrait");
     let y = 10;
     const center = (line: string, size: number, bold = false) => {
       doc.setFont("courier", bold ? "bold" : "normal"); doc.setFontSize(size);
@@ -132,12 +144,6 @@ export function buildConsignmentPayoutReceipt(item: Consignment) {
     center(`CONSIGNACION ${consignmentFolio(item.receipt_number)}`, 10, true);
     center(`COPIA ${copy}`, 8);
     doc.line(5, y, 75, y); y += 7;
-    const rows = [
-      ["FECHA", receiptDate(item.paid_at!)], ["PROPIETARIO", item.owner_name],
-      ["TELÉFONO", item.owner_phone], ["ARTÍCULO", item.equipment_description],
-      ["IMPORTE ENTREGADO", consignmentMoney(Number(item.agreed_payout))],
-      ["MÉTODO DE PAGO", methodLabel], ["REFERENCIA", item.payout_reference || "Sin referencia"],
-    ];
     rows.forEach(([label, value]) => {
       doc.setFont("courier", "bold"); doc.setFontSize(7); doc.text(label, 5, y); y += 3.4;
       doc.setFont("courier", "normal"); doc.setFontSize(8);
