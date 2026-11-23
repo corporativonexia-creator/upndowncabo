@@ -77,6 +77,7 @@ export function buildConsignmentReceipt(item: Consignment) {
     ["FIN DEL PERIODO DE EXHIBICIÓN", item.expires_on || "Sin fecha establecida"],
   ];
   const tester = new jsPDF({ unit: "mm", format: [80, 280] });
+  tester.setFont("courier", "normal");
   tester.setFontSize(8);
   const sectionHeight = sections.reduce((total, [label, value]) => total +
     3.5 + tester.splitTextToSize(label, 70).length * 2.7 + tester.splitTextToSize(value, 70).length * 3.7 + 1, 0);
@@ -86,7 +87,7 @@ export function buildConsignmentReceipt(item: Consignment) {
     if (i) doc.addPage([80, pageHeight], "portrait");
     let y = 9;
     function center(value: string, size: number, bold = false) {
-      doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size);
+      doc.setFont("courier", bold ? "bold" : "normal"); doc.setFontSize(size);
       doc.text(value, 40, y, { align: "center" }); y += size * 0.45 + 1.8;
     }
     center("UP AND DOWN CABO", 14, true);
@@ -97,16 +98,16 @@ export function buildConsignmentReceipt(item: Consignment) {
     center(receiptDate(item.created_at), 7);
     doc.line(5, y, 75, y); y += 5;
     sections.forEach(([label, value]) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7);
+      doc.setFont("courier", "bold"); doc.setFontSize(7);
       const labelLines: string[] = doc.splitTextToSize(label, 70);
       doc.text(labelLines, 5, y); y += labelLines.length * 2.7 + 0.8;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.setFont("courier", "normal"); doc.setFontSize(8);
       const lines: string[] = doc.splitTextToSize(value, 70);
       doc.text(lines, 5, y); y += lines.length * 3.7 + 1.6;
     });
     doc.line(5, y, 75, y); y += 5;
-    center("El artículo se venderá como producto normal en POS.", 6.5);
-    center("El pago al propietario se registra tras la venta.", 6.5);
+    center("La venta se registra como producto normal en POS.", 6.5);
+    center("El propietario cobra después de la venta.", 6.5);
     center("Este recibo NO acredita pago de la mercancía.", 6.5, true);
     y += 8; doc.line(12, y, 68, y); y += 4;
     center("Firma de quien entrega", 7);
@@ -123,7 +124,7 @@ export function buildConsignmentPayoutReceipt(item: Consignment) {
     if (index) doc.addPage([80, 158], "portrait");
     let y = 10;
     const center = (line: string, size: number, bold = false) => {
-      doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size);
+      doc.setFont("courier", bold ? "bold" : "normal"); doc.setFontSize(size);
       doc.text(line, 40, y, { align: "center" }); y += size * 0.48 + 2;
     };
     center("UP AND DOWN CABO", 14, true);
@@ -138,8 +139,8 @@ export function buildConsignmentPayoutReceipt(item: Consignment) {
       ["MÉTODO DE PAGO", methodLabel], ["REFERENCIA", item.payout_reference || "Sin referencia"],
     ];
     rows.forEach(([label, value]) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.text(label, 5, y); y += 3.4;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.setFont("courier", "bold"); doc.setFontSize(7); doc.text(label, 5, y); y += 3.4;
+      doc.setFont("courier", "normal"); doc.setFontSize(8);
       const lines: string[] = doc.splitTextToSize(value, 70);
       doc.text(lines, 5, y); y += lines.length * 4 + 2;
     });
