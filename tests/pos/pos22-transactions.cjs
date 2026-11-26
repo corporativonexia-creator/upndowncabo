@@ -120,6 +120,7 @@ before(async()=>{
  await migrate('20261119214913_pos22_allow_service_with_synthetic_variants');
  await migrate('20261123005458_pos_consignment_lifecycle');
  await sql(fs.readFileSync('supabase/migrations/20261126231902_pos_multiservicio.sql','utf8'));
+ await migrate('20261126233401_pos_multiservicio_reopen_finished');
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
@@ -560,6 +561,15 @@ test('Multiservicio: orden única, autorización, revisión, cobro exacto y rein
    await assert.rejects(edit(i,price,'finished',r.order_revision-1),/MULTISERVICE_STALE_REVISION/);
    r=(await edit(i,price,'finished')).result;
  }
+ // A previously authorized, finished service can be reopened at its unchanged price.
+ await auth(cashierUser);
+ r=(await edit(0,45000,'in_progress')).result;
+ assert.equal(r.order_lines[0].status,'in_progress');
+ assert.equal(r.order_lines[0].price_cents,45000);
+ await assert.rejects(edit(0,45001,'in_progress'),/MULTISERVICE_MANAGER_REQUIRED/);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2) result',[token,r.id]),/MULTISERVICE_NOT_FINISHED/);
+ r=(await edit(0,45000,'finished')).result;
+ await auth(user);
  const flags=await one("select has_function_privilege('anon','public.pos_reception_create_multi(text,uuid,text,text,jsonb)','EXECUTE') a,has_function_privilege('anon','public.pos_reception_update_multi_line(text,uuid,int,int,bigint,text)','EXECUTE') b");
  assert.equal(flags.a,false);assert.equal(flags.b,false);
  assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),before);
