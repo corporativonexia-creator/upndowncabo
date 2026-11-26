@@ -126,7 +126,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
     setEquipment(fn);requestId.current=null;
   }
   function editLine(index:number,line:ReceptionServiceLine,patch:Partial<{price:string;status:ServiceLineStatus}>){
-    setLineEdits(old=>({...old,[index]:{price:line.price_cents===null?"":String(line.price_cents/100),status:line.status,...old[index],...patch}}));
+    setLineEdits(old=>({...old,[index]:{...(old[index]??{price:line.price_cents===null?"":String(line.price_cents/100),status:line.status}),...patch}}));
   }
   async function saveLine(reception:ServiceReception,index:number){
     const edit=lineEdits[index];if(!edit||busy||lineSaving||!token)return;
