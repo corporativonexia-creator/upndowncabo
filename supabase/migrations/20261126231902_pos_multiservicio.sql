@@ -1,5 +1,3 @@
--- CANDIDATO NO APLICADO. Generar migración fechada con Supabase CLI y probar en local.
-begin;
 alter table public.pos_service_receptions
   add column order_lines jsonb check(order_lines is null or (jsonb_typeof(order_lines)='array' and jsonb_array_length(order_lines) between 1 and 20)),
   add column order_request jsonb,
@@ -300,4 +298,3 @@ revoke all on function public.pos_reception_checkout(text,uuid,jsonb,jsonb,numer
 grant execute on function public.pos_reception_checkout(text,uuid,jsonb,jsonb,numeric,text,uuid)
   to authenticated;
 
-commit;
