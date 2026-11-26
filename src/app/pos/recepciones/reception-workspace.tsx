@@ -11,7 +11,7 @@ import ConsignmentWorkspace from "./consignment-workspace";
 import { MAX_RECEPTION_LINES, receptionChargeGroups, receptionLineAmount, receptionLineStatuses, type ReceptionServiceInput, type ReceptionServiceLine, type ServiceLineStatus } from "@/lib/pos/multiservicio";
 
 type ServiceOption = { id: string; name: string; sku: string };
-type Identity = { employee_number: string; employee_name: string; terminal_name: string };
+type Identity = { employee_number: string; employee_name: string; terminal_name: string; employee_role?:string };
 type ReceptionFilter = "all" | ServiceReception["status"];
 type ReceptionForm={customer_name:string;customer_phone:string};
 type EquipmentDraft={
@@ -434,18 +434,19 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                   </details>
                   {selected.order_lines?.map((line,i)=>{
                     const edit=lineEdits[i];
+                    const canQuote=identity?.employee_role==="pos_admin"||identity?.employee_role==="supervisor";
                     return <div key={i} className={styles.fields} style={{borderTop:"1px solid #d4e4d8",paddingTop:8,marginTop:10}}>
                       <strong>Equipo {line.equipment_key} · {line.equipment_description}</strong>
                       <span>{line.service_name} × {line.quantity} · {receptionLineAmount(line)} · {receptionLineStatuses[line.status]}</span>
                       <small>{line.work_description} · Condición: {line.condition_notes} · Accesorios: {line.accessories}</small>
                       {selected.status==="received"&&line.status!=="cancelled"&&<div className={styles.fields}>
                         <div className={styles.field}><label htmlFor={"price-"+i}>Precio unitario (MXN, vacío = por cotizar)</label>
-                          <input id={"price-"+i} type="number" min="0.01" max="99999999" step="0.01" disabled={lineSaving}
+                          <input id={"price-"+i} type="number" min="0.01" max="99999999" step="0.01" disabled={lineSaving||!canQuote}
                             value={edit?.price??(line.price_cents===null?"":String(line.price_cents/100))}
                             onChange={e=>editLine(i,line,{price:e.target.value})}/></div>
                         <div className={styles.field}><label htmlFor={"state-"+i}>Estado del trabajo</label>
                           <select id={"state-"+i} disabled={lineSaving} value={edit?.status??line.status} onChange={e=>editLine(i,line,{status:e.target.value as ServiceLineStatus})}>
-                            {Object.entries(receptionLineStatuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+                            {Object.entries(receptionLineStatuses).map(([value,label])=><option key={value} value={value} disabled={!canQuote&&(value==="approved"||value==="cancelled")&&value!==line.status}>{label}</option>)}
                           </select></div>
                         <button type="button" className={styles.secondary} disabled={!edit||lineSaving||busy} onClick={()=>void saveLine(selected,i)}>Guardar servicio</button>
                       </div>}
@@ -455,7 +456,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                     {selected.order_lines.some(l=>l.status!=="cancelled"&&l.price_cents===null)?" + servicios por cotizar":""}</p>}
                   <div className={styles.actions}>
                     {selected.status === "received" &&
-                      <button type="button" className={styles.primary} disabled={busy||lineSaving||Object.keys(lineEdits).length>0||!!(selected.order_lines?.length&&(()=>{try{receptionChargeGroups(selected.order_lines);return false;}catch{return true;}})())}
+                      <button type="button" className={styles.primary} disabled={busy||lineSaving||Object.keys(lineEdits).length>0||!!(selected.order_lines?.length&&(()=>{try{receptionChargeGroups(selected.order_lines??[]);return false;}catch{return true;}})())}
                         onClick={() => void markReady(selected)}>✓ Listo para entregar</button>}
                     {selected.status === "ready" && (embedded && onCheckoutFolio
                       ? <button type="button" className={styles.primary}

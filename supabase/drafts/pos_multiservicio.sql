@@ -6,6 +6,25 @@ alter table public.pos_service_receptions
   add column order_revision integer not null default 0,
   add column order_events jsonb not null default '[]'::jsonb;
 
+create or replace function public.pos_reception_access(p_device_token text)
+returns jsonb language plpgsql security definer set search_path=''
+as $access$
+declare e public.pos_employees%rowtype; t public.pos_terminals%rowtype;
+begin
+  if not public.pos_is_session_active() then raise exception 'POS_SESSION_REVOKED'; end if;
+  select * into e from public.pos_employees where auth_user_id=auth.uid() and status='active';
+  if not found then raise exception 'POS_EMPLOYEE_NOT_ACTIVE'; end if;
+  select * into t from public.pos_terminals
+    where status='active' and device_token_hash=extensions.digest(coalesce(p_device_token,''),'sha256');
+  if not found then raise exception 'TERMINAL_NOT_AUTHORIZED'; end if;
+  return jsonb_build_object('employee_id',e.id,'employee_number',e.employee_number,
+    'employee_name',e.full_name,'employee_role',e.role,'terminal_id',t.id,'terminal_name',t.name);
+end;
+$access$;
+revoke all on function public.pos_reception_access(text) from PUBLIC,anon,authenticated;
+grant execute on function public.pos_reception_access(text) to authenticated;
+
+
 create or replace function public.pos_reception_create_multi(
   p_device_token text,p_request_id uuid,p_customer_name text,p_customer_phone text,p_lines jsonb
 ) returns jsonb language plpgsql security definer set search_path=''
