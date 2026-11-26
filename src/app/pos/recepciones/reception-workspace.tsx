@@ -30,10 +30,11 @@ function errorText(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos, onCheckoutFolio }: {
+export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos, onCheckoutFolio, focusReception }: {
   embedded?: boolean;
   onReturnToPos?: () => void;
   onCheckoutFolio?: (folio: string) => void;
+  focusReception?: { reception:ServiceReception } | null;
 } = {}) {
   const db = useMemo(() => createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,6 +58,8 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
   const [equipment,setEquipment]=useState<EquipmentDraft[]>(()=>[blankEquipment(1)]);
   const [lineEdits,setLineEdits]=useState<Record<number,{price:string;status:ServiceLineStatus}>>({});
   const [lineSaving,setLineSaving]=useState(false);
+  const [appendDraft,setAppendDraft]=useState({equipment_key:0,service_product_id:"",quantity:1,work_description:""});
+  const appendRequest=useRef<string|null>(null);
   const [selected, setSelected] = useState<ServiceReception | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReceptionFilter>("all");
@@ -144,6 +147,44 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
     }catch(e){setError("No se pudo actualizar el servicio: "+errorText(e));}
     finally{setLineSaving(false);}
   }
+  function changeAppend(patch:Partial<typeof appendDraft>){
+    appendRequest.current=null;setAppendDraft(old=>({...old,...patch}));
+  }
+  async function appendService(reception:ServiceReception){
+    if(busy||lineSaving||!token||Object.keys(lineEdits).length)return;
+    const equipmentKey=appendDraft.equipment_key||(reception.order_lines?.[0]?.equipment_key??1);
+    if(!appendDraft.service_product_id||!Number.isInteger(appendDraft.quantity)||appendDraft.quantity<1||appendDraft.quantity>100||appendDraft.work_description.trim().length<5){
+      setError("Selecciona el servicio, cantidad y describe el trabajo adicional.");return;
+    }
+    setLineSaving(true);setError("");setNotice("");
+    try{
+      if(!appendRequest.current)appendRequest.current=crypto.randomUUID();
+      const {data,error}=await db.rpc("pos_reception_append_service",{p_device_token:token,p_reception_id:reception.id,
+        p_revision:reception.order_revision??0,p_request_id:appendRequest.current,p_equipment_key:equipmentKey,
+        p_service_product_id:appendDraft.service_product_id,p_quantity:appendDraft.quantity,p_work_description:appendDraft.work_description.trim()});
+      if(error)throw error;
+      setSelected(data as ServiceReception);setLineEdits({});changeAppend({equipment_key:0,service_product_id:"",quantity:1,work_description:""});
+      setNotice("Servicio agregado al mismo folio. Pendiente de cotización y autorización.");
+      try{await refreshHistory(search.trim());}catch{/* already persisted */}
+    }catch(e){setError("No se pudo agregar el servicio: "+errorText(e)+". Consulta el folio si hay duda sobre el guardado.");}
+    finally{setLineSaving(false);}
+  }
+  useEffect(()=>{
+    if(!focusReception)return;
+    const r=focusReception.reception;
+    let cancelled=false;
+    void Promise.resolve().then(()=>{
+      if(cancelled)return;
+      historySequence.current+=1;
+      if(searchTimer.current!==null)clearTimeout(searchTimer.current);
+      searchTimer.current=null;
+      appendRequest.current=null;
+      setSelected(r);setLineEdits({});setAppendDraft({equipment_key:0,service_product_id:"",quantity:1,work_description:""});
+      setSearch(receptionFolio(r.receipt_number));setSearching(false);setWorkspaceMode("service");
+      window.requestAnimationFrame(()=>selectedDetailRef.current?.scrollIntoView({block:"nearest"}));
+    });
+    return ()=>{cancelled=true;};
+  },[focusReception]);
   function revealSelection() {
     window.requestAnimationFrame(() => selectedDetailRef.current?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
@@ -222,7 +263,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
       const saved = data as ServiceReception;
       setSelected(saved);
       revealSelection();
-      setForm(blank); setEquipment([blankEquipment(1)]); setLineEdits({});
+      setForm(blank); setEquipment([blankEquipment(1)]); setLineEdits({}); changeAppend({equipment_key:0,service_product_id:"",quantity:1,work_description:""});
       requestId.current = null;
       setNotice("Recepción " + receptionFolio(saved.receipt_number) + " guardada. Imprime la copia del cliente y la del taller.");
       try { await refreshHistory(""); setSearch(""); } catch { /* El folio quedó guardado; la lista puede recargarse. */ }
@@ -454,6 +495,20 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                   })}
                   {!!selected.order_lines?.length&&<p><strong>Total cotizado:</strong> {new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN"}).format(selected.order_lines.reduce((n,l)=>n+(l.status==="cancelled"?0:(l.price_cents??0)*l.quantity),0)/100)}
                     {selected.order_lines.some(l=>l.status!=="cancelled"&&l.price_cents===null)?" + servicios por cotizar":""}</p>}
+                  {selected.status!=="delivered"&&(selected.order_lines?.length??1)<MAX_RECEPTION_LINES&&<fieldset disabled={busy||lineSaving||Object.keys(lineEdits).length>0} className={styles.fields} style={{border:"1px solid #d4e4d8",borderRadius:12,padding:12,minWidth:0,margin:"12px 0"}}>
+                    <legend><strong>+ Agregar servicio a esta recepción</strong></legend>
+                    {selected.status==="ready"&&<small>Al agregar un servicio, el folio volverá a estar pendiente de entrega.</small>}
+                    {!selected.order_lines?.length&&<small>El servicio original también quedará pendiente de cotizar y autorizar.</small>}
+                    <div className={styles.field}><label htmlFor="append-equipment">Equipo</label>
+                      <select id="append-equipment" value={appendDraft.equipment_key||(selected.order_lines?.[0]?.equipment_key??1)} onChange={e=>changeAppend({equipment_key:Number(e.target.value)})}>
+                      {(selected.order_lines?.length?[...new Map(selected.order_lines.map(l=>[l.equipment_key,l.equipment_description])).entries()]:[[1,selected.equipment_description]] as [number,string][]).map(([key,description])=><option key={key} value={key}>Equipo {key} · {description}</option>)}
+                      </select></div>
+                    <div className={styles.field}><label htmlFor="append-service">Servicio adicional</label><select id="append-service" value={appendDraft.service_product_id} onChange={e=>changeAppend({service_product_id:e.target.value})}>
+                      <option value="">Selecciona un servicio</option>{services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.sku}</option>)}</select></div>
+                    <div className={styles.field}><label htmlFor="append-quantity">Cantidad adicional</label><input id="append-quantity" type="number" min={1} max={100} step={1} value={appendDraft.quantity||""} onChange={e=>changeAppend({quantity:Number(e.target.value)})}/></div>
+                    <div className={styles.field}><label htmlFor="append-work">Trabajo adicional solicitado</label><textarea id="append-work" maxLength={240} rows={2} value={appendDraft.work_description} onChange={e=>changeAppend({work_description:e.target.value})}/></div>
+                    <button type="button" className={styles.secondary} disabled={!appendDraft.service_product_id||appendDraft.work_description.trim().length<5} onClick={()=>void appendService(selected)}>Vincular servicio al folio</button>
+                  </fieldset>}
                   <div className={styles.actions}>
                     {selected.status === "received" &&
                       <button type="button" className={styles.primary} disabled={busy||lineSaving||Object.keys(lineEdits).length>0||!!(selected.order_lines?.length&&(()=>{try{receptionChargeGroups(selected.order_lines??[]);return false;}catch{return true;}})())}
@@ -477,7 +532,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                 {visibleReceptions.map(r => (
                   <button type="button" key={r.id} aria-pressed={selected?.id === r.id}
                     className={`${styles.item} ${selected?.id === r.id ? styles.itemActive : ""}`}
-                    onClick={() => { setSelected(r); setLineEdits({}); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); revealSelection(); }}>
+                    disabled={busy||lineSaving} onClick={() => { setSelected(r); setLineEdits({}); changeAppend({equipment_key:0,service_product_id:"",quantity:1,work_description:""}); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); revealSelection(); }}>
                     <span className={styles.itemLine}><strong>{r.customer_name}</strong><span className={styles.folio}>{receptionFolio(r.receipt_number)}</span></span>
                     <small>{r.order_lines?.length ? new Set(r.order_lines.map(l=>l.equipment_key)).size+" equipo(s) · "+r.order_lines.length+" servicio(s)" : r.equipment_description+" · "+r.service_name}</small>
                     <small>{receptionDate(r.received_at)} · <span className={`${styles.statusTag} ${r.status === "ready" ? styles.statusReady : r.status === "delivered" ? styles.statusDelivered : ""}`}>

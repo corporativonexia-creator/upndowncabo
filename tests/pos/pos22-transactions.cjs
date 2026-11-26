@@ -577,3 +577,38 @@ test('Multiservicio: orden única, autorización, revisión, cobro exacto y rein
  await assert.rejects(checkout(correct,[{...payments[0],metadata:{pos_request_id:randomUUID()}}]),/RECEPTION_ALREADY_DELIVERED/);
  assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),{sales:before.sales+1,moves:before.moves});
 });
+
+test('Multiservicio adicional: conserva folio, convierte recepción antigua, reabre y evita duplicados',async()=>{
+ await auth(user);
+ const service=(await one("select public.pos22_admin_create_service('QA Adicional',$1) result",[category])).result;
+ const old=(await one('select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
+  [token,randomUUID(),'Cliente adicional QA','6241234567','Driver QA adicional',service.id,'Servicio original','Condición original','Funda'])).result;
+ await one('select public.pos_reception_set_ready($1,$2)',[token,old.id]);
+ const req=randomUUID();
+ const append=(rev,id=req,qty=2,key=1)=>one('select public.pos_reception_append_service($1,$2,$3,$4,$5,$6,$7,$8) result',
+ [token,old.id,rev,id,key,service.id,qty,'Trabajo adicional QA']);
+ await auth(cashierUser);
+ const before=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
+ await assert.rejects(append(0,randomUUID(),2,99),/MULTISERVICE_EQUIPMENT_NOT_FOUND/);
+ let r=(await append(0)).result;
+ assert.equal(r.id,old.id);assert.equal(r.receipt_number,old.receipt_number);assert.equal(r.status,'received');assert.equal(r.ready_at,null);
+ assert.equal(r.order_lines.length,2);assert.equal(r.order_lines[0].work_description,'Servicio original');assert.equal(r.order_lines[1].price_cents,null);
+ assert.equal((await append(0)).result.order_lines.length,2);
+ await assert.rejects(append(0,req,3),/RECEPTION_REQUEST_CONFLICT/);
+ await assert.rejects(append(0,randomUUID()),/MULTISERVICE_STALE_REVISION/);
+ r=(await append(1,randomUUID())).result;
+ assert.equal(r.order_lines.length,3);assert.equal(r.order_revision,2);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2)',[token,r.id]),/MULTISERVICE_NOT_FINISHED/);
+ assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),before);
+ const flags=await one("select has_function_privilege('anon','public.pos_reception_append_service(text,uuid,int,uuid,int,uuid,int,text)','EXECUTE') a");
+ assert.equal(flags.a,false);
+ await auth(user);
+ for(let i=0;i<3;i++){
+   r=(await one("select public.pos_reception_update_multi_line($1,$2,$3,$4,10000,'approved') result",[token,r.id,r.order_revision,i])).result;
+   r=(await one("select public.pos_reception_update_multi_line($1,$2,$3,$4,10000,'finished') result",[token,r.id,r.order_revision,i])).result;
+ }
+ r=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ const sale=(await one('select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',[token,r.id,JSON.stringify(items(service.id,{service_unit_price:500})),JSON.stringify([{method:'cash',amount:500,metadata:{pos_request_id:randomUUID()}}])])).result;
+ assert.equal(Number(sale.total),500);
+ await assert.rejects(append(r.order_revision,randomUUID()),/MULTISERVICE_NOT_EDITABLE/);
+});

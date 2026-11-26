@@ -116,6 +116,56 @@ $line$;
 revoke all on function public.pos_reception_update_multi_line(text,uuid,int,int,bigint,text) from public,anon,authenticated;
 grant execute on function public.pos_reception_update_multi_line(text,uuid,int,int,bigint,text) to authenticated;
 
+
+-- Append a new service to an existing equipment. No sale or stock movement.
+create or replace function public.pos_reception_append_service(
+ p_device_token text,p_reception_id uuid,p_revision int,p_request_id uuid,
+ p_equipment_key int,p_service_product_id uuid,p_quantity int,p_work_description text
+) returns jsonb language plpgsql security definer set search_path=''
+as $append$
+declare a jsonb; r public.pos_service_receptions%rowtype; svc public.products%rowtype;
+ lines jsonb; eq jsonb; new_line jsonb; req jsonb; prior jsonb; work text;
+begin
+ a:=public.pos_reception_access(p_device_token);
+ work:=btrim(coalesce(p_work_description,''));
+ if p_request_id is null or p_equipment_key is null or p_quantity is null or p_quantity not between 1 and 100
+   or length(work) not between 5 and 240 or p_service_product_id is null then raise exception 'MULTISERVICE_LINE_INVALID'; end if;
+ req:=jsonb_build_object('equipment_key',p_equipment_key,'service_product_id',p_service_product_id,
+   'quantity',p_quantity,'work_description',work);
+ select * into r from public.pos_service_receptions where id=p_reception_id for update;
+ if not found then raise exception 'RECEPTION_NOT_FOUND'; end if;
+ select value into prior from jsonb_array_elements(r.order_events) where value->>'request_id'=p_request_id::text;
+ if found then
+   if prior->'request' is distinct from req or prior->>'employee_id' is distinct from a->>'employee_id'
+     then raise exception 'RECEPTION_REQUEST_CONFLICT'; end if;
+   return to_jsonb(r)-'order_request'-'order_events';
+ end if;
+ if r.status not in ('received','ready') then raise exception 'MULTISERVICE_NOT_EDITABLE'; end if;
+ if p_revision is distinct from r.order_revision then raise exception 'MULTISERVICE_STALE_REVISION'; end if;
+ lines:=coalesce(r.order_lines,jsonb_build_array(jsonb_build_object(
+   'equipment_key',1,'equipment_description',r.equipment_description,'condition_notes',r.condition_notes,
+   'accessories',r.accessories,'service_product_id',r.service_product_id,'service_name',r.service_name,
+   'work_description',r.work_description,'quantity',1,'status','pending','price_cents',null)));
+ if jsonb_array_length(lines)>=20 then raise exception 'MULTISERVICE_LINE_LIMIT'; end if;
+ select value into eq from jsonb_array_elements(lines) where (value->>'equipment_key')::int=p_equipment_key limit 1;
+ if not found then raise exception 'MULTISERVICE_EQUIPMENT_NOT_FOUND'; end if;
+ select * into svc from public.products where id=p_service_product_id and is_service and pos_visible and status='active';
+ if not found then raise exception 'SERVICE_NOT_AVAILABLE'; end if;
+ new_line:=jsonb_build_object('equipment_key',p_equipment_key,'equipment_description',eq->>'equipment_description',
+   'condition_notes',eq->>'condition_notes','accessories',eq->>'accessories','service_product_id',svc.id,
+   'service_name',svc.name,'work_description',work,'quantity',p_quantity,'status','pending','price_cents',null);
+ update public.pos_service_receptions set order_lines=lines||jsonb_build_array(new_line),
+   status='received',ready_at=null,order_revision=order_revision+1,
+   order_events=order_events||jsonb_build_array(jsonb_build_object('event','line_added','at',now(),
+    'employee_id',a->>'employee_id','request_id',p_request_id,'request',req,'line',new_line,
+    'previous_status',r.status,'legacy_converted',r.order_lines is null))
+ where id=r.id returning * into r;
+ return to_jsonb(r)-'order_request'-'order_events';
+end;
+$append$;
+revoke all on function public.pos_reception_append_service(text,uuid,int,uuid,int,uuid,int,text) from public,anon,authenticated;
+grant execute on function public.pos_reception_append_service(text,uuid,int,uuid,int,uuid,int,text) to authenticated;
+
 create or replace function public.pos_reception_recent(p_device_token text,p_search text default '')
 returns jsonb language plpgsql security definer set search_path=''
 as $recent$
@@ -126,7 +176,7 @@ begin
   select coalesce(jsonb_agg((to_jsonb(x)-'order_request'-'order_events') order by x.received_at desc,x.receipt_number desc),'[]'::jsonb)
     into result from (
       select r.* from public.pos_service_receptions r
-      where term='' or r.receipt_number::text=regexp_replace(upper(term),'^SR-0*','','g') or
+      where term='' or r.receipt_number::text=regexp_replace(upper(term),'^SR-?0*','','g') or
       r.customer_name ilike ('%'||term||'%') or r.customer_phone ilike ('%'||term||'%') or
       r.equipment_description ilike ('%'||term||'%') or exists(select 1 from jsonb_array_elements(r.order_lines) l where l->>'equipment_description' ilike ('%'||term||'%') or l->>'service_name' ilike ('%'||term||'%'))
       order by r.received_at desc,r.receipt_number desc limit 40

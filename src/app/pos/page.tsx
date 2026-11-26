@@ -425,6 +425,7 @@ export default function PosPage() {
 
   const [ready, setReady] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<"pos" | "reception">(initialWorkspaceTab);
+  const [focusReception,setFocusReception]=useState<{reception:ServiceReception}|null>(null);
   const [receptionVisited, setReceptionVisited] = useState(() => initialWorkspaceTab() === "reception");
   const [deviceToken, setDeviceToken] = useState("");
   const [access, setAccess] = useState<Access | null>(null);
@@ -574,17 +575,13 @@ export default function PosPage() {
     }
   }
 
-  async function openReceptionByFolio(rawValue: string) {
+  async function openReceptionByFolio(rawValue: string, editOnly=false) {
     const code = normalizeReceptionFolioInput(rawValue);
     if (!/^SR[0-9]{6,12}$/.test(code)) {
       setMessage("Folio inválido. Escribe o escanea un código como SR000128.");
       return;
     }
-    if (!access?.open_shift_id) {
-      setMessage("Abre turno de caja antes de cobrar. Para recibir equipos no hace falta turno.");
-      return;
-    }
-    if (productsLoading) {
+    if (productsLoading && !editOnly) {
       setMessage("Espera a que termine de cargar el catálogo antes de cobrar una recepción.");
       return;
     }
@@ -604,7 +601,11 @@ export default function PosPage() {
         .find(row => receptionFolio(row.receipt_number) === code);
       if (!reception) throw Error("Folio no encontrado. Consulta recepciones de taller.");
       if (reception.status === "delivered") throw Error("Este folio ya fue cobrado y entregado. No lo cobres dos veces.");
-      if (reception.status !== "ready") throw Error("El equipo sigue recibido. Marca «Listo para entregar» en Taller antes de cobrar.");
+      if(editOnly||reception.status!=="ready"||!access?.open_shift_id){
+        setFocusReception({reception});selectWorkspaceTab("reception");setReceptionQuery("");
+        setMessage("Recepción "+code+" abierta en Taller.");
+        return;
+      }
       const groups=reception.order_lines?.length?receptionChargeGroups(reception.order_lines):[{productId:reception.service_product_id,cents:null}];
       const items:CartItem[]=groups.map(group=>{
         const product=products.find(row=>row.id===group.productId&&row.is_service&&!row.variant_id);
@@ -2139,14 +2140,15 @@ export default function PosPage() {
             {access.open_shift_id ? (
               <>
                 <form className="pos-reception-shortcut" onSubmit={event => { event.preventDefault(); void openReceptionByFolio(receptionQuery); }}>
-                  <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Cobrar equipo de taller · Folio</label>
+                  <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Consultar o cobrar equipo de taller · Folio</label>
                   <input id="posServiceFolio" type="text" value={receptionQuery}
                     onChange={e => setReceptionQuery(e.target.value)} placeholder="Escanea SR000128"
                     maxLength={20} autoComplete="off" />
                   <button className="pos-btn secondary" type="submit" disabled={busy || receptionLoading || productsLoading || !!activeReception}>
                     {receptionLoading ? "Consultando..." : "Cargar recepción"}
                   </button>
-                  <small className="pos-muted">Solo equipos «Listos para entregar». Precio pendiente hasta cobrar.</small>
+                  <button type="button" className="pos-btn secondary" disabled={busy||receptionLoading||!!activeReception||!receptionQuery.trim()} onClick={()=>void openReceptionByFolio(receptionQuery,true)}>Agregar servicios / editar</button>
+                  <small className="pos-muted">Abre el expediente o carga los servicios terminados al carrito.</small>
                 </form>
 
                 <div className="pos-sales-layout">
@@ -3109,7 +3111,7 @@ export default function PosPage() {
           )}
           </div>
           <div className="pos-workspace-panel" id="receptionWorkspacePanel" role="tabpanel" aria-labelledby="receptionWorkspaceTab" hidden={workspaceTab !== "reception"}>
-            {receptionVisited && <ServiceRecepcionesPage embedded
+            {receptionVisited && <ServiceRecepcionesPage embedded focusReception={focusReception}
               onReturnToPos={() => selectWorkspaceTab("pos")}
               onCheckoutFolio={folio => { selectWorkspaceTab("pos"); void openReceptionByFolio(folio); }} />}
           </div>
