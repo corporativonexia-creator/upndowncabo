@@ -1213,7 +1213,8 @@
       <option value="refunded">Devueltas</option>
     </select>
     <select id="udv2PosSummaryPayment">
-      <option value="all">Todos los pagos</option>
+      <option value="all">Todos los canales y pagos</option>
+      <option value="stripe">Stripe / En línea</option>
       <option value="cash">Efectivo</option>
       <option value="card_terminal">Terminal</option>
       <option value="transfer">Transferencia</option>
@@ -1955,7 +1956,7 @@
   }
 
   function paymentAdminLabel(method){
-    const map={cash:"Efectivo",card_terminal:"Terminal",transfer:"Transferencia",other:"Otro"};
+    const map={cash:"Efectivo",card_terminal:"Terminal",transfer:"Transferencia",other:"Otro",stripe:"Stripe / En línea"};
     return map[method]||String(method||"—");
   }
 
@@ -1978,20 +1979,21 @@
     const events=Array.isArray(data?.events)?data.events:[];
     const refunds=Array.isArray(data?.refunds)?data.refunds:[];
 
-    title.textContent=`Venta #${sale.sale_number||"—"}`;
+    title.textContent=sale.channel==="online"?`Cobro en línea ${sale.sale_number||"—"}`:`Venta #${sale.sale_number||"—"}`;
 
     body.innerHTML=`
       <div class="udv2-sale-detail-grid">
-        <div class="udv2-sale-detail-card"><span>Estado</span><strong>${escapeHtml(saleStatusAdminLabel(sale.status))}</strong></div>
+        <div class="udv2-sale-detail-card"><span>Estado</span><strong>${escapeHtml(sale.channel==="online"?"Pagado":saleStatusAdminLabel(sale.status))}</strong></div>
         <div class="udv2-sale-detail-card"><span>Total</span><strong>${escapeHtml(money(Number(sale.total||0)))}</strong></div>
         <div class="udv2-sale-detail-card"><span>Empleado</span><strong>${escapeHtml(sale.employee_number?`#${sale.employee_number} · ${sale.employee_name||""}`:(sale.employee_name||"—"))}</strong></div>
         <div class="udv2-sale-detail-card"><span>Terminal</span><strong>${escapeHtml(sale.terminal_name||"—")}</strong></div>
         <div class="udv2-sale-detail-card"><span>Fecha</span><strong>${escapeHtml(dateTime(sale.created_at))}</strong></div>
-        <div class="udv2-sale-detail-card"><span>Turno</span><strong>${escapeHtml(sale.shift_opened_at?dateTime(sale.shift_opened_at):dateTime(sale.created_at))}</strong></div>
+        <div class="udv2-sale-detail-card"><span>Turno</span><strong>${escapeHtml(sale.channel==="online"?"No aplica":sale.shift_opened_at?dateTime(sale.shift_opened_at):dateTime(sale.created_at))}</strong></div>
         <div class="udv2-sale-detail-card"><span>Subtotal</span><strong>${escapeHtml(money(Number(sale.subtotal||0)))}</strong></div>
         <div class="udv2-sale-detail-card"><span>Descuento</span><strong>${escapeHtml(money(Number(sale.discount_amount||0)))}</strong></div>
       </div>
 
+      ${sale.channel==="online"?`<div class="udv2-sale-detail-section"><h3>Pedido en línea</h3><div class="udv2-shift-note"><strong>Cliente:</strong> ${escapeHtml(sale.customer_name||"—")} · ${escapeHtml(sale.customer_email||"—")}<br><strong>Estado del pedido:</strong> ${escapeHtml(sale.order_status||"—")}</div></div>`:""}
       <div class="udv2-sale-detail-section">
         <h3>Productos</h3>
         ${items.length?items.map(item=>`
@@ -2472,7 +2474,8 @@
       cash:"Efectivo",
       card_terminal:"Terminal",
       transfer:"Transferencia",
-      other:"Otro"
+      other:"Otro",
+      stripe:"Stripe / En línea"
     };
     return String(value||"").split(" + ").map(x=>map[x]||x).join(" + ");
   }
@@ -2503,7 +2506,9 @@
     const m=state.posSummaryMetrics||{};
     const cardData=[
       ["Ventas",m.sales_count??0,""],
-      ["Monto vendido",money(Number(m.gross_sales||0)),""],
+      ["Monto vendido · total",money(Number(m.gross_sales||0)),""],
+      ["Ventas físicas",money(Number(m.pos_gross_sales??m.gross_sales??0)),""],
+      ["Ventas en línea · Stripe",money(Number(m.stripe_payments||0)),""],
       ["Efectivo",money(Number(m.cash_payments||0)),""],
       ["Terminal",money(Number(m.card_terminal_payments||0)),""],
       ["Transferencias",money(Number(m.transfer_payments||0)),""],
@@ -2534,15 +2539,15 @@
     sales.innerHTML=rows.map(row=>`
       <div class="udv2-sales-row">
         <div>
-          <strong>#${escapeHtml(row.sale_number)}</strong>
-          <small>${escapeHtml(String(row.shift_id||"").slice(0,8))}</small>
+          <strong>${row.channel==="online"?"":"#"}${escapeHtml(row.sale_number)}</strong>
+          <small>${row.channel==="online"?"Cobro en línea":escapeHtml(String(row.shift_id||"").slice(0,8))}</small>
           <button type="button" class="udv2-sale-detail-btn" data-sale-detail="${escapeHtml(row.id)}">Ver detalle</button>
         </div>
         <div><strong>${escapeHtml(dateTime(row.created_at))}</strong></div>
         <div><strong>${escapeHtml(row.employee_number?`#${row.employee_number} · ${row.employee_name||""}`:(row.employee_name||"—"))}</strong><small>${escapeHtml(row.employee_role||"")}</small></div>
         <div><strong>${escapeHtml(row.terminal_name||"—")}</strong></div>
         <div><strong>${escapeHtml(paymentMethodLabel(row.payment_methods||""))}</strong></div>
-        <div><span class="udv2-sale-status ${escapeHtml(row.status||"")}">${escapeHtml(row.status||"—")}</span></div>
+        <div><span class="udv2-sale-status ${escapeHtml(row.status||"")}">${escapeHtml(row.channel==="online"?"Pagado":row.status||"—")}</span></div>
         <div><strong>${escapeHtml(money(Number(row.total||0)))}</strong></div>
       </div>
     `).join("");
