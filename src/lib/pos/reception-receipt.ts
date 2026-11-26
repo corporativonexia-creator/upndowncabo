@@ -1,10 +1,13 @@
 "use client";
 
 import { jsPDF } from "jspdf";
+import { receptionPrintFields, type ReceptionServiceLine } from "./multiservicio";
 
 export type ServiceReception = {
   id: string;
   receipt_number: number;
+  order_lines?: ReceptionServiceLine[] | null;
+  order_revision?: number;
   service_product_id: string;
   status: "received" | "ready" | "delivered";
   checkout_sale_id?: string | null;
@@ -82,7 +85,11 @@ function drawReceptionBarcode(doc: jsPDF, folio: string, top: number) {
 }
 
 type Field = { label: string; value: string };
+export function receptionPrintView(reception: ServiceReception): ServiceReception {
+  return reception.order_lines?.length ? {...reception,...receptionPrintFields(reception.order_lines)} : reception;
+}
 function fieldsFor(reception: ServiceReception): Field[] {
+  reception = receptionPrintView(reception);
   return [
     { label: "CLIENTE", value: reception.customer_name },
     { label: "TELEFONO", value: reception.customer_phone },

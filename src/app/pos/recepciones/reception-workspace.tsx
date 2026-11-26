@@ -3,23 +3,24 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
-  buildReceptionPdf, receptionDate, receptionFileName, receptionFolio, receptionSearchTerm,
+  buildReceptionPdf, receptionDate, receptionFileName, receptionFolio, receptionSearchTerm, receptionPrintView,
   type ServiceReception,
 } from "@/lib/pos/reception-receipt";
 import styles from "./receptions.module.css";
 import ConsignmentWorkspace from "./consignment-workspace";
+import { MAX_RECEPTION_LINES, receptionChargeGroups, receptionLineAmount, receptionLineStatuses, type ReceptionServiceInput, type ReceptionServiceLine, type ServiceLineStatus } from "@/lib/pos/multiservicio";
 
 type ServiceOption = { id: string; name: string; sku: string };
 type Identity = { employee_number: string; employee_name: string; terminal_name: string };
 type ReceptionFilter = "all" | ServiceReception["status"];
-type ReceptionForm = {
-  customer_name: string; customer_phone: string; equipment_description: string;
-  service_product_id: string; work_description: string; condition_notes: string; accessories: string;
+type ReceptionForm={customer_name:string;customer_phone:string};
+type EquipmentDraft={
+  key:number;equipment_description:string;condition_notes:string;accessories:string;
+  services:{service_product_id:string;work_description:string;quantity:number}[];
 };
-const blank: ReceptionForm = {
-  customer_name: "", customer_phone: "", equipment_description: "",
-  service_product_id: "", work_description: "", condition_notes: "", accessories: "",
-};
+const blank:ReceptionForm={customer_name:"",customer_phone:""};
+const blankEquipment=(key:number):EquipmentDraft=>({key,equipment_description:"",condition_notes:"",accessories:"",
+  services:[{service_product_id:"",work_description:"",quantity:1}]});
 const DEVICE_KEY = "updown-pos-device-token-v1";
 
 function errorText(error: unknown) {
@@ -53,6 +54,9 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [receptions, setReceptions] = useState<ServiceReception[]>([]);
   const [form, setForm] = useState<ReceptionForm>(blank);
+  const [equipment,setEquipment]=useState<EquipmentDraft[]>(()=>[blankEquipment(1)]);
+  const [lineEdits,setLineEdits]=useState<Record<number,{price:string;status:ServiceLineStatus}>>({});
+  const [lineSaving,setLineSaving]=useState(false);
   const [selected, setSelected] = useState<ServiceReception | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ReceptionFilter>("all");
@@ -118,6 +122,28 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
     requestId.current = null;
   }
 
+  function editEquipment(fn:(prev:EquipmentDraft[])=>EquipmentDraft[]){
+    setEquipment(fn);requestId.current=null;
+  }
+  function editLine(index:number,line:ReceptionServiceLine,patch:Partial<{price:string;status:ServiceLineStatus}>){
+    setLineEdits(old=>({...old,[index]:{price:line.price_cents===null?"":String(line.price_cents/100),status:line.status,...old[index],...patch}}));
+  }
+  async function saveLine(reception:ServiceReception,index:number){
+    const edit=lineEdits[index];if(!edit||busy||lineSaving||!token)return;
+    const cents=edit.price.trim()===""?null:Math.round(Number(edit.price)*100);
+    if(cents!==null&&(!Number.isSafeInteger(cents)||cents<=0||cents>9999999900)){setError("Captura un precio válido o déjalo pendiente.");return;}
+    setLineSaving(true);setError("");setNotice("");
+    try{
+      const {data,error}=await db.rpc("pos_reception_update_multi_line",{
+        p_device_token:token,p_reception_id:reception.id,p_revision:reception.order_revision??0,
+        p_line_index:index,p_price_cents:cents,p_status:edit.status});
+      if(error)throw error;
+      setSelected(data as ServiceReception);setLineEdits(old=>{const next={...old};delete next[index];return next;});
+      setNotice("Servicio actualizado.");
+      try{await refreshHistory(search.trim());}catch{/* persisted */}
+    }catch(e){setError("No se pudo actualizar el servicio: "+errorText(e));}
+    finally{setLineSaving(false);}
+  }
   function revealSelection() {
     window.requestAnimationFrame(() => selectedDetailRef.current?.scrollIntoView({
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
@@ -175,25 +201,28 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
   async function register(e: FormEvent) {
     e.preventDefault();
     if (!identity || !token || busy) return;
-    if (!form.service_product_id) { setError("Selecciona el servicio del catálogo POS."); return; }
+    const lines:ReceptionServiceInput[]=equipment.flatMap(eq=>eq.services.map(s=>({
+      equipment_key:eq.key,equipment_description:eq.equipment_description.trim(),
+      condition_notes:eq.condition_notes.trim(),accessories:eq.accessories.trim()||"No especificados",
+      service_product_id:s.service_product_id,work_description:s.work_description.trim(),quantity:s.quantity,
+    })));
+    if(!lines.length||lines.length>MAX_RECEPTION_LINES||lines.some(l=>!l.service_product_id||!Number.isInteger(l.quantity)||l.quantity<1||l.quantity>100)){
+      setError("Selecciona todos los servicios y revisa las cantidades.");return;
+    }
     setBusy(true); setError(""); setNotice("");
     try {
       if (!requestId.current) requestId.current = crypto.randomUUID();
       const payload = {
         p_device_token: token, p_request_id: requestId.current,
         p_customer_name: form.customer_name.trim(), p_customer_phone: form.customer_phone.trim(),
-        p_equipment_description: form.equipment_description.trim(),
-        p_service_product_id: form.service_product_id,
-        p_work_description: form.work_description.trim(),
-        p_condition_notes: form.condition_notes.trim(),
-        p_accessories: form.accessories.trim() || "No especificados",
+        p_lines:lines,
       };
-      const { data, error: saveError } = await db.rpc("pos_reception_create", payload);
+      const {data,error:saveError}=await db.rpc("pos_reception_create_multi",payload);
       if (saveError) throw saveError;
       const saved = data as ServiceReception;
       setSelected(saved);
       revealSelection();
-      setForm(blank);
+      setForm(blank); setEquipment([blankEquipment(1)]); setLineEdits({});
       requestId.current = null;
       setNotice("Recepción " + receptionFolio(saved.receipt_number) + " guardada. Imprime la copia del cliente y la del taller.");
       try { await refreshHistory(""); setSearch(""); } catch { /* El folio quedó guardado; la lista puede recargarse. */ }
@@ -244,7 +273,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
     try {
       const resp = await fetch("http://127.0.0.1:18181/print-reception", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reception }),
+        body: JSON.stringify({ reception: receptionPrintView(reception) }),
       });
       if (!resp.ok) {
         if (resp.status === 404) throw new Error("BRIDGE_ANTIGUO");
@@ -300,7 +329,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
           <div className={styles.grid}>
             <section className={styles.panel}>
               <h2>Nueva recepción</h2>
-              <p className={styles.muted}>Recibe un equipo por folio. Registra las condiciones originales antes de entregar el comprobante.</p>
+              <p className={styles.muted}>Recibe uno o varios equipos en un solo folio. Agrega todos los servicios solicitados.</p>
               <form onSubmit={register} className={styles.fields}>
                 <div className={styles.pair}>
                   <div className={styles.field}><label htmlFor="reception-client">Cliente</label>
@@ -310,30 +339,40 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                     <input id="reception-phone" required minLength={7} maxLength={30} type="tel" value={form.customer_phone}
                       onChange={(e) => update("customer_phone", e.target.value)} placeholder="624 000 0000" /></div>
                 </div>
-                <div className={styles.field}><label htmlFor="reception-equipment">Equipo recibido</label>
-                  <input id="reception-equipment" required minLength={3} maxLength={240}
-                    value={form.equipment_description} onChange={(e) => update("equipment_description", e.target.value)}
-                    placeholder="Ej. Driver TaylorMade, modelo, número o características" /></div>
-                <div className={styles.field}><label htmlFor="reception-service">Servicio solicitado</label>
-                  <select id="reception-service" required value={form.service_product_id}
-                    onChange={(e) => update("service_product_id", e.target.value)}>
-                    <option value="">Selecciona un servicio del POS</option>
-                    {services.map(s => <option key={s.id} value={s.id}>{s.name} · {s.sku}</option>)}
-                  </select>
-                  {services.length === 0 && <small>No hay servicios activos. Pide al administrador crear un servicio en Admin → POS → Promociones y servicios → Alta de servicio (precio libre).</small>}
-                </div>
-                <div className={styles.field}><label htmlFor="reception-work">Qué trabajo se realizará</label>
-                  <textarea id="reception-work" required minLength={5} maxLength={1500} rows={3}
-                    value={form.work_description} onChange={(e) => update("work_description", e.target.value)}
-                    placeholder="Ej. Retirar grip desgastado, instalar uno nuevo y revisar el ajuste." /></div>
-                <div className={styles.field}><label htmlFor="reception-condition">Condición del equipo al recibirlo</label>
-                  <textarea id="reception-condition" required minLength={3} maxLength={1000} rows={2}
-                    value={form.condition_notes} onChange={(e) => update("condition_notes", e.target.value)}
-                    placeholder="Rayones, daños existentes, desgaste, funcionamiento, etc." /></div>
-                <div className={styles.field}><label htmlFor="reception-accessories">Accesorios entregados (opcional)</label>
-                  <input id="reception-accessories" maxLength={400} value={form.accessories}
-                    onChange={(e) => update("accessories", e.target.value)}
-                    placeholder="Ej. Funda, tornillo, llave. Si no trae nada, escribir «Ninguno»." /></div>
+                <fieldset disabled={busy} style={{border:0,padding:0,margin:0,minWidth:0}}>
+                  {equipment.map((eq,ei)=><fieldset key={eq.key} style={{border:"1px solid #d4e4d8",borderRadius:12,padding:12,margin:"0 0 12px",minWidth:0}}>
+                    <legend><strong>Equipo {ei+1}</strong></legend>
+                    <div className={styles.fields}>
+                    {(["equipment_description","condition_notes","accessories"] as const).map((key,i)=><div className={styles.field} key={key}>
+                      <label htmlFor={key+eq.key}>{["Equipo recibido","Condición al recibir","Accesorios (opcional)"][i]}</label>
+                      <input id={key+eq.key} required={i!==2} minLength={i===2?0:3} maxLength={i===2?120:240}
+                        value={eq[key]} onChange={e=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,[key]:e.target.value}:x))}/>
+                    </div>)}
+                    {eq.services.map((line,si)=><div key={si} className={styles.fields} style={{borderTop:"1px solid #e2e8e3",paddingTop:8}}>
+                      <div className={styles.field}><label htmlFor={"service-"+eq.key+"-"+si}>Servicio {si+1}</label>
+                        <select id={"service-"+eq.key+"-"+si} required value={line.service_product_id}
+                          onChange={e=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,services:x.services.map((s,j)=>j===si?{...s,service_product_id:e.target.value}:s)}:x))}>
+                          <option value="">Selecciona un servicio del POS</option>
+                          {services.map(s=><option key={s.id} value={s.id}>{s.name} · {s.sku}</option>)}
+                        </select></div>
+                      <div className={styles.field}><label htmlFor={"qty-"+eq.key+"-"+si}>Cantidad</label>
+                        <input id={"qty-"+eq.key+"-"+si} type="number" min={1} max={100} step={1} required value={line.quantity||""}
+                          onChange={e=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,services:x.services.map((s,j)=>j===si?{...s,quantity:Number(e.target.value)}:s)}:x))}/></div>
+                      <div className={styles.field}><label htmlFor={"work-"+eq.key+"-"+si}>Trabajo solicitado</label>
+                        <textarea id={"work-"+eq.key+"-"+si} required minLength={5} maxLength={240} rows={2} value={line.work_description}
+                          onChange={e=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,services:x.services.map((s,j)=>j===si?{...s,work_description:e.target.value}:s)}:x))}/></div>
+                      {eq.services.length>1&&<button className={styles.secondary} type="button" onClick={()=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,services:x.services.filter((_,j)=>j!==si)}:x))}>Quitar servicio</button>}
+                    </div>)}
+                    <button className={styles.secondary} type="button" disabled={equipment.reduce((n,x)=>n+x.services.length,0)>=MAX_RECEPTION_LINES}
+                      onClick={()=>editEquipment(old=>old.map(x=>x.key===eq.key?{...x,services:[...x.services,{service_product_id:"",work_description:"",quantity:1}]}:x))}>+ Agregar servicio</button>
+                    {equipment.length>1&&<button className={styles.secondary} type="button" onClick={()=>editEquipment(old=>old.filter(x=>x.key!==eq.key))}>Quitar equipo</button>}
+                    </div>
+                  </fieldset>)}
+                  <button className={styles.secondary} type="button" disabled={equipment.reduce((n,x)=>n+x.services.length,0)>=MAX_RECEPTION_LINES}
+                    onClick={()=>editEquipment(old=>[...old,blankEquipment(Math.max(...old.map(x=>x.key))+1)])}>+ Agregar otro equipo</button>
+                  {!services.length&&<small>No hay servicios activos en el catálogo POS.</small>}
+                  <p className={styles.muted}>{equipment.length} equipo(s) · {equipment.reduce((n,x)=>n+x.services.length,0)} servicio(s) · Precio por cotizar</p>
+                </fieldset>
                 <div className={styles.actions}>
                   <button className={styles.primary} disabled={busy || !services.length}>
                     {busy ? "Registrando..." : "Registrar recepción"}
@@ -375,7 +414,7 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                       {selected.status === "delivered" ? "Entregado y cobrado" : selected.status === "ready" ? "Listo para entregar" : "Recibido"}
                     </span>
                   </div>
-                  <p className={styles.selectedSummary}>{selected.customer_name} · {selected.equipment_description}</p>
+                  <p className={styles.selectedSummary}>{selected.customer_name} · {selected.order_lines?.length ? new Set(selected.order_lines.map(l=>l.equipment_key)).size+" equipo(s)" : selected.equipment_description}</p>
                   <p className={styles.selectedSummary}>{selected.status === "delivered" ?
                     "Entrega registrada en POS. Este folio no sustituye el comprobante de pago." :
                     "El servicio se cobra posteriormente en caja."}</p>
@@ -386,16 +425,37 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                     <dl>
                       <div><dt>Recibido</dt><dd>{receptionDate(selected.received_at)}</dd></div>
                       <div><dt>Teléfono</dt><dd>{selected.customer_phone}</dd></div>
-                      <div><dt>Servicio</dt><dd>{selected.service_name}</dd></div>
+                      {!selected.order_lines?.length && <><div><dt>Servicio</dt><dd>{selected.service_name}</dd></div>
                       <div><dt>Trabajo solicitado</dt><dd>{selected.work_description}</dd></div>
                       <div><dt>Condición al recibir</dt><dd>{selected.condition_notes}</dd></div>
-                      <div><dt>Accesorios</dt><dd>{selected.accessories}</dd></div>
+                      <div><dt>Accesorios</dt><dd>{selected.accessories}</dd></div></>}
                       <div><dt>Recibió</dt><dd>#{selected.employee_number} {selected.employee_name} · {selected.terminal_name}</dd></div>
                     </dl>
                   </details>
+                  {selected.order_lines?.map((line,i)=>{
+                    const edit=lineEdits[i];
+                    return <div key={i} className={styles.fields} style={{borderTop:"1px solid #d4e4d8",paddingTop:8,marginTop:10}}>
+                      <strong>Equipo {line.equipment_key} · {line.equipment_description}</strong>
+                      <span>{line.service_name} × {line.quantity} · {receptionLineAmount(line)} · {receptionLineStatuses[line.status]}</span>
+                      <small>{line.work_description} · Condición: {line.condition_notes} · Accesorios: {line.accessories}</small>
+                      {selected.status==="received"&&line.status!=="cancelled"&&<div className={styles.fields}>
+                        <div className={styles.field}><label htmlFor={"price-"+i}>Precio unitario (MXN, vacío = por cotizar)</label>
+                          <input id={"price-"+i} type="number" min="0.01" max="99999999" step="0.01" disabled={lineSaving}
+                            value={edit?.price??(line.price_cents===null?"":String(line.price_cents/100))}
+                            onChange={e=>editLine(i,line,{price:e.target.value})}/></div>
+                        <div className={styles.field}><label htmlFor={"state-"+i}>Estado del trabajo</label>
+                          <select id={"state-"+i} disabled={lineSaving} value={edit?.status??line.status} onChange={e=>editLine(i,line,{status:e.target.value as ServiceLineStatus})}>
+                            {Object.entries(receptionLineStatuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+                          </select></div>
+                        <button type="button" className={styles.secondary} disabled={!edit||lineSaving||busy} onClick={()=>void saveLine(selected,i)}>Guardar servicio</button>
+                      </div>}
+                    </div>;
+                  })}
+                  {!!selected.order_lines?.length&&<p><strong>Total cotizado:</strong> {new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN"}).format(selected.order_lines.reduce((n,l)=>n+(l.status==="cancelled"?0:(l.price_cents??0)*l.quantity),0)/100)}
+                    {selected.order_lines.some(l=>l.status!=="cancelled"&&l.price_cents===null)?" + servicios por cotizar":""}</p>}
                   <div className={styles.actions}>
                     {selected.status === "received" &&
-                      <button type="button" className={styles.primary} disabled={busy}
+                      <button type="button" className={styles.primary} disabled={busy||lineSaving||Object.keys(lineEdits).length>0||!!(selected.order_lines?.length&&(()=>{try{receptionChargeGroups(selected.order_lines);return false;}catch{return true;}})())}
                         onClick={() => void markReady(selected)}>✓ Listo para entregar</button>}
                     {selected.status === "ready" && (embedded && onCheckoutFolio
                       ? <button type="button" className={styles.primary}
@@ -416,9 +476,9 @@ export default function ServiceRecepcionesPage({ embedded = false, onReturnToPos
                 {visibleReceptions.map(r => (
                   <button type="button" key={r.id} aria-pressed={selected?.id === r.id}
                     className={`${styles.item} ${selected?.id === r.id ? styles.itemActive : ""}`}
-                    onClick={() => { setSelected(r); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); revealSelection(); }}>
+                    onClick={() => { setSelected(r); setLineEdits({}); setNotice("Recepción " + receptionFolio(r.receipt_number) + " seleccionada para reimpresión."); revealSelection(); }}>
                     <span className={styles.itemLine}><strong>{r.customer_name}</strong><span className={styles.folio}>{receptionFolio(r.receipt_number)}</span></span>
-                    <small>{r.equipment_description} · {r.service_name}</small>
+                    <small>{r.order_lines?.length ? new Set(r.order_lines.map(l=>l.equipment_key)).size+" equipo(s) · "+r.order_lines.length+" servicio(s)" : r.equipment_description+" · "+r.service_name}</small>
                     <small>{receptionDate(r.received_at)} · <span className={`${styles.statusTag} ${r.status === "ready" ? styles.statusReady : r.status === "delivered" ? styles.statusDelivered : ""}`}>
                       {r.status==="delivered"?"Entregado y cobrado":r.status==="ready"?"Listo para entregar":"Recibido"}
                     </span></small>
