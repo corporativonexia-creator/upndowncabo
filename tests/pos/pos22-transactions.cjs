@@ -119,6 +119,7 @@ before(async()=>{
  await migrate('20261114215000_pos_service_receptions');
  await migrate('20261119214913_pos22_allow_service_with_synthetic_variants');
  await migrate('20261123005458_pos_consignment_lifecycle');
+ await sql(fs.readFileSync('supabase/migrations/20261126231902_pos_multiservicio.sql','utf8'));
  adminEmployee=randomUUID();cashierEmployee=randomUUID();terminal=randomUUID();shift=randomUUID();category=randomUUID();
  await sql('insert into categories(id,name,is_active) values($1,$2,true)',[category,'QA categoría']);
  await sql('insert into pos_employees(id,auth_user_id,employee_number,full_name,role,status) values($1,$2,$3,$4,$5,$6),($7,$8,$9,$10,$11,$12)',
@@ -532,4 +533,82 @@ test('POS Taller: reception isolates text, Code39 raster and visible cut per cop
  const barcode=bridge.slice(bridge.indexOf('function BuildReceptionBarcode('),bridge.indexOf('function BuildReceptionFinish('));
  assert.match(barcode,/AddReceptionBarcode \$b \$folio/);
  assert.doesNotMatch(barcode,/\$CUT|\$DRAWER/);
+});
+
+test('Multiservicio: orden única, autorización, revisión, cobro exacto y reintento',async()=>{
+ await auth(user);
+ const grip=(await one("select public.pos22_admin_create_service('QA Multi grip',$1) result",[category])).result;
+ const clean=(await one("select public.pos22_admin_create_service('QA Multi limpieza',$1) result",[category])).result;
+ const line=(equipment_key,equipment_description,service_product_id,quantity=1)=>({equipment_key,equipment_description,service_product_id,quantity,condition_notes:'Marcas de uso',accessories:'Ninguno',work_description:'Trabajo solicitado QA'});
+ const lines=[line(1,'Driver QA multi',grip.id),line(2,'Putter QA multi',grip.id,2),line(2,'Putter QA multi',clean.id)];
+ const params=[token,randomUUID(),'Cliente multiservicio QA','6241234567',JSON.stringify(lines)];
+ const create=()=>one('select public.pos_reception_create_multi($1,$2,$3,$4,$5::jsonb) result',params);
+ const before=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
+ await auth(cashierUser);
+ let r=(await create()).result;
+ assert.equal(r.order_lines.length,3);assert.equal(r.order_lines[0].price_cents,null);assert.equal(r.order_revision,0);
+ assert.equal((await create()).result.id,r.id);
+ await assert.rejects(one('select public.pos_reception_create_multi($1,$2,$3,$4,$5::jsonb) result',[...params.slice(0,4),JSON.stringify(lines.slice(0,1))]),/RECEPTION_REQUEST_CONFLICT/);
+ const list=(await one('select public.pos_reception_recent($1,$2) result',[token,'Putter QA multi'])).result;
+ assert.ok(list.some(row=>row.id===r.id));
+ const edit=(index,price,status,revision=r.order_revision)=>one('select public.pos_reception_update_multi_line($1,$2,$3,$4,$5,$6) result',[token,r.id,revision,index,price,status]);
+ await assert.rejects(edit(0,45000,'approved'),/MULTISERVICE_MANAGER_REQUIRED/);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2) result',[token,r.id]),/MULTISERVICE_NOT_FINISHED/);
+ await auth(user);
+ for(const [i,price] of [[0,45000],[1,65050],[2,25000]]){
+   r=(await edit(i,price,'approved')).result;
+   await assert.rejects(edit(i,price,'finished',r.order_revision-1),/MULTISERVICE_STALE_REVISION/);
+   r=(await edit(i,price,'finished')).result;
+ }
+ const flags=await one("select has_function_privilege('anon','public.pos_reception_create_multi(text,uuid,text,text,jsonb)','EXECUTE') a,has_function_privilege('anon','public.pos_reception_update_multi_line(text,uuid,int,int,bigint,text)','EXECUTE') b");
+ assert.equal(flags.a,false);assert.equal(flags.b,false);
+ assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),before);
+ r=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ assert.equal(r.status,'ready');
+ const correct=[{product_id:grip.id,quantity:1,service_unit_price:1751},{product_id:clean.id,quantity:1,service_unit_price:250}];
+ const payments=[{method:'cash',amount:2001,metadata:{pos_request_id:randomUUID()}}];
+ const checkout=(items,pay=payments)=>one('select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',[token,r.id,JSON.stringify(items),JSON.stringify(pay)]);
+ await assert.rejects(checkout(correct.slice(0,1)),/MULTISERVICE_ITEMS_OR_PRICES_INVALID/);
+ await assert.rejects(checkout([{...correct[0],service_unit_price:1750},correct[1]]),/MULTISERVICE_ITEMS_OR_PRICES_INVALID/);
+ await assert.rejects(checkout(correct,[{...payments[0],amount:2000}]),/PAYMENT_TOTAL_MISMATCH/);
+ const sale=(await checkout(correct)).result;
+ assert.equal(Number(sale.total),2001);assert.equal(sale.service_reception_status,'delivered');
+ assert.equal((await checkout(correct)).result.sale_id,sale.sale_id);
+ await assert.rejects(checkout(correct,[{...payments[0],metadata:{pos_request_id:randomUUID()}}]),/RECEPTION_ALREADY_DELIVERED/);
+ assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),{sales:before.sales+1,moves:before.moves});
+});
+
+test('Multiservicio adicional: conserva folio, convierte recepción antigua, reabre y evita duplicados',async()=>{
+ await auth(user);
+ const service=(await one("select public.pos22_admin_create_service('QA Adicional',$1) result",[category])).result;
+ const old=(await one('select public.pos_reception_create($1,$2,$3,$4,$5,$6,$7,$8,$9) result',
+  [token,randomUUID(),'Cliente adicional QA','6241234567','Driver QA adicional',service.id,'Servicio original','Condición original','Funda'])).result;
+ await one('select public.pos_reception_set_ready($1,$2)',[token,old.id]);
+ const req=randomUUID();
+ const append=(rev,id=req,qty=2,key=1)=>one('select public.pos_reception_append_service($1,$2,$3,$4,$5,$6,$7,$8) result',
+ [token,old.id,rev,id,key,service.id,qty,'Trabajo adicional QA']);
+ await auth(cashierUser);
+ const before=await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves");
+ await assert.rejects(append(0,randomUUID(),2,99),/MULTISERVICE_EQUIPMENT_NOT_FOUND/);
+ let r=(await append(0)).result;
+ assert.equal(r.id,old.id);assert.equal(r.receipt_number,old.receipt_number);assert.equal(r.status,'received');assert.equal(r.ready_at,null);
+ assert.equal(r.order_lines.length,2);assert.equal(r.order_lines[0].work_description,'Servicio original');assert.equal(r.order_lines[1].price_cents,null);
+ assert.equal((await append(0)).result.order_lines.length,2);
+ await assert.rejects(append(0,req,3),/RECEPTION_REQUEST_CONFLICT/);
+ await assert.rejects(append(0,randomUUID()),/MULTISERVICE_STALE_REVISION/);
+ r=(await append(1,randomUUID())).result;
+ assert.equal(r.order_lines.length,3);assert.equal(r.order_revision,2);
+ await assert.rejects(one('select public.pos_reception_set_ready($1,$2)',[token,r.id]),/MULTISERVICE_NOT_FINISHED/);
+ assert.deepEqual(await one("select (select count(*)::int from pos_sales) sales,(select count(*)::int from inventory_movements) moves"),before);
+ const flags=await one("select has_function_privilege('anon','public.pos_reception_append_service(text,uuid,int,uuid,int,uuid,int,text)','EXECUTE') a");
+ assert.equal(flags.a,false);
+ await auth(user);
+ for(let i=0;i<3;i++){
+   r=(await one("select public.pos_reception_update_multi_line($1,$2,$3,$4,10000,'approved') result",[token,r.id,r.order_revision,i])).result;
+   r=(await one("select public.pos_reception_update_multi_line($1,$2,$3,$4,10000,'finished') result",[token,r.id,r.order_revision,i])).result;
+ }
+ r=(await one('select public.pos_reception_set_ready($1,$2) result',[token,r.id])).result;
+ const sale=(await one('select public.pos_reception_checkout($1,$2,$3::jsonb,$4::jsonb) result',[token,r.id,JSON.stringify(items(service.id,{service_unit_price:500})),JSON.stringify([{method:'cash',amount:500,metadata:{pos_request_id:randomUUID()}}])])).result;
+ assert.equal(Number(sale.total),500);
+ await assert.rejects(append(r.order_revision,randomUUID()),/MULTISERVICE_NOT_EDITABLE/);
 });

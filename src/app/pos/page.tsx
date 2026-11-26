@@ -8,6 +8,7 @@ import { receiptDiscountBreakdown } from "@/lib/pos/receipt-discounts";
 import { normalizeReceptionFolioInput, receptionFolio, receptionSearchTerm, type ServiceReception } from "@/lib/pos/reception-receipt";
 import { buildPosCatalog, barcodeMatches, readAllPages, type PosProduct as Product, type PosVariant } from "@/lib/pos/catalog";
 import ServiceRecepcionesPage from "./recepciones/reception-workspace";
+import { receptionChargeGroups, receptionLineAmount } from "@/lib/pos/multiservicio";
 
 type Access = {
   employee_id: string;
@@ -424,6 +425,7 @@ export default function PosPage() {
 
   const [ready, setReady] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState<"pos" | "reception">(initialWorkspaceTab);
+  const [focusReception,setFocusReception]=useState<{reception:ServiceReception}|null>(null);
   const [receptionVisited, setReceptionVisited] = useState(() => initialWorkspaceTab() === "reception");
   const [deviceToken, setDeviceToken] = useState("");
   const [access, setAccess] = useState<Access | null>(null);
@@ -573,17 +575,13 @@ export default function PosPage() {
     }
   }
 
-  async function openReceptionByFolio(rawValue: string) {
+  async function openReceptionByFolio(rawValue: string, editOnly=false) {
     const code = normalizeReceptionFolioInput(rawValue);
     if (!/^SR[0-9]{6,12}$/.test(code)) {
       setMessage("Folio inválido. Escribe o escanea un código como SR000128.");
       return;
     }
-    if (!access?.open_shift_id) {
-      setMessage("Abre turno de caja antes de cobrar. Para recibir equipos no hace falta turno.");
-      return;
-    }
-    if (productsLoading) {
+    if (productsLoading && !editOnly) {
       setMessage("Espera a que termine de cargar el catálogo antes de cobrar una recepción.");
       return;
     }
@@ -603,17 +601,23 @@ export default function PosPage() {
         .find(row => receptionFolio(row.receipt_number) === code);
       if (!reception) throw Error("Folio no encontrado. Consulta recepciones de taller.");
       if (reception.status === "delivered") throw Error("Este folio ya fue cobrado y entregado. No lo cobres dos veces.");
-      if (reception.status !== "ready") throw Error("El equipo sigue recibido. Marca «Listo para entregar» en Taller antes de cobrar.");
-      const product = products.find(row => row.id === reception.service_product_id && row.is_service && !row.variant_id);
-      if (!product) throw Error("El servicio ya no está activo en el POS. Consulta al administrador.");
-      if (cart.some(item => item.product.id === product.id))
-        throw Error("El servicio ya está en el carrito. Quítalo antes de cargar su folio.");
-      if (product.currency !== "MXN") throw Error("El servicio debe estar en MXN para cobrarse.");
+      if(editOnly||reception.status!=="ready"||!access?.open_shift_id){
+        setFocusReception({reception});selectWorkspaceTab("reception");setReceptionQuery("");
+        setMessage("Recepción "+code+" abierta en Taller.");
+        return;
+      }
+      const groups=reception.order_lines?.length?receptionChargeGroups(reception.order_lines):[{productId:reception.service_product_id,cents:null}];
+      const items:CartItem[]=groups.map(group=>{
+        const product=products.find(row=>row.id===group.productId&&row.is_service&&!row.variant_id);
+        if(!product)throw Error("Un servicio ya no está activo en el POS. Consulta al administrador.");
+        if(cart.some(item=>item.product.id===product.id))throw Error("Un servicio del folio ya está en el carrito. Quítalo antes de cargar la orden.");
+        return {product,quantity:1,servicePrice:group.cents===null?"":String(group.cents/100)};
+      });
       setPromoApproval(null);
-      setCart(current => [...current, { product, quantity: 1, servicePrice: "" }]);
+      setCart(current=>[...current,...items]);
       setActiveReception(reception);
       setReceptionQuery("");
-      setMessage("Recepción " + code + " cargada. Captura el precio final y cobra.");
+      setMessage("Recepción " + code + (reception.order_lines?.length ? " cargada con todos los importes cotizados." : " cargada. Captura el precio final y cobra."));
     } catch (error) {
       setMessage("RECEPCION: " + readableError(error));
     } finally {
@@ -752,8 +756,13 @@ export default function PosPage() {
     };
   }, [products, cart, activeReception, access?.open_shift_id, deviceToken, workspaceTab]);
 
+  function receptionHasProduct(productId:string){
+    return !!activeReception&&(activeReception.order_lines?.length
+      ? activeReception.order_lines.some(l=>l.status!=="cancelled"&&l.service_product_id===productId)
+      : activeReception.service_product_id===productId);
+  }
   function addToCart(product: Product) {
-    if (activeReception?.service_product_id === (product.parent_id || product.id)) {
+    if (receptionHasProduct(product.parent_id || product.id)) {
       setMessage("La recepción vinculada solo admite una unidad de su servicio.");
       return;
     }
@@ -781,7 +790,7 @@ export default function PosPage() {
   }
 
   function setCartQuantity(productId: string, nextQuantity: number) {
-    if (activeReception?.service_product_id === productId) {
+    if (receptionHasProduct(productId)) {
       if (nextQuantity <= 0) removeFromCart(productId);
       else setMessage("La recepción se cobra como una sola unidad.");
       return;
@@ -802,11 +811,11 @@ export default function PosPage() {
   }
 
   function removeFromCart(productId: string) {
-    if (activeReception?.service_product_id === productId) setActiveReception(null);
+    const linked=receptionHasProduct(productId);
+    if(linked)setActiveReception(null);
     setPromoApproval(null);
-    setCart((current) =>
-      current.filter((item) => item.product.id !== productId),
-    );
+    setCart(current=>current.filter(item=>item.product.id!==productId&&(!linked||!receptionHasProduct(item.product.id))));
+    if(linked)setMessage("Recepción retirada completa del carrito; no se realizó ningún cobro.");
   }
 
   function setItemPromotion(productId:string,mode:PromotionMode|"none",value?:string) {
@@ -864,9 +873,12 @@ export default function PosPage() {
       return;
     }
 
-    if (activeReception && !cart.some(item => item.product.id===activeReception.service_product_id && item.quantity===1)) {
-      setMessage("El servicio del folio debe permanecer en el carrito con cantidad 1.");
-      return;
+    if(activeReception){
+      try{
+        const groups=activeReception.order_lines?.length?receptionChargeGroups(activeReception.order_lines):[{productId:activeReception.service_product_id,cents:null}];
+        if(groups.some(g=>!cart.some(item=>item.product.id===g.productId&&item.quantity===1&&(g.cents===null||Math.round(cartUnitPrice(item)*100)===g.cents))))
+          throw Error("Todos los servicios y precios del folio deben permanecer en el carrito.");
+      }catch(e){setMessage(readableError(e));return;}
     }
     const original=roundMoney(cart.reduce((sum,item)=>sum+cartUnitPrice(item)*item.quantity,0));
     const lineFinal=roundMoney(cart.reduce((sum,item)=>sum+discountedUnitPrice(item)*item.quantity,0));
@@ -2128,14 +2140,15 @@ export default function PosPage() {
             {access.open_shift_id ? (
               <>
                 <form className="pos-reception-shortcut" onSubmit={event => { event.preventDefault(); void openReceptionByFolio(receptionQuery); }}>
-                  <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Cobrar equipo de taller · Folio</label>
+                  <label htmlFor="posServiceFolio" style={{fontWeight:800,fontSize:13}}>🔧 Consultar o cobrar equipo de taller · Folio</label>
                   <input id="posServiceFolio" type="text" value={receptionQuery}
                     onChange={e => setReceptionQuery(e.target.value)} placeholder="Escanea SR000128"
                     maxLength={20} autoComplete="off" />
                   <button className="pos-btn secondary" type="submit" disabled={busy || receptionLoading || productsLoading || !!activeReception}>
                     {receptionLoading ? "Consultando..." : "Cargar recepción"}
                   </button>
-                  <small className="pos-muted">Solo equipos «Listos para entregar». Precio pendiente hasta cobrar.</small>
+                  <button type="button" className="pos-btn secondary" disabled={busy||receptionLoading||!!activeReception||!receptionQuery.trim()} onClick={()=>void openReceptionByFolio(receptionQuery,true)}>Agregar servicios / editar</button>
+                  <small className="pos-muted">Abre el expediente o carga los servicios terminados al carrito.</small>
                 </form>
 
                 <div className="pos-sales-layout">
@@ -2220,9 +2233,9 @@ export default function PosPage() {
                     {activeReception && (
                       <div role="status" style={{background:"#e8f5ec",border:"1px solid #b7dac1",padding:12,borderRadius:12,marginBottom:10}}>
                         <strong>🔧 {receptionFolio(activeReception.receipt_number)} · {activeReception.customer_name}</strong>
-                        <div style={{fontSize:12,marginTop:5}}>Equipo: {activeReception.equipment_description}</div>
+                        {activeReception.order_lines?.length ? <div>{activeReception.order_lines.filter(l=>l.status!=="cancelled").map((l,i)=><div key={i} style={{fontSize:12}}>Equipo {l.equipment_key}: {l.equipment_description} · {l.service_name} × {l.quantity} · {receptionLineAmount(l)}</div>)}</div> : <><div style={{fontSize:12,marginTop:5}}>Equipo: {activeReception.equipment_description}</div>
                         <div style={{fontSize:12}}>Trabajo: {activeReception.work_description}</div>
-                        <div style={{fontSize:12}}>Estado inicial: {activeReception.condition_notes}</div>
+                        <div style={{fontSize:12}}>Estado inicial: {activeReception.condition_notes}</div></>}
                         <div style={{fontSize:12,fontWeight:700,marginTop:5}}>Se registra una sola venta al confirmar el cobro.</div>
                       </div>
                     )}
@@ -2245,10 +2258,11 @@ export default function PosPage() {
                             </div>
                             {item.product.is_service && (
                               <div className="pos-field" style={{margin:"10px 0 6px",background:"#eef6f0",padding:10,borderRadius:10}}>
-                                <label>{activeReception?.service_product_id===item.product.id ? "Precio final del servicio recibido (MXN)" : "Precio libre del servicio (MXN)"}</label>
+                                <label>{receptionHasProduct(item.product.id) ? "Importe del servicio del folio (MXN)" : "Precio libre del servicio (MXN)"}</label>
                                 <input type="number" inputMode="decimal" min="0.01" max="99999999" step="0.01"
                                   placeholder="Captura el importe"
                                   value={item.servicePrice??""}
+                                  readOnly={!!activeReception?.order_lines?.length&&receptionHasProduct(item.product.id)}
                                   onChange={event=>{
                                     setPromoApproval(null);
                                     setCart(current=>current.map(row=>row.product.id===item.product.id
@@ -3097,7 +3111,7 @@ export default function PosPage() {
           )}
           </div>
           <div className="pos-workspace-panel" id="receptionWorkspacePanel" role="tabpanel" aria-labelledby="receptionWorkspaceTab" hidden={workspaceTab !== "reception"}>
-            {receptionVisited && <ServiceRecepcionesPage embedded
+            {receptionVisited && <ServiceRecepcionesPage embedded focusReception={focusReception}
               onReturnToPos={() => selectWorkspaceTab("pos")}
               onCheckoutFolio={folio => { selectWorkspaceTab("pos"); void openReceptionByFolio(folio); }} />}
           </div>
