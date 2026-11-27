@@ -88,7 +88,7 @@ function ServiceEditor({ service, onSaved, onCancel }: { service: Service; onSav
     <form onSubmit={save} className={styles.editor} aria-busy={busy}>
       <fieldset disabled={busy} className={styles.fieldset}>
         <div className={styles.photo}>
-          <div className={styles.preview}><Image src={preview || service.image_url || "/assets/category-placeholder.svg"} alt={`Foto de ${service.title_es || "nuevo servicio"}`} fill unoptimized sizes="240px" /></div>
+          <div className={styles.preview}><Image src={preview || service.image_url || "/api/storefront/default-background"} alt={`Foto de ${service.title_es || "nuevo servicio"}`} fill unoptimized sizes="240px" /></div>
           <label>Foto de la tarjeta<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={event => {
             const selected = event.target.files?.[0]; event.target.value = ""; if (!selected) return;
             if (!imageExtensions[selected.type] || selected.size > 10 * 1024 * 1024) { setFailed(true); setMessage("Usa JPG, PNG, WebP o AVIF de hasta 10 MB."); return; }

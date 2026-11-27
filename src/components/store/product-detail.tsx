@@ -252,7 +252,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
     window.location.assign(url.pathname+url.search+url.hash);
   }
   const galleryCount = Math.max(1, product.images.length);
-  const galleryImage = product.images[active] || "/assets/updown-product-placeholder.svg";
+  const galleryImage = product.images[active] || "/api/storefront/default-background";
   const movePhoto = (delta: number) => setActive(current => (current + delta + galleryCount) % galleryCount);
 
   return <main className="ud-product-page" lang={language}>
@@ -310,7 +310,7 @@ export default function ProductDetail({ product, preview }: { product: Shareable
         <section className="ud-product-gallery" aria-label={t("Fotografías del producto", "Product photos")}>
           <div className="ud-product-main-image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={galleryImage} alt={product.name + t(" · imagen ", " · photo ") + (active + 1)} fetchPriority="high" decoding="async" loading="eager" onError={e=>{if(!e.currentTarget.src.endsWith("/assets/updown-product-placeholder.svg"))e.currentTarget.src="/assets/updown-product-placeholder.svg";}} />
+            <img src={galleryImage} alt={product.name + t(" · imagen ", " · photo ") + (active + 1)} fetchPriority="high" decoding="async" loading="eager" onError={e=>{if(!e.currentTarget.src.endsWith("/api/storefront/default-background"))e.currentTarget.src="/api/storefront/default-background";}} />
             {galleryCount > 1 && <>
               <button className="ud-photo-control is-prev" type="button" onClick={() => movePhoto(-1)} aria-label={t("Fotografía anterior", "Previous photo")}>‹</button>
               <button className="ud-photo-control is-next" type="button" onClick={() => movePhoto(1)} aria-label={t("Fotografía siguiente", "Next photo")}>›</button>

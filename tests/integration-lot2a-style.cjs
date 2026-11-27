@@ -24,17 +24,17 @@ test("visual skin stays scope-gated and includes larger canonical header brandin
   assert.match(css, /PW-UX-08 · More brand presence/);
   assert.match(css, /\.uds-original-vector-logo/);
   assert.match(css, /\.uds-preview-mobile-header/);
-  assert.match(css, /PW-UX-07 · Approved green-velvet artwork/);
+  assert.match(css, /PW-UX-07 · Approved official green artwork/);
 });
 test("the approved no-photo artwork remains the exact canonical user image", () => {
   const svg = fromRoot("public/assets/updown-product-placeholder.svg");
-  assert.match(svg, /viewBox="0 0 600 400"/);
+  assert.match(svg, /viewBox="0 0 1254 1254"/);
   const b64 = svg.match(/base64,([A-Za-z0-9+/=]+)/)?.[1];
   assert.ok(b64);
-  assert.equal(b64.length, 5840);
+  assert.equal(b64.length, 213492);
   let fp = 2166136261;
   for (const ch of b64) fp = Math.imul(fp ^ ch.charCodeAt(0), 16777619) >>> 0;
-  assert.equal(fp, 3030130964);
+  assert.equal(fp, 3891568718);
 });
 test("shared Premium White product style only changes presentation", () => {
   const css = fromRoot("src/components/store/premium-product-detail.css");

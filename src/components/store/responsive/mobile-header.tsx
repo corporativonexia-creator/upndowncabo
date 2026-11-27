@@ -127,7 +127,7 @@ export function MobileHeader({ previewMode = false }: { previewMode?: boolean })
               if (!service) return null;
               const href = service.key === "classes" ? "#udsGolfClasses" : `#udsService-${service.key}`;
               return <a key={service.key} className="uds-native-service-card" href={href} onClick={event => { event.preventDefault(); navigateService(service.key); }}>
-                <div className="uds-native-service-media"><Image src={service.image_url || "/assets/category-placeholder.svg"} alt="" fill sizes="(max-width: 700px) 45vw, 320px" /></div>
+                <div className="uds-native-service-media"><Image src={service.image_url || "/api/storefront/default-background"} unoptimized={!service.image_url} alt="" fill sizes="(max-width: 700px) 45vw, 320px" /></div>
                 <div className="uds-native-service-copy"><small>{shortcut.subtitle}</small><strong>{shortcut.title}</strong><span aria-hidden="true">↗</span></div>
               </a>;
             })}

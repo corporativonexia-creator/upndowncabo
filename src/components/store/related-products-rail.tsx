@@ -57,11 +57,11 @@ export default function RelatedProductsRail({ products, preview }: { products: R
           <div className="ud-related-image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img loading="lazy" alt={item.image ? item.name : ""}
-              src={item.image || "/assets/updown-product-placeholder.svg"}
+              src={item.image || "/api/storefront/default-background"}
               onError={event => {
                 const img = event.currentTarget;
-                if (!img.src.endsWith("/assets/updown-product-placeholder.svg")) {
-                  img.src = "/assets/updown-product-placeholder.svg";
+                if (!img.src.endsWith("/api/storefront/default-background")) {
+                  img.src = "/api/storefront/default-background";
                   img.alt = "";
                 }
               }} />
