@@ -175,15 +175,15 @@ test("admin continues to edit source records and protected classes content", () 
     "/updown-preview-services-stage7.js?v=services-premium-shared-v5-20261117");
 });
 
-test("no-photo cards use approved velvet image without touching real product photos", () => {
+test("no-photo cards use official green image without touching real product photos", () => {
   const match=files.productFallback.match(/base64,([A-Za-z0-9+/=]+)/);
-  assert.ok(match, "Product fallback must embed the approved green velvet artwork");
+  assert.ok(match, "Product fallback must embed the official green artwork");
   const b64=match[1];
-  assert.equal(b64.length, 5840);
+  assert.equal(b64.length, 213492);
   let fingerprint=2166136261;
   for(const ch of b64) fingerprint=Math.imul(fingerprint^ch.charCodeAt(0),16777619)>>>0;
-  assert.equal(fingerprint, 3030130964); // user-supplied canonical 1536×1024 image, resized to 600×400 WebP
-  has(files.productFallback, 'width="600" height="400"');
+  assert.equal(fingerprint, 3891568718); // exact user-supplied canonical 1254×1254 JPEG; no resizing or color changes
+  has(files.productFallback, 'width="1254" height="1254"');
 
   has(files.runtime,
     'const cover=productGallery(product)[0]||"";',
@@ -193,11 +193,11 @@ test("no-photo cards use approved velvet image without touching real product pho
     'host.classList.add("is-product-placeholder")');
   has(files.runtime, 'image:productGallery(product)[0]||""');
   has(files.runtime, 'const imageSrc=validImage?item.image:fallback;');
-  has(files.css, 'PW-UX-07 · Approved green-velvet artwork', 'object-fit: contain !important');
+  has(files.css, 'PW-UX-07 · Approved official green artwork', 'object-fit: contain !important');
   has(files.sharedCss, "Canonical user-supplied no-photo product art", "object-fit: contain !important");
-  has(files.search, 'product.image || "/assets/updown-product-placeholder.svg"');
-  has(files.product, 'product.images[active] || "/assets/updown-product-placeholder.svg"');
-  has(files.related, 'item.image || "/assets/updown-product-placeholder.svg"');
+  has(files.search, 'product.image || "/api/storefront/default-background"');
+  has(files.product, 'product.images[active] || "/api/storefront/default-background"');
+  has(files.related, 'item.image || "/api/storefront/default-background"');
 });
 
 test("premium logo prominence preserves both native and desktop header heights", () => {

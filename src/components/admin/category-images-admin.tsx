@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import DefaultBackgroundCard from "./default-background-card";
 import ServicesAdmin from "./services-admin";
 import styles from "./category-images-admin.module.css";
 
@@ -65,7 +66,7 @@ function CategoryImageCard({ category, onSaved }: { category: Category; onSaved:
   return (
     <article className={styles.card} aria-busy={busy}>
       <div className={styles.preview}>
-        <Image src={preview || category.image_url || "/assets/category-placeholder.svg"} alt={`Imagen de ${name}`} fill unoptimized sizes="(max-width:600px) 100vw, (max-width:1000px) 50vw, 25vw" />
+        <Image src={preview || category.image_url || "/api/storefront/default-background"} alt={`Imagen de ${name}`} fill unoptimized sizes="(max-width:600px) 100vw, (max-width:1000px) 50vw, 25vw" />
         <span>{name}</span>
       </div>
       <div className={styles.body}>
@@ -106,6 +107,7 @@ export default function CategoryImagesAdmin() {
   return (
     <main className={styles.page} data-admin-module="categories">
       <header className={styles.heading}><div><h1>Categorías y servicios</h1><p>Administra las fotos de categorías y las tarjetas de servicios.</p><small>JPG, PNG, WebP o AVIF · Máximo 10 MB · Recomendado: 1200 × 1200 px, con el producto centrado.</small></div><Link href="/vista-previa" target="_blank" rel="noopener noreferrer">Ver tienda ↗</Link></header>
+      <h2>Fondo de tarjetas sin foto</h2><div className={styles.grid}><DefaultBackgroundCard /></div>
       <h2>Imágenes de categorías</h2><p>Una imagen fija por categoría. Puedes reemplazarla cuando lo necesites.</p>
       {loading ? <p role="status">Cargando categorías…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setReload(value => value + 1)}>Volver a intentar</button></div> : <div className={styles.grid}>{categories.map(category => <CategoryImageCard key={category.id} category={category} onSaved={onSaved} />)}</div>}
       {!loading && !error && categories.length === 0 ? <p>No hay categorías registradas.</p> : null}

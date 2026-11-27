@@ -537,7 +537,7 @@
 
     cartList.innerHTML="";
     cart.forEach(item=>{const row=document.createElement("article");row.className="uds-cart-item";
-      const fallback="/assets/updown-product-placeholder.svg";
+      const fallback="/api/storefront/default-background";
       const validImage=typeof item.image==="string"&&(/^https?:\/\//i.test(item.image)||item.image.startsWith("/"));
       const imageSrc=validImage?item.image:fallback;
       row.innerHTML=`<img src="${escapeHtml(imageSrc)}" alt="${PREVIEW_CATALOG?"":escapeHtml(item.name)}"><div><h4>${escapeHtml(item.name)}</h4><div class="uds-cart-meta">${item.summary?`${escapeHtml(item.summary)} · `:""}${money(item.price,item.currency)} ${currentLanguage==="en"?"each":"c/u"}</div><div class="uds-qty"><button class="uds-minus" type="button" aria-label="${currentLanguage==="en"?"Decrease quantity":"Restar"}">−</button><strong>${item.quantity}</strong><button class="uds-plus" type="button" aria-label="${currentLanguage==="en"?"Increase quantity":"Sumar"}">+</button></div></div><button class="uds-remove" type="button" aria-label="${currentLanguage==="en"?"Remove":"Eliminar"}">×</button>`;
@@ -857,7 +857,7 @@
     const condition=(currentLanguage==="en"?conditionLabelsEn:conditionLabels)[product.item_condition]||(currentLanguage==="en"?"Product":"Producto");
     const titleKey=normalizeSpecKey(product.name);
     const specs=golfSpecChips(product,3).filter(value=>!titleKey.includes(normalizeSpecKey(value))).slice(0,2);
-    const fallback="/assets/updown-product-placeholder.svg";
+    const fallback="/api/storefront/default-background";
     // Respect gallery photos even when the product lacks a designated cover.
     const cover=productGallery(product)[0]||"";
     const imageSrc=cover&&(/^https?:\/\//i.test(cover)||cover.startsWith("/"))?cover:fallback;
@@ -876,9 +876,9 @@
   function markImageFallback(img,host){
     if(!img||!host)return;
     img.addEventListener("error",()=>{
-      const fallback="/assets/updown-product-placeholder.svg";
+      const fallback="/api/storefront/default-background";
       if(img.getAttribute("src")!==fallback){
-        // Broken uploaded photo: use the approved velvet placeholder instead.
+        // Broken uploaded photo: use the configured default background instead.
         img.src=fallback;
         img.alt="";
         host.classList.add("is-product-placeholder");
@@ -1342,7 +1342,7 @@
     if(!selected.length)grid.innerHTML=`<div class="uds-no-results">${currentLanguage==="en"?"No highlighted products yet.":"Aún no hay productos destacados."}</div>`;
   }
   function categoryImage(category){
-    return category.image_url||"/assets/category-placeholder.svg";
+    return category.image_url||"/api/storefront/default-background";
   }
   function appendMobileMenuButton({
     label,

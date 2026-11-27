@@ -124,7 +124,7 @@ export function StoreSearch() {
           }}>
             <span className="uds-search-thumb">{/* Product photos may use existing external catalog hosts. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={product.image || "/assets/updown-product-placeholder.svg"} alt="" loading="lazy" width={76} height={76} onError={event => { if (!event.currentTarget.src.endsWith("/assets/updown-product-placeholder.svg")) event.currentTarget.src = "/assets/updown-product-placeholder.svg"; }} />
+              <img src={product.image || "/api/storefront/default-background"} alt="" loading="lazy" width={76} height={76} onError={event => { if (!event.currentTarget.src.endsWith("/api/storefront/default-background")) event.currentTarget.src = "/api/storefront/default-background"; }} />
             </span>
             <span className="uds-search-result-copy"><small>{product.category}</small><strong>{product.name}</strong><span>{product.price}</span></span><span className="uds-search-arrow" aria-hidden="true">›</span>
           </button>)}</div>

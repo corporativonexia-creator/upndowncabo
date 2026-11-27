@@ -989,14 +989,14 @@ html:has(#updown-store:is(.uds-preview,.uds-premium-white)) .uds-search-empty bu
   }
 }
 
-/* PW-UX-07 · Approved green-velvet artwork on photo-less PRODUCT cards only.
+/* PW-UX-07 · Approved official green artwork on photo-less PRODUCT cards only.
  * The real image remains untouched; this class is assigned only when an image
  * is absent or its URL fails. No effect on category tiles or service photos.
  */
 #updown-store:is(.uds-preview,.uds-premium-white).uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder,
 #updown-store:is(.uds-preview,.uds-premium-white).uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder {
-  /* Match the original green canvas around this 3:2 canonical artwork. */
-  background: #032d10 !important;
+  /* Match the green canvas around the square official artwork. */
+  background: #61b777 !important;
 }
 #updown-store:is(.uds-preview,.uds-premium-white).uds-ux-v3 #udsNew .uds-card-media.is-product-placeholder img,
 #updown-store:is(.uds-preview,.uds-premium-white).uds-ux-v3 #udsGrid .uds-card-media.is-product-placeholder img {

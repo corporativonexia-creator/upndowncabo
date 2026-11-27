@@ -10455,7 +10455,7 @@ body.uds-image-viewer-open{
  * Real uploaded product photos are unaffected (no fallback class).
  */
 #updown-store.uds-ux-v3 .uds-card-media.is-product-placeholder {
-  background: #032d10 !important;
+  background: #61b777 !important;
 }
 #updown-store.uds-ux-v3 .uds-card-media.is-product-placeholder img {
   display: block !important;
